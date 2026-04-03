@@ -52,6 +52,12 @@ from harbor.models.trajectories import (
     ToolCall,
 )
 
+from agent.completion import (
+    build_completion_checklist,
+    build_memory_guidance,
+    load_failure_memory,
+    run_pre_completion_check,
+)
 from agent.context import add_anthropic_caching
 from agent.harness import (
     CONTINUATION_PROMPT,
@@ -98,6 +104,7 @@ class WhaleAgent(Terminus2):
         super().__init__(*args, **kwargs)
         self._total_time_saved = 0.0
         self._verifier_hint: str = ""
+        self._failure_memory = load_failure_memory()
 
     @staticmethod
     def name() -> str:
@@ -126,16 +133,22 @@ class WhaleAgent(Terminus2):
 
     def _get_completion_confirmation_message(self, terminal_output: str) -> str:
         instruction = getattr(self, "_original_instruction", "N/A")
-        return completion_checklist(instruction, terminal_output)
+        checklist = build_completion_checklist(instruction)
+        return completion_checklist(instruction, terminal_output, checklist)
 
     async def run(
         self, instruction: str, environment: BaseEnvironment, context: AgentContext
     ) -> None:
         self._original_instruction = instruction
+        memory_guidance = build_memory_guidance(
+            self._original_instruction, self._failure_memory
+        )
         if getattr(self, "_verifier_hint", "").strip():
             instruction = (
                 f"{instruction.rstrip()}\n\n---\n{self._verifier_hint.strip()}"
             )
+        if memory_guidance:
+            instruction = f"{instruction.rstrip()}\n\n---\n{memory_guidance}"
         await super().run(instruction, environment, context)
 
     async def _execute_commands(
@@ -659,6 +672,7 @@ class WhaleAgent(Terminus2):
         *,
         is_complete: bool,
         terminal_text: str,
+        rejection_message: str = "",
     ) -> dict[str, str]:
         ids = [
             tc.get("id") or ""
@@ -668,6 +682,8 @@ class WhaleAgent(Terminus2):
         if not ids:
             return {}
         if not is_complete:
+            if rejection_message:
+                return {i: rejection_message for i in ids}
             return {i: "task_complete tool referenced unexpectedly." for i in ids}
         checklist = self._get_completion_confirmation_message(terminal_text)
         return {i: checklist for i in ids}
@@ -896,10 +912,29 @@ class WhaleAgent(Terminus2):
                     ir, chat
                 )
 
+            task_complete_rejection = ""
+            if is_complete:
+                completion_check = await run_pre_completion_check(
+                    self._session.environment,
+                    user=getattr(self._session, "_user", None),
+                    instruction=self._original_instruction,
+                    terminal_output=terminal_output,
+                    memory=self._failure_memory,
+                )
+                if not completion_check.passed:
+                    is_complete = False
+                    task_complete_rejection = completion_check.task_complete_message
+                    feedback = (
+                        f"{feedback}\n\n{completion_check.feedback}"
+                        if feedback
+                        else completion_check.feedback
+                    )
+
             tcp_map = self._task_complete_messages(
                 model_tool_calls,
                 is_complete=is_complete,
                 terminal_text=terminal_output,
+                rejection_message=task_complete_rejection,
             )
 
             content_map = build_tool_content_map(

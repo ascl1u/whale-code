@@ -1,8 +1,15 @@
 """Prompt constants for the Whale agent."""
 
 
-def completion_checklist(instruction: str, terminal_output: str) -> str:
+def completion_checklist(
+    instruction: str,
+    terminal_output: str,
+    verification_checklist: str = "",
+) -> str:
     """Completion reminder for strict final verification before ending the rollout."""
+    extra = ""
+    if verification_checklist:
+        extra = f"\n\nVerification plan:\n{verification_checklist}"
     return (
         f"Original task:\n{instruction}\n\n"
         f"Current terminal (reference):\n{terminal_output}\n\n"
@@ -11,5 +18,5 @@ def completion_checklist(instruction: str, terminal_output: str) -> str:
         "task-described test or verification command. If you changed code, builds, or compiled "
         "extensions, execute the changed path directly. Do not rely only on imports, partial smoke "
         "tests, or a summary of what you think changed. Use execute_commands only if a specific "
-        "requirement is still unverified or missing."
+        f"requirement is still unverified or missing.{extra}"
     )
