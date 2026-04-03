@@ -6,7 +6,8 @@ def completion_checklist(instruction: str, terminal_output: str) -> str:
     return (
         f"Original task:\n{instruction}\n\n"
         f"Current terminal (reference):\n{terminal_output}\n\n"
-        "Grading will run next. Call task_complete again only if every requirement is met "
+        "Grading will run next. Call task_complete again immediately if every requirement is met "
         "and you already ran any verification command the task describes (e.g. test.sh, pytest). "
-        "Otherwise use execute_commands to fix or verify first."
+        "Do not run celebratory or redundant commands. Use execute_commands only if the task is "
+        "not yet verified or a specific requirement is still missing."
     )

@@ -54,6 +54,7 @@ from harbor.models.trajectories import (
 
 from agent.context import add_anthropic_caching
 from agent.harness import (
+    COMPLETION_CONFIRMATION_PROMPT,
     CONTINUATION_PROMPT,
     append_assistant_turn,
     append_tool_result_messages,
@@ -145,7 +146,11 @@ class WhaleAgent(Terminus2):
     ) -> tuple[bool, str]:
         for cmd in commands:
             start = time.monotonic()
-            if self._is_command_submission(cmd.keystrokes):
+            if self._is_multiline_submission(cmd.keystrokes):
+                timeout = await self._execute_multiline_submission(cmd, session)
+                if timeout:
+                    return True, timeout
+            elif self._is_command_submission(cmd.keystrokes):
                 try:
                     await session.send_keys(
                         cmd.keystrokes,
@@ -176,6 +181,39 @@ class WhaleAgent(Terminus2):
     @staticmethod
     def _is_command_submission(keystrokes: str) -> bool:
         return keystrokes in _ENTER_KEYS or keystrokes.endswith(("\n", "\r"))
+
+    @classmethod
+    def _is_multiline_submission(cls, keystrokes: str) -> bool:
+        if not cls._is_command_submission(keystrokes):
+            return False
+        stripped = keystrokes.rstrip("\r\n")
+        return "\n" in stripped or "\r" in stripped
+
+    async def _execute_multiline_submission(
+        self,
+        cmd: Command,
+        session: TmuxSession,
+    ) -> str | None:
+        await session.send_keys(cmd.keystrokes, block=False, min_timeout_sec=0.0)
+        await session.send_keys("tmux wait -S done\n", block=False, min_timeout_sec=0.0)
+
+        result = await asyncio.wait_for(
+            session.environment.exec(
+                f"timeout {cmd.duration_sec}s tmux wait done",
+                user=getattr(session, "_user", None),
+            ),
+            timeout=_BLOCK_TIMEOUT,
+        )
+        if result.return_code == 0:
+            return None
+
+        return self._timeout_template.format(
+            timeout_sec=cmd.duration_sec,
+            command=cmd.keystrokes,
+            terminal_state=self._limit_output_length(
+                await session.get_incremental_output()
+            ),
+        )
 
     @retry(
         stop=stop_after_attempt(5),
@@ -889,11 +927,11 @@ class WhaleAgent(Terminus2):
             else:
                 self._pending_completion = False
 
-            obs_for_traj = terminal_output
+            next_prompt = CONTINUATION_PROMPT
+            if is_complete and not was_pending:
+                next_prompt = COMPLETION_CONFIRMATION_PROMPT
             if feedback:
-                obs_for_traj = f"{feedback}\n\n{CONTINUATION_PROMPT}"
-            else:
-                obs_for_traj = CONTINUATION_PROMPT
+                next_prompt = f"{feedback}\n\n{next_prompt}"
 
             self._trajectory_steps.append(
                 Step(
@@ -907,16 +945,13 @@ class WhaleAgent(Terminus2):
                         episode, model_tool_calls, commands
                     ),
                     observation=Observation(
-                        results=[ObservationResult(content=obs_for_traj)]
+                        results=[ObservationResult(content=next_prompt)]
                     ),
                     metrics=step_metrics,
                 )
             )
             self._dump_trajectory()
 
-            if feedback:
-                prompt = f"{feedback}\n\n{CONTINUATION_PROMPT}"
-            else:
-                prompt = CONTINUATION_PROMPT
+            prompt = next_prompt
 
         return self._n_episodes

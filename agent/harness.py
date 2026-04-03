@@ -10,6 +10,10 @@ from harbor.llms.chat import Chat
 
 # After tool results, observations live in tool messages — avoid duplicating them in a huge user turn.
 CONTINUATION_PROMPT = "Continue with your next action using the tool results above."
+COMPLETION_CONFIRMATION_PROMPT = (
+    "If the task is fully verified, call task_complete again now. "
+    "Do not run more commands unless the tool results above show a specific gap."
+)
 
 
 async def discover_verifier_hint(environment: BaseEnvironment, *, timeout_sec: int = 30) -> str:
