@@ -149,7 +149,7 @@ class WhaleAgent(Terminus2):
                 timeout = await self._execute_multiline_submission(cmd, session)
                 if timeout:
                     return True, timeout
-            elif self._is_command_submission(cmd.keystrokes):
+            elif self._is_blocking_command_submission(cmd.keystrokes):
                 try:
                     await session.send_keys(
                         cmd.keystrokes,
@@ -180,6 +180,23 @@ class WhaleAgent(Terminus2):
     @staticmethod
     def _is_command_submission(keystrokes: str) -> bool:
         return keystrokes in _ENTER_KEYS or keystrokes.endswith(("\n", "\r"))
+
+    @classmethod
+    def _is_blocking_command_submission(cls, keystrokes: str) -> bool:
+        if not cls._is_command_submission(keystrokes):
+            return False
+        if cls._is_background_command_submission(keystrokes):
+            return False
+        return True
+
+    @classmethod
+    def _is_background_command_submission(cls, keystrokes: str) -> bool:
+        if not cls._is_command_submission(keystrokes):
+            return False
+        stripped = keystrokes.rstrip()
+        if not stripped or stripped in _ENTER_KEYS:
+            return False
+        return stripped.endswith("&")
 
     @classmethod
     def _is_multiline_submission(cls, keystrokes: str) -> bool:
