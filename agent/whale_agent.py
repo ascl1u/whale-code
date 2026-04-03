@@ -54,7 +54,6 @@ from harbor.models.trajectories import (
 
 from agent.context import add_anthropic_caching
 from agent.harness import (
-    COMPLETION_CONFIRMATION_PROMPT,
     CONTINUATION_PROMPT,
     append_assistant_turn,
     append_tool_result_messages,
@@ -642,7 +641,6 @@ class WhaleAgent(Terminus2):
         tool_calls: list[dict[str, Any]],
         *,
         is_complete: bool,
-        was_pending: bool,
         terminal_text: str,
     ) -> dict[str, str]:
         ids = [
@@ -654,8 +652,6 @@ class WhaleAgent(Terminus2):
             return {}
         if not is_complete:
             return {i: "task_complete tool referenced unexpectedly." for i in ids}
-        if was_pending:
-            return {i: "Completion confirmed." for i in ids}
         checklist = self._get_completion_confirmation_message(terminal_text)
         return {i: checklist for i in ids}
 
@@ -883,11 +879,9 @@ class WhaleAgent(Terminus2):
                     ir, chat
                 )
 
-            was_pending = self._pending_completion
             tcp_map = self._task_complete_messages(
                 model_tool_calls,
                 is_complete=is_complete,
-                was_pending=was_pending,
                 terminal_text=terminal_output,
             )
 
@@ -901,35 +895,27 @@ class WhaleAgent(Terminus2):
             append_tool_result_messages(chat, model_tool_calls, content_map)
 
             if is_complete:
-                if was_pending:
-                    self._trajectory_steps.append(
-                        Step(
-                            step_id=len(self._trajectory_steps) + 1,
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                            source="agent",
-                            model_name=self._model_name,
-                            message=msg_content,
-                            reasoning_content=llm_resp.reasoning_content,
-                            tool_calls=self._trajectory_tool_calls(
-                                episode, model_tool_calls, commands
-                            ),
-                            observation=Observation(
-                                results=[
-                                    ObservationResult(content=CONTINUATION_PROMPT)
-                                ]
-                            ),
-                            metrics=step_metrics,
-                        )
+                self._trajectory_steps.append(
+                    Step(
+                        step_id=len(self._trajectory_steps) + 1,
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        source="agent",
+                        model_name=self._model_name,
+                        message=msg_content,
+                        reasoning_content=llm_resp.reasoning_content,
+                        tool_calls=self._trajectory_tool_calls(
+                            episode, model_tool_calls, commands
+                        ),
+                        observation=Observation(
+                            results=[ObservationResult(content=CONTINUATION_PROMPT)]
+                        ),
+                        metrics=step_metrics,
                     )
-                    self._dump_trajectory()
-                    return episode + 1
-                self._pending_completion = True
-            else:
-                self._pending_completion = False
+                )
+                self._dump_trajectory()
+                return episode + 1
 
             next_prompt = CONTINUATION_PROMPT
-            if is_complete and not was_pending:
-                next_prompt = COMPLETION_CONFIRMATION_PROMPT
             if feedback:
                 next_prompt = f"{feedback}\n\n{next_prompt}"
 
