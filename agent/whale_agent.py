@@ -13,6 +13,7 @@ import asyncio
 import json
 import shlex
 import time
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -54,11 +55,10 @@ from harbor.models.trajectories import (
 
 from agent.completion import (
     build_completion_checklist,
-    build_memory_guidance,
-    load_failure_memory,
     run_pre_completion_check,
 )
 from agent.context import add_anthropic_caching
+from agent.execution_policy import classify_command_submission
 from agent.harness import (
     CONTINUATION_PROMPT,
     append_assistant_turn,
@@ -104,7 +104,6 @@ class WhaleAgent(Terminus2):
         super().__init__(*args, **kwargs)
         self._total_time_saved = 0.0
         self._verifier_hint: str = ""
-        self._failure_memory = load_failure_memory()
 
     @staticmethod
     def name() -> str:
@@ -140,15 +139,10 @@ class WhaleAgent(Terminus2):
         self, instruction: str, environment: BaseEnvironment, context: AgentContext
     ) -> None:
         self._original_instruction = instruction
-        memory_guidance = build_memory_guidance(
-            self._original_instruction, self._failure_memory
-        )
         if getattr(self, "_verifier_hint", "").strip():
             instruction = (
                 f"{instruction.rstrip()}\n\n---\n{self._verifier_hint.strip()}"
             )
-        if memory_guidance:
-            instruction = f"{instruction.rstrip()}\n\n---\n{memory_guidance}"
         await super().run(instruction, environment, context)
 
     async def _execute_commands(
@@ -156,8 +150,19 @@ class WhaleAgent(Terminus2):
         commands: list[Command],
         session: TmuxSession,
     ) -> tuple[bool, str]:
+        isolated_outputs: list[str] = []
         for cmd in commands:
             start = time.monotonic()
+            policy = classify_command_submission(cmd.keystrokes)
+            if policy.mode == "isolated":
+                isolated_outputs.append(
+                    await self._execute_isolated_command(
+                        cmd,
+                        session,
+                        command_name=policy.root_command or "interactive command",
+                    )
+                )
+                continue
             if self._is_multiline_submission(cmd.keystrokes):
                 timeout = await self._execute_multiline_submission(cmd, session)
                 if timeout:
@@ -188,7 +193,12 @@ class WhaleAgent(Terminus2):
             if saved > 0.1:
                 self._total_time_saved += saved
 
-        return False, self._limit_output_length(await session.get_incremental_output())
+        terminal_output = self._limit_output_length(await session.get_incremental_output())
+        if isolated_outputs:
+            parts = [terminal_output] if terminal_output.strip() else []
+            parts.extend(isolated_outputs)
+            terminal_output = self._limit_output_length("\n\n".join(parts))
+        return False, terminal_output
 
     @staticmethod
     def _is_command_submission(keystrokes: str) -> bool:
@@ -243,6 +253,60 @@ class WhaleAgent(Terminus2):
                 await session.get_incremental_output()
             ),
         )
+
+    async def _execute_isolated_command(
+        self,
+        cmd: Command,
+        session: TmuxSession,
+        *,
+        command_name: str,
+    ) -> str:
+        isolated_name = f"{session._session_name}-probe-{uuid.uuid4().hex[:8]}"
+        user = getattr(session, "_user", None)
+        env = session.environment
+        start = (
+            "tmux new-session -d -s "
+            f"{shlex.quote(isolated_name)} 'bash --login'"
+        )
+        start_result = await env.exec(command=start, user=user)
+        if start_result.return_code != 0:
+            return (
+                f"Isolated command execution failed for `{command_name}`:\n"
+                f"{(start_result.stderr or '').strip() or 'unable to start tmux probe session'}"
+            )
+
+        command_text = cmd.keystrokes.rstrip("\r\n")
+        send = (
+            "tmux send-keys -t "
+            f"{shlex.quote(isolated_name)} {shlex.quote(command_text)} Enter"
+        )
+        try:
+            send_result = await env.exec(command=send, user=user)
+            if send_result.return_code != 0:
+                return (
+                    f"Isolated command execution failed for `{command_name}`:\n"
+                    f"{(send_result.stderr or '').strip() or 'unable to send keys'}"
+                )
+
+            await asyncio.sleep(cmd.duration_sec)
+            capture = await env.exec(
+                command=(
+                    "tmux capture-pane -p -S - -t "
+                    f"{shlex.quote(isolated_name)}"
+                ),
+                user=user,
+            )
+            output = ((capture.stdout or "") + (capture.stderr or "")).strip()
+            if not output:
+                output = "(no output captured)"
+            return (
+                f"Isolated command output for `{command_name}`:\n{output}"
+            )
+        finally:
+            await env.exec(
+                command=f"tmux kill-session -t {shlex.quote(isolated_name)}",
+                user=user,
+            )
 
     @retry(
         stop=stop_after_attempt(5),
@@ -918,8 +982,6 @@ class WhaleAgent(Terminus2):
                     self._session.environment,
                     user=getattr(self._session, "_user", None),
                     instruction=self._original_instruction,
-                    terminal_output=terminal_output,
-                    memory=self._failure_memory,
                 )
                 if not completion_check.passed:
                     is_complete = False
