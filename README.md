@@ -4,15 +4,13 @@ A custom [Harbor](https://harborframework.com/) agent built on [Terminus 2](http
 
 ## Approach
 
-Whale extends Terminus 2 with improvements informed by [Terminus-KIRA](https://github.com/krafton-ai/KIRA) (74.8%) and [Meta-Harness](https://github.com/stanford-iris-lab/meta-harness-tbench2-artifact) (76.4%), focusing on **tool/context management**.
-
 | Area | Base Terminus 2 | Whale |
 |------|----------------|-------|
 | **Tool interface** | ICL JSON/XML parsing | Native tool calling; `read_file` for text files; `image_read` for screenshots and image files |
 | **Multimodal** | Text-only | `image_read` for vision |
-| **Command execution** | Fixed wait times | Exact keystrokes preserved; blocking `tmux wait` for submitted commands, timed non-blocking sends for interactive input |
+| **Command execution** | Fixed wait times | Exact keystrokes preserved; safe inline completion polling for simple submitted commands, timed non-blocking sends for interactive or multiline input |
 | **Completion** | Model self-reports done | Double-confirmation checklist |
-| **Tool results in chat** | N/A / varies | One `tool` message per call with real stdout / file bytes / base64 (no synthetic “executed” stubs) |
+| **Tool results in chat** | N/A / varies | One `tool` message per call to satisfy API sequencing; observations are fed back in the next turn, and the current implementation uses minimal `tool` stubs |
 | **Context management** | Basic summarization | Terminus 2 summarization + `_limit_output_length` only (no extra truncation layer) |
 | **Prompt caching** | None | Anthropic ephemeral caching |
 
@@ -82,8 +80,8 @@ uv run harbor run \
 
 | Agent | Model | Subset Accuracy (18 tasks) | Full-Bench Reference |
 |-------|-------|---------------------------|---------------------|
-| Claude Code (baseline) | Claude Sonnet 4.5 | TBD (from leaderboard) | ~42.7% |
-| Terminus 2 (stock) | Claude Sonnet 4.5 | TBD | ~36.9% |
+| Claude Code (baseline) | Claude Sonnet 4.5 | ~51.1% | ~40.1% |
+| Terminus 2 (stock) | Claude Sonnet 4.5 | ~48.9% | ~42.8% |
 | **Whale** | **Claude Sonnet 4.5** | **TBD** | — |
 
 Raw logs and per-task results stored in `results/`.

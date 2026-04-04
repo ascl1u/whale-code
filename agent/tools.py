@@ -1,50 +1,61 @@
-"""Tool definitions for native LLM tool calling."""
+"""OpenAI-style tool definitions for WhaleAgent (terminal, completion, image read)."""
 
 TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "execute_commands",
-            "description": "Execute commands in the terminal with your analysis and plan.",
+            "description": (
+                "Call this to execute commands in the terminal with your analysis and plan."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "analysis": {
                         "type": "string",
                         "description": (
-                            "Analyze the current state based on the terminal output. "
-                            "What has been accomplished? What still needs to be done?"
+                            "Analyze the current state based on the terminal output provided. "
+                            "What do you see? What has been accomplished? What still needs to be done?"
                         ),
                     },
                     "plan": {
                         "type": "string",
                         "description": (
                             "Describe your plan for the next steps. "
-                            "What commands will you run and why?"
+                            "What commands will you run and why? "
+                            "Be specific about what you expect each command to accomplish."
                         ),
                     },
                     "commands": {
                         "type": "array",
-                        "description": "Commands to execute. Can be empty to wait without acting.",
+                        "description": "The commands array can be empty if you want to wait without taking action.",
                         "items": {
                             "type": "object",
                             "properties": {
                                 "keystrokes": {
                                     "type": "string",
                                     "description": (
-                                        "Exact keystrokes to send to the terminal, used verbatim. "
-                                        "Most bash commands should end with \\n to execute. "
-                                        "For special keys use tmux-style escapes: C-c for Ctrl+C, C-d for Ctrl+D."
+                                        "String containing the exact keystrokes to send to the terminal. "
+                                        "The text will be used completely verbatim as keystrokes. "
+                                        "Write commands exactly as you want them sent to the terminal. "
+                                        "Most bash commands should end with a newline (\\n) to cause them to execute. "
+                                        "For special key sequences, use tmux-style escape sequences: C-c for Ctrl+C, C-d for Ctrl+D. "
+                                        "Each command's keystrokes are sent exactly as written to the terminal. "
+                                        "Do not include extra whitespace before or after the keystrokes unless it's part of the intended command."
                                     ),
                                 },
                                 "duration": {
                                     "type": "number",
                                     "description": (
-                                        "Seconds to wait for completion. "
-                                        "Immediate tasks (cd, ls, echo): 0.1s. "
-                                        "Normal commands (gcc, find): 1.0s. "
-                                        "Slow commands (make, wget): set as needed. "
-                                        "Never exceed 60s — poll intermediate status instead."
+                                        "Number of seconds to wait for the command to complete (default: 1.0) "
+                                        "before the next command will be executed. "
+                                        "On immediate tasks (e.g., cd, ls, echo, cat) set a duration of 0.1 seconds. "
+                                        "On commands (e.g., gcc, find, rustc) set a duration of 1.0 seconds. "
+                                        "On slow commands (e.g., make, python3 [long running script], wget [file]) set an appropriate duration as you determine necessary. "
+                                        "It is better to set a smaller duration than a longer duration. "
+                                        "It is always possible to wait again if the prior output has not finished, "
+                                        "by running empty keystrokes with a duration on subsequent requests to wait longer. "
+                                        "Never wait longer than 60 seconds; prefer to poll to see intermediate result status."
                                     ),
                                 },
                             },
@@ -60,7 +71,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "task_complete",
-            "description": "Signal that the task is complete.",
+            "description": "Call this when the task is complete.",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -71,47 +82,30 @@ TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "read_file",
-            "description": (
-                "Read a bounded slice of a file from disk via the environment (not tmux scrollback). "
-                "Use for source files, logs, configs when you need exact text. "
-                "Path should be absolute when possible (e.g. /app/...)."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "File path to read.",
-                    },
-                    "max_bytes": {
-                        "type": "integer",
-                        "description": "Max bytes to read (default 32768, max 262144).",
-                    },
-                },
-                "required": ["path"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "image_read",
             "description": (
-                "Read and analyze an image file visually. "
-                "Use ONLY for image files (PNG, JPG, GIF, WEBP). "
-                "Do NOT use for text files — use cat/head instead."
+                "Read and analyze an image file. "
+                "Use this ONLY for image files that you need to visually analyze. "
+                "Do NOT use this for text files — use shell commands (cat, head, etc.) instead. "
+                "The image will be sent to the model for visual analysis "
+                "and you will receive a text description in the next turn."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "file_path": {
                         "type": "string",
-                        "description": "Absolute path to the image file.",
+                        "description": (
+                            "Absolute path to the image file. "
+                            "Supported formats: PNG, JPG, JPEG, GIF, WEBP."
+                        ),
                     },
                     "image_read_instruction": {
                         "type": "string",
-                        "description": "What information to extract from the image. Be specific.",
+                        "description": (
+                            "A text instruction describing what you want to learn from the image. "
+                            "Be specific about what information to extract."
+                        ),
                     },
                 },
                 "required": ["file_path", "image_read_instruction"],
