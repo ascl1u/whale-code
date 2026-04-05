@@ -1,0 +1,47 @@
+New Terminal Output:
+
+RecursionError: maximum recursion depth exceeded
+cat > /app/run.py << 'EOF'
+import asyncio
+from typing import Callable, Awaitable
+
+
+async def run_tasks(tasks: list[Callable[[], Awaitable[None]]], max_concurrent: int) -> None:
+    """Run async tasks with a maximum concurrency limit.
+
+    Args:
+        tasks: List of callables that return awaitables (async functions)
+        max_concurrent: Maximum number of tasks that can run concurrently
+
+    This function ensures that cleanup code in tasks runs even when cancelled
+    via keyboard interrupt (Ctrl+C).
+    """
+    if not tasks:
+        return
+
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def run_task_with_semaphore(task_func: Callable[[], Awaitable[None]]) -> None:
+        """Wrapper to run a task with semaphore control."""
+        async with semaphore:
+            await task_func()
+
+    # Create all task coroutines
+    task_coroutines = [run_task_with_semaphore(task) for task in tasks]
+
+    # Create asyncio tasks from coroutines
+    async_tasks = [asyncio.create_task(coro) for coro in task_coroutines]
+
+    try:
+        # Wait for all tasks to complete
+        # When cancelled, gather will cancel all tasks and wait for them to finish
+        await asyncio.gather(*async_tasks)
+    except asyncio.CancelledError:
+        # When we get cancelled (e.g., from Ctrl+C), asyncio.gather has already
+        # cancelled all the tasks. We just need to wait for them to finish cleanup.
+        # gather with return_exceptions=True will wait for all tasks without re-raising
+        await asyncio.gather(*async_tasks, return_exceptions=True)
+        # Re-raise the cancellation after cleanup is done
+        raise
+EOF
+

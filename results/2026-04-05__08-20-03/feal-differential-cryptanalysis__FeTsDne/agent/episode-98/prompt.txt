@@ -1,0 +1,78 @@
+New Terminal Output:
+
+root@506b644d66f7:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+5
+
+    return 0
+
+EOF
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     # Differential cryptanalysis attack to recover key[5]
+>     pairs = [(i, encrypt_fn(i)) for i in range(4)]
+>
+>     # Precompute possible output differences for f with input diff 1
+>     valid_diffs = set()
+>     for i in range(256):
+>         valid_diffs.add(f_function(i) ^ f_function(i ^ 1))
+>
+>     # Try all possible key[5] seeds
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         # Decrypt round 4 for first two pairs
+>         states = []
+>         for p, c in pairs[:2]:
+>             c_left = getleft(c)
+>             c_right = getright(c)
+>             # Undo swap and post-round XOR
+>             R4 = c_left
+>             L4 = c_right ^ R4
+>             # Undo round 4
+>             R3 = L4
+>             L3 = R4 ^ f_function(R3 ^ key5)
+>             states.append((L3, R3))
+>
+>         # Validate by checking if any key[4] produces valid differential
+>         matches = 0
+>         for seed4 in range(0, 0x10000, 1024):  # Sample 64 values
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>             # Decrypt round 3
+>             L2_0 = states[0][1] ^ f_function(states[0][0] ^ key4)
+>             L2_1 = states[1][1] ^ f_function(states[1][0] ^ key4)
+>             # Check if difference is valid
+>             if (L2_0 ^ L2_1) in valid_diffs:
+>                 matches += 1
+>                 if matches >= 3:
+>                     return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

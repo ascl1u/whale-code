@@ -1,0 +1,45 @@
+New Terminal Output:
+
+root@d8b25c2a55ca:/app# python3 << 'EOF'
+> import asyncio
+> from run import run_tasks
+>
+> cleanup_ran = []
+>
+> async def task_with_cleanup(task_id):
+>     try:
+>         print(f"Task {task_id} started")
+>         await asyncio.sleep(0.1)
+>         print(f"Task {task_id} completed")
+>     finally:
+>         cleanup_ran.append(task_id)
+>         print(f"Task {task_id} cleanup executed")
+>
+> async def main():
+>     tasks = [lambda tid=i: task_with_cleanup(tid) for i in range(5)]
+>     await run_tasks(tasks, max_concurrent=2)
+>     print(f"\nAll {len(cleanup_ran)} cleanups ran successfully")
+>     assert len(cleanup_ran) == 5, "All cleanups should have run"
+>     print("✓ Validation successful!")
+>
+> asyncio.run(main())
+> EOF
+Task 0 started
+Task 1 started
+Task 0 completed
+Task 0 cleanup executed
+Task 1 completed
+Task 1 cleanup executed
+Task 2 started
+Task 3 started
+Task 2 completed
+Task 2 cleanup executed
+Task 3 completed
+Task 3 cleanup executed
+Task 4 started
+Task 4 completed
+Task 4 cleanup executed
+
+All 5 cleanups ran successfully
+✓ Validation successful!
+root@d8b25c2a55ca:/app#

@@ -1,0 +1,40 @@
+Current Terminal Screen:
+>     right ^= left
+>     for round_num in range(4):
+>         mixed = f_function(right ^ keys[round_num + 2])
+>         temp = right
+>         right = left ^ mixed
+>         left = temp
+>     left ^= right
+>     return merge(right, left)
+>
+> def attack(encrypt_fn):
+>     """
+>     Recover key[5] by brute forcing it completely and sampling others.
+>     """
+>
+>     pairs = [(i, encrypt_fn(i)) for i in range(2)]
+>
+>     # Brute force seed5, sample others with step=2048
+>     step = 2048
+>
+>     for seed4 in range(0, 0x10000, step):
+>         for seed3 in range(0, 0x10000, step):
+>             for seed2 in range(0, 0x10000, step):
+>                 for seed1 in range(0, 0x10000, step):
+>                     for seed0 in range(0, 0x10000, step):
+>                         # Now brute force seed5
+>                         for seed5 in range(0x10000):
+>                             seeds = [seed0, seed1, seed2, seed3, seed4, seed5]
+>                             if encrypt_with_seeds(pairs[0][0], seeds) == pairs[0][1]:
+>                                 if encrypt_with_seeds(pairs[1][0], seeds) == pairs[1][1]:
+>                                     key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>                                     return key5
+>
+>     return 0
+>
+> EOF
+root@5bf583115212:/app# sed -i 's/step = 2048/step = 16384/' /app/attack.py
+Actual key[5]: 448147821
+Testing attack...
+

@@ -1,0 +1,133 @@
+New Terminal Output:
+
+root@e46f4ec08a64:/app# cat > /app/attack.py << 'EOF'
+3 states
+            r3_1 = CT1_R ^ CT1_L
+            l3_1 = CT1_L ^ f_function(r3_1 ^ candidate_key5)
+
+            r3_2 = CT2_R ^ CT2_L
+            l3_2 = CT2_L ^ f_function(r3_2 ^ candidate_key5)
+
+            # Compute input difference to plaintext
+            pt_diff = pt1 ^ pt2
+
+            # Compute difference in round 3 states
+            state_diff_l = l3_1 ^ l3_2
+            state_diff_r = r3_1 ^ r3_2
+
+            # For a single-bit input difference, we expect specific behavior
+            # The correct key should produce consistent patterns
+
+            # Simple scoring: XOR of differences
+            combined_diff = state_diff_l ^ state_diff_r
+
+            # Count bits - prefer keys that give specific bit counts
+            bit_count = bin(combined_diff).count('1')
+            score += bit_count
+
+        candidate_scores[seed] = score
+
+    # Find the seed with minimum score (most structure)
+    best_seed = min(candidate_scores, key=candidate_scores.get)
+
+    return (best_seed * 1234567) & 0xFFFFFFFF
+EOF
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     # Collect a few plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(10):
+>         pt = i
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # Use differential pairs with zero input difference
+>     # Encrypt the same plaintext multiple times - should give same ciphertext
+>     pt_test = 0x123456789ABCDEF0
+>     ct_test = encrypt_fn(pt_test)
+>
+>     # Now try a different approach: use the fact that for certain
+>     # input differences, the F-function has predictable behavior
+>
+>     # Collect pairs with single-bit differences in specific positions
+>     diff_pairs = []
+>     base_pt = 0
+>     base_ct = encrypt_fn(base_pt)
+>
+>     for bit_pos in range(64):
+>         pt = base_pt ^ (1 << bit_pos)
+>         ct = encrypt_fn(pt)
+>         diff_pairs.append((base_pt, base_ct, pt, ct))
+>
+>     # For each candidate key[5], score based on how well it explains
+>     # the differential behavior
+>     candidate_scores = {}
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # For each differential pair, compute the state after round 3
+>         score = 0
+>
+>         for pt1, ct1, pt2, ct2 in diff_pairs[:20]:  # Use first 20 to speed up
+>             CT1_L, CT1_R = getleft(ct1), getright(ct1)
+>             CT2_L, CT2_R = getleft(ct2), getright(ct2)
+>
+>             # Compute round 3 states
+>             r3_1 = CT1_R ^ CT1_L
+>             l3_1 = CT1_L ^ f_function(r3_1 ^ candidate_key5)
+>
+>             r3_2 = CT2_R ^ CT2_L
+>             l3_2 = CT2_L ^ f_function(r3_2 ^ candidate_key5)
+>
+>             # Compute input difference to plaintext
+>             pt_diff = pt1 ^ pt2
+>
+>             # Compute difference in round 3 states
+>             state_diff_l = l3_1 ^ l3_2
+>             state_diff_r = r3_1 ^ r3_2
+>
+>             # For a single-bit input difference, we expect specific behavior
+>             # The correct key should produce consistent patterns
+>
+>             # Simple scoring: XOR of differences
+>             combined_diff = state_diff_l ^ state_diff_r
+>
+>             # Count bits - prefer keys that give specific bit counts
+>             bit_count = bin(combined_diff).count('1')
+>             score += bit_count
+>
+>         candidate_scores[seed] = score
+>
+>     # Find the seed with minimum score (most structure)
+>     best_seed = min(candidate_scores, key=candidate_scores.get)
+>
+>     return (best_seed * 1234567) & 0xFFFFFFFF
+> EOF
+root@e46f4ec08a64:/app#

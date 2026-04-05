@@ -1,0 +1,60 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# python3 << 'EOF'
+> # Parse sequences
+> with open('sequences.fasta', 'r') as f:
+>     lines = f.readlines()
+>
+> seqs = {}
+> current = None
+> for line in lines:
+>     line = line.strip()
+>     if line.startswith('>'):
+>         current = line[1:]
+>         seqs[current] = ''
+>     else:
+>         seqs[current] += line
+>
+> # Check egfp without stop codon
+> egfp_no_stop = seqs['egfp'][:-3]  # Remove TAA
+> egfp_start = seqs['output'].find(egfp_no_stop)
+> print(f"eGFP (no stop) in output: {egfp_start} to {egfp_start + len(egfp_no_stop)}")
+>
+> if egfp_start >= 0:
+>     # Check what comes after
+>     after_egfp = seqs['output'][egfp_start + len(egfp_no_stop):egfp_start + len(egfp_no_stop) + 100]
+>     print(f"\nAfter eGFP (no stop): {after_egfp[:50]}")
+>
+>     # Check if flag (no start) comes right after
+>     flag_no_start = seqs['flag'][3:]
+>     if after_egfp.startswith(flag_no_start[:-3]):  # flag no start no stop
+>         print(f"FLAG (no start/stop) follows immediately")
+>         flag_start = egfp_start + len(egfp_no_stop)
+>         flag_end = flag_start + len(flag_no_start) - 3
+>         print(f"FLAG position: {flag_start} to {flag_end}")
+>
+>         # Check what comes after flag
+>         after_flag = seqs['output'][flag_end:flag_end + 50]
+>         print(f"\nAfter FLAG: {after_flag}")
+>
+>         # Check if snap (no start) comes after
+>         snap_no_start = seqs['snap'][3:]
+>         if after_flag.startswith(snap_no_start[:-3]):
+>             print(f"SNAP (no start/stop) follows immediately")
+>             snap_start = flag_end
+>             snap_end = snap_start + len(snap_no_start) - 3
+>             print(f"SNAP position: {snap_start} to {snap_end}")
+>
+>             # Check what comes after snap
+>             after_snap = seqs['output'][snap_end:snap_end + 20]
+>             print(f"\nAfter SNAP: {after_snap}")
+>
+> EOF
+eGFP (no stop) in output: 210 to 924
+
+After eGFP (no stop): ggtagtggctccggtagcggtagcggcagcgactacaaggacgacgacga
+FLAG (no start/stop) follows immediately
+FLAG position: 924 to 1008
+
+After FLAG: gacaaagactgcgaaatgaagcgcaccaccctggatagccctctgggcaa
+root@40713b84f85c:/app#

@@ -1,0 +1,55 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat > analyze_assembly2.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> # Check if egfp, flag, snap are consecutive in output
+> egfp_in_output = seqs['output'].find(seqs['egfp'])
+> if egfp_in_output != -1:
+>     egfp_end = egfp_in_output + len(seqs['egfp'])
+>     print(f"EGFP found at {egfp_in_output}, ends at {egfp_end}")
+>     print(f"After EGFP: {seqs['output'][egfp_end:egfp_end+30]}")
+>     print(f"FLAG sequence: {seqs['flag'][:30]}")
+>
+>     # Check if FLAG follows
+>     if seqs['output'][egfp_end:egfp_end+len(seqs['flag'])] == seqs['flag']:
+>         print("\nFLAG immediately follows EGFP")
+>         flag_end = egfp_end + len(seqs['flag'])
+>         print(f"FLAG ends at {flag_end}")
+>         print(f"After FLAG: {seqs['output'][flag_end:flag_end+30]}")
+>         print(f"SNAP sequence: {seqs['snap'][:30]}")
+>
+>         # Check if SNAP follows
+>         if seqs['output'][flag_end:flag_end+len(seqs['snap'])] == seqs['snap']:
+>             print("\nSNAP immediately follows FLAG")
+>             snap_end = flag_end + len(seqs['snap'])
+>             print(f"SNAP ends at {snap_end}")
+>
+>             # Now determine the 4bp overhangs for Golden Gate
+>             print("\n=== Golden Gate Assembly Junctions ===")
+>             print(f"Input -> EGFP: {seqs['output'][egfp_in_output-4:egfp_in_output]} | {seqs['output'][egfp_in_output:egfp_in_output+4]}")
+>             print(f"EGFP -> FLAG: {seqs['output'][egfp_end-4:egfp_end]} | {seqs['output'][egfp_end:egfp_end+4]}")
+>             print(f"FLAG -> SNAP: {seqs['output'][flag_end-4:flag_end]} | {seqs['output'][flag_end:flag_end+4]}")
+>             print(f"SNAP -> Input: {seqs['output'][snap_end-4:snap_end]} | {seqs['output'][snap_end:snap_end+4]}")
+>
+>             # Store overhangs
+>             oh1 = seqs['output'][egfp_in_output:egfp_in_output+4]  # Input->EGFP
+>             oh2 = seqs['output'][egfp_end:egfp_end+4]  # EGFP->FLAG
+>             oh3 = seqs['output'][flag_end:flag_end+4]  # FLAG->SNAP
+>             oh4 = seqs['output'][snap_end:snap_end+4]  # SNAP->Input
+>
+>             print(f"\nOverhangs: {oh1}, {oh2}, {oh3}, {oh4}")
+>
+> EOF
+root@b088ecd58d39:/app# python3 analyze_assembly2.py
+root@b088ecd58d39:/app#

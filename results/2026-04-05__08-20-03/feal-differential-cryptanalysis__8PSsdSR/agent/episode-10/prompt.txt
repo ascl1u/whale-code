@@ -1,0 +1,167 @@
+New Terminal Output:
+
+root@a51ddc59c050:/app# cat > /app/attack.py << 'EOFPYTHON'
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+  >
+> def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+g> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+ >         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+x> def attack(encrypt_fn):
+>     """Recover key[5] using meet-in-the-middle attack"""
+>
+>     # Collect 2 plaintext-ciphertext pairs
+>     pt1 = merge(0, 0)
+>     ct1 = encrypt_fn(pt1)
+>     pt2 = merge(0, 1)
+>     ct2 = encrypt_fn(pt2)
+>
+ng
+  >     # Meet-in-the-middle attack:
+e>     # Forward: compute all possible states after 2 rounds from plaintexts
+>     # Backward: compute all possible states after undoing 2 rounds from ciphertexts
+>     # Find matches
+>
+>     # Forward side: for each (key[0], key[1], key[2], key[3]), compute state after 2 rounds
+>     # This is 2^64 combinations, too many
+>
+>     # Let me try a different approach: just brute force key[4] and key[5]
+>     # with a proper verification
+>
+>     # For verification: given candidate key[4] and key[5], partially decrypt
+>     # Then try to find key[2] and key[3] that are consistent
+>     # If we find them, also try to find key[0] and key[1]
+>     # If all keys are found and consistent, we have the right answer
+>
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+ >         for seed4 in range(0x10000):
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+t1>
+>             # Partially decrypt both ciphertexts with key4 and key5
+>             # For ct1
+e>             ct1_left = getleft(ct1)
+ >             ct1_right = getright(ct1)
+>             left1_bpm = ct1_right ^ ct1_left
+>             right1_bpm = ct1_left
+>             right1_ar2 = left1_bpm
+  >             f1_r3 = f_function(right1_ar2 ^ key5)
+>             left1_ar2 = right1_bpm ^ f1_r3
+ >             right1_ar1 = left1_ar2
+>             f1_r2 = f_function(right1_ar1 ^ key4)
+>             left1_ar1 = right1_ar2 ^ f1_r2
+>
+>             # For ct2
+ >             ct2_left = getleft(ct2)
+>             ct2_right = getright(ct2)
+ ==>             left2_bpm = ct2_right ^ ct2_left
+>             right2_bpm = ct2_left
+>             right2_ar2 = left2_bpm
+>             f2_r3 = f_function(right2_ar2 ^ key5)
+>             left2_ar2 = right2_bpm ^ f2_r3
+>             right2_ar1 = left2_ar2
+>             f2_r2 = f_function(right2_ar1 ^ key4)
+>             left2_ar1 = right2_ar2 ^ f2_r2
+>
+>             # Now we have states after round 1 for both plaintexts
+>             # Try to find key[2] and key[3] that produce these from the plaintexts
+>
+>             # For each candidate key[2] and key[3]
+>             for seed3 in range(0x10000):
+>                 key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>
+>                 for seed2 in range(0x10000):
+>                     key2 = (seed2 * 1234567) & 0xFFFFFFFF
+>
+>                     # For each candidate key[0] and key[1], check if everything matches
+>                     # This is getting to be 2^80 operations, way too many
+>
+>                     # Let me optimize: given the states after round 1 and key[2], key[3],
+>                     # I can compute what the states after round 0 should be
+>                     # Then check if those states are consistent with the plaintexts
+>
+>                     # Undo round 1 for both
+>                     # Round 1: new_left = right, new_right = left ^ f(right ^ key[3])
+>                     # So: left1_ar1 = right1_ar0, right1_ar1 = left1_ar0 ^ f(right1_ar0 ^ key[3])
+>                     # Therefore: right1_ar0 = left1_ar1
+>                     #            left1_ar0 = right1_ar1 ^ f(right1_ar0 ^ key[3])
+>                     #                      = right1_ar1 ^ f(left1_ar1 ^ key[3])
+>
+>                     right1_ar0 = left1_ar1
+>                     left1_ar0 = right1_ar1 ^ f_function(right1_ar0 ^ key3)
+>
+>                     right2_ar0 = left2_ar1
+>                     left2_ar0 = right2_ar1 ^ f_function(right2_ar0 ^ key3)
+>
+>                     # Undo round 0
+>                     right1_after_premix = left1_ar0
+>                     left1_after_premix = right1_ar0 ^ f_function(right1_after_premix ^ key2)
+>
+>                     right2_after_premix = left2_ar0
+>                     left2_after_premix = right2_ar0 ^ f_function(right2_after_premix ^ key2)
+>
+>                     # Now we have states after pre-mixing
+>                     # Pre-mixing: right ^= left
+>                     # So: right_after_premix = right_after_whitening ^ left_after_whitening
+>                     #     left_after_premix = left_after_whitening
+>                     # Therefore: left_after_whitening = left_after_premix
+>                     #            right_after_whitening = right_after_premix ^ left_after_premix
+>
+>                     left1_aw = left1_after_premix
+>                     right1_aw = right1_after_premix ^ left1_after_premix
+>
+>                     left2_aw = left2_after_premix
+>                     right2_aw = right2_after_premix ^ left2_after_premix
+>
+>                     # Whitening: left ^= key[0], right ^= key[1]
+>                     # So: left_aw = plaintext_left ^ key[0]
+>                     #     right_aw = plaintext_right ^ key[1]
+>                     # Therefore: key[0] = plaintext_left ^ left_aw
+>                     #            key[1] = plaintext_right ^ right_aw
+>
+>                     pt1_left = getleft(pt1)  # = 0
+>                     pt1_right = getright(pt1)  # = 0
+>                     key0_candidate = pt1_left ^ left1_aw
+>                     key1_candidate = pt1_right ^ right1_aw
+>
+>                     # Verify with the second plaintext
+>                     pt2_left = getleft(pt2)  # = 0
+>                     pt2_right = getright(pt2)  # = 1
+>                     key0_check = pt2_left ^ left2_aw
+>                     key1_check = pt2_right ^ right2_aw
+>
+>                     # If the keys match, we found the correct combination!
+>                     if key0_candidate == key0_check and key1_candidate == key1_check:
+>                         # Found it!
+>                         return key5
+>
+>     # If we get here, something went wrong
+>     return 0
+>
+> EOFPYTHON
+root@a51ddc59c050:/app#

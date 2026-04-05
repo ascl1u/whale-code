@@ -1,0 +1,56 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# cat > design_primers.py << 'SCRIPT_EOF'
+> import subprocess
+> import sys
+>
+> def parse_fasta(filename):
+>     """Parse FASTA file and return dictionary of sequences"""
+>     seqs = {}
+>     current = None
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 current = line[1:]
+>                 seqs[current] = ''
+>             else:
+>                 seqs[current] += line
+>     return seqs
+>
+> def reverse_complement(seq):
+>     """Return reverse complement of DNA sequence"""
+>     seq = seq.upper()
+>     complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'N': 'N'}
+>     return ''.join(complement[base] for base in reversed(seq))
+>
+> def calculate_tm(seq):
+>     """Calculate melting temperature using oligotm with specified parameters"""
+>     cmd = ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq]
+>     result = subprocess.run(cmd, capture_output=True, text=True)
+>     try:
+>         return float(result.stdout.strip())
+>     except:
+>         return 0.0
+>
+> # Parse sequences
+> seqs = parse_fasta('sequences.fasta')
+>
+> # Define the structure
+> input_seq = seqs['input']
+> output_seq = seqs['output']
+>
+> # Junction sequences from output (convert to uppercase)
+> oh1 = output_seq[206:210].upper()  # Before eGFP
+> oh2 = output_seq[924:928].upper()  # Between eGFP and FLAG
+> oh3 = output_seq[1008:1012].upper()  # Between FLAG and SNAP
+> oh4 = output_seq[1554:1558].upper()  # After SNAP
+>
+> print("Analyzing junctions...")
+> print(f"Overhang 1 (input->eGFP): {oh1}")
+> print(f"Overhang 2 (eGFP->FLAG): {oh2}")
+> print(f"Overhang 3 (FLAG->SNAP): {oh3}")
+> print(f"Overhang 4 (SNAP->input): {oh4}")
+>
+> SCRIPT_EOF
+root@40713b84f85c:/app#

@@ -1,0 +1,127 @@
+New Terminal Output:
+
+root@c29f5ea064c8:/app# cat > find_slot.py << 'EOF'
+> from datetime import datetime, timedelta
+>
+ > # Define the week: Jan 15-19, 2024 (Monday-Friday)
+> days = [
+>     datetime(2024, 1, 15),  # Monday
+>     datetime(2024, 1, 16),  # Tuesday
+>     datetime(2024, 1, 17),  # Wednesday
+>     datetime(2024, 1, 18),  # Thursday
+>     datetime(2024, 1, 19),  # Friday
+> ]
+  >
+> # Alice's busy times (all times in UTC, same as local)
+> alice_busy = [
+>     (datetime(2024, 1, 15, 10, 0), datetime(2024, 1, 15, 11, 0)),
+>     (datetime(2024, 1, 15, 13, 0), datetime(2024, 1, 15, 14, 0)),
+s>     (datetime(2024, 1, 16, 10, 0), datetime(2024, 1, 16, 12, 0)),
+>     (datetime(2024, 1, 17, 10, 0), datetime(2024, 1, 17, 11, 0)),
+>     (datetime(2024, 1, 17, 13, 0), datetime(2024, 1, 17, 14, 0)),
+>     (datetime(2024, 1, 18, 10, 0), datetime(2024, 1, 18, 11, 0)),
+>     (datetime(2024, 1, 19, 10, 0), datetime(2024, 1, 19, 11, 0)),
+>     (datetime(2024, 1, 19, 13, 0), datetime(2024, 1, 19, 14, 0)),
+> ]
+>
+> # Bob's busy times
+> bob_busy = [
+>     (datetime(2024, 1, 15, 11, 0), datetime(2024, 1, 15, 12, 0)),
+>     (datetime(2024, 1, 15, 13, 0), datetime(2024, 1, 15, 15, 0)),
+>     (datetime(2024, 1, 16, 13, 0), datetime(2024, 1, 16, 14, 0)),
+>     (datetime(2024, 1, 17, 12, 0), datetime(2024, 1, 17, 13, 0)),
+>     (datetime(2024, 1, 18, 13, 0), datetime(2024, 1, 18, 14, 0)),
+>     (datetime(2024, 1, 19, 12, 0), datetime(2024, 1, 19, 13, 0)),
+> ]
+>
+> # Carol's busy times
+> carol_busy = [
+>     (datetime(2024, 1, 15, 11, 0), datetime(2024, 1, 15, 12, 0)),
+>     (datetime(2024, 1, 16, 11, 0), datetime(2024, 1, 16, 12, 0)),
+>     (datetime(2024, 1, 16, 13, 0), datetime(2024, 1, 16, 14, 0)),
+>     (datetime(2024, 1, 17, 12, 0), datetime(2024, 1, 17, 13, 0)),
+>     (datetime(2024, 1, 18, 12, 0), datetime(2024, 1, 18, 13, 0)),
+>     (datetime(2024, 1, 19, 11, 0), datetime(2024, 1, 19, 12, 0)),
+> ]
+>
+> def is_conflicting(start, end, busy_list):
+>     """Check if a time slot conflicts with any busy time"""
+>     for busy_start, busy_end in busy_list:
+>         # Conflict if there's any overlap
+>         if start < busy_end and end > busy_start:
+>             return True
+>     return False
+>
+> def check_constraints(start, end, day_of_week):
+>     """Check all hard constraints for a time slot"""
+>     # Alice: 9 AM - 2 PM only
+>     alice_start = start.replace(hour=9, minute=0, second=0)
+>     alice_end = start.replace(hour=14, minute=0, second=0)
+>     if start < alice_start or end > alice_end:
+>         return False
+>     if is_conflicting(start, end, alice_busy):
+>         return False
+>
+>     # Bob: No meetings before 10 AM, must leave by 4:30 PM on Tue/Thu
+>     bob_start = start.replace(hour=10, minute=0, second=0)
+>     if start < bob_start:
+>         return False
+>     if day_of_week in [1, 3]:  # Tuesday (1) and Thursday (3)
+>         bob_end_limit = start.replace(hour=16, minute=30, second=0)
+>         if end > bob_end_limit:
+>             return False
+>     if is_conflicting(start, end, bob_busy):
+>         return False
+>
+>     # Carol: 9 AM-5 PM, lunch 12:00-12:30 PM unavailable
+>     carol_start = start.replace(hour=9, minute=0, second=0)
+>     carol_end = start.replace(hour=17, minute=0, second=0)
+>     if start < carol_start or end > carol_end:
+>         return False
+>
+>     # Check lunch conflict (12:00-12:30 PM)
+>     lunch_start = start.replace(hour=12, minute=0, second=0)
+>     lunch_end = start.replace(hour=12, minute=30, second=0)
+>     if start < lunch_end and end > lunch_start:
+>         return False
+>
+>     if is_conflicting(start, end, carol_busy):
+>         return False
+>
+>     return True
+>
+> # Find earliest valid slot
+> valid_slots = []
+>
+> for day_idx, day in enumerate(days):
+>     # Check every minute from 9 AM to 5 PM (allowing 1 hour meeting to end by 6 PM)
+>     # Business hours: 9 AM - 6 PM, so meeting can start up to 5 PM
+>     start_hour = 9
+>     end_hour = 17  # 5 PM is the latest start for a 1-hour meeting
+>
+>     for hour in range(start_hour, end_hour + 1):
+>         for minute in range(0, 60):
+>             start = day.replace(hour=hour, minute=minute, second=0)
+>             end = start + timedelta(hours=1)
+>
+>             # Check if end time is within business hours (6 PM)
+>             if end > day.replace(hour=18, minute=0, second=0):
+>                 continue
+>
+>             if check_constraints(start, end, day_idx):
+>                 is_monday = (day_idx == 0)
+>                 valid_slots.append((start, end, is_monday))
+>
+> if valid_slots:
+>     # Sort by time (earliest first), then by not-Monday preference
+>     valid_slots.sort(key=lambda x: (x[0], x[2]))  # Sort by start time, then by is_monday
+>
+>     earliest = valid_slots[0]
+>     print(f"Earliest valid slot: {earliest[0]} to {earliest[1]}")
+>     print(f"Is Monday: {earliest[2]}")
+>     print(f"Start: {earliest[0].strftime('%Y%m%dT%H%M%SZ')}")
+>     print(f"End: {earliest[1].strftime('%Y%m%dT%H%M%SZ')}")
+> else:
+>     print("No valid slot found!")
+> EOF
+root@c29f5ea064c8:/app#

@@ -1,0 +1,511 @@
+[?2004hroot@b1eff7d0257d:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@b1eff7d0257d:/app# clear
+[?2004l[H[J[3J[?2004hroot@b1eff7d0257d:/app# cat > /app/run.py << 'EOF'
+[?2004l[?2004h> import asyncio
+[?2004l[?2004h> from typing import Callable, Awaitable
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> async def run_tasks(tasks: list[Callable[[], Awaitable[None]]], max_concurrent: int) -> None:
+[?2004l[?2004h>     """Run async tasks with a maximum concurrency limit.
+[?2004l[?2004h>     
+[?2004l[?2004h>     Args:
+[?2004l[?2004h>         tasks: List of async callables that return Awaitable[None]
+[?2004l[?2004h>         max_concurrent: Maximum number of tasks that can run concurrently
+[?2004l[?2004h>     
+[?2004l[?2004h>     Handles KeyboardInterrupt gracefully, allowing cleanup code to run.
+[?2004l[?2004h>     """
+[?2004l[?2004h>     semaphore = asyncio.Semaphore(max_concurrent)
+[?2004l[?2004h>     
+[?2004l[?2004h>     async def run_with_semaphore(task: Callable[[], Awaitable[None]]) -> None:
+[?2004l[?2004h>         """Wrapper to run a task with semaphore control."""
+[?2004l[?2004h>         async with semaphore:
+[?2004l[?2004h>             await task()
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Create all task coroutines
+[?2004l[?2004h>     task_coroutines = [run_with_semaphore(task) for task in tasks]
+[?2004l[?2004h>     
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         # Gather all tasks, allowing them to run with concurrency control
+[?2004l[?2004h>         # return_exceptions=True ensures all tasks complete even if some fail
+[?2004l[?2004h>         await asyncio.gather(*task_coroutines, return_exceptions=True)
+[?2004l[?2004h>     except KeyboardInterrupt:
+[?2004l[?2004h>         # On KeyboardInterrupt, cancel all running tasks
+[?2004l[?2004h>         # but let them handle the cancellation (cleanup code will run)
+[?2004l[?2004h>         for task_coro in asyncio.all_tasks():
+[?2004l[?2004h>             if task_coro != asyncio.current_task():
+[?2004l[?2004h>                 task_coro.cancel()
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Wait for all tasks to finish their cleanup
+[?2004l[?2004h>         await asyncio.gather(*asyncio.all_tasks() - {asyncio.current_task()}, return_exceptions=True)
+[?2004l[?2004h>         raise
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@b1eff7d0257d:/app# cat > /tmp/test_run.py << 'EOF'
+[?2004l[?2004h> import asyncio
+[?2004l[?2004h> import time
+[?2004l[?2004h> from run import run_tasks
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test 1: Basic functionality
+[?2004l[?2004h> print("Test 1: Basic functionality")
+[?2004l[?2004h> executed = []
+[?2004l[?2004h> 
+[?2004l[?2004h> async def task1():
+[?2004l[?2004h>     executed.append(1)
+[?2004l[?2004h>     await asyncio.sleep(0.1)
+[?2004l[?2004h> 
+[?2004l[?2004h> async def task2():
+[?2004l[?2004h>     executed.append(2)
+[?2004l[?2004h>     await asyncio.sleep(0.1)
+[?2004l[?2004h> 
+[?2004l[?2004h> async def task3():
+[?2004l[?2004h>     executed.append(3)
+[?2004l[?2004h>     await asyncio.sleep(0.1)
+[?2004l[?2004h> 
+[?2004l[?2004h> async def test_basic():
+[?2004l[?2004h>     await run_tasks([task1, task2, task3], max_concurrent=2)
+[?2004l[?2004h>     assert len(executed) == 3
+[?2004l[?2004h>     print(f"✓ All 3 tasks executed: {executed}")
+[?2004l[?2004h> 
+[?2004l[?2004h> asyncio.run(test_basic())
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test 2: Concurrency limiting
+[?2004l[?2004h> print("\nTest 2: Concurrency limiting")
+[?2004l[?2004h> concurrent_count = 0
+[?2004l[?2004h> max_concurrent_seen = 0
+[?2004l[?2004h> 
+[?2004l[?2004h> async def concurrent_task():
+[?2004l[?2004h>     global concurrent_count, max_concurrent_seen
+[?2004l[?2004h>     concurrent_count += 1
+[?2004l[?2004h>     max_concurrent_seen = max(max_concurrent_seen, concurrent_count)
+[?2004l[?2004h>     await asyncio.sleep(0.2)
+[?2004l[?2004h>     concurrent_count -= 1
+[?2004l[?2004h> 
+[?2004l[?2004h> async def test_concurrency():
+[?2004l[?2004h>     global max_concurrent_seen
+[?2004l[?2004h>     max_concurrent_seen = 0
+[?2004l[?2004h>     tasks = [concurrent_task for _ in range(10)]
+[?2004l[?2004h>     await run_tasks(tasks, max_concurrent=3)
+[?2004l[?2004h>     assert max_concurrent_seen <= 3
+[?2004l[?2004h>     print(f"✓ Max concurrent tasks was {max_concurrent_seen} (limit: 3)")
+[?2004l[?2004h> 
+[?2004l[?2004h> asyncio.run(test_concurrency())
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test 3: Cleanup code runs
+[?2004l[?2004h> print("\nTest 3: Cleanup code runs")
+[?2004l[?2004h> cleanup_ran = []
+[?2004l[?2004h> 
+[?2004l[?2004h> async def task_with_cleanup(task_id):
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         await asyncio.sleep(0.1)
+[?2004l[?2004h>     finally:
+[?2004l[?2004h>         cleanup_ran.append(task_id)
+[?2004l[?2004h> 
+[?2004l[?2004h> async def test_cleanup():
+[?2004l[?2004h>     global cleanup_ran
+[?2004l[?2004h>     cleanup_ran = []
+[?2004l[?2004h>     tasks = [lambda i=i: task_with_cleanup(i) for i in range(5)]
+[?2004l[?2004h>     await run_tasks(tasks, max_concurrent=2)
+[?2004l[?2004h>     assert len(cleanup_ran) == 5
+[?2004l[?2004h>     print(f"✓ Cleanup ran for all {len(cleanup_ran)} tasks")
+[?2004l[?2004h> 
+[?2004l[?2004h> asyncio.run(test_cleanup())
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\n✅ All tests passed!")
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@b1eff7d0257d:/app# cd /app && python3 /tmp/test_run.py
+[?2004lTraceback (most recent call last):
+  File [35m"/tmp/test_run.py"[0m, line [35m3[0m, in [35m<module>[0m
+    from run import run_tasks
+[1;35mModuleNotFoundError[0m: [35mNo module named 'run'[0m
+[?2004hroot@b1eff7d0257d:/app# PYTHONPATH=/app python3 /tmp/test_run.py; printf '%s\n' '__CMDEND__1__'
+[?2004lTest 1: Basic functionality
+✓ All 3 tasks executed: [1, 2, 3]
+
+Test 2: Concurrency limiting
+✓ Max concurrent tasks was 3 (limit: 3)
+
+Test 3: Cleanup code runs
+✓ Cleanup ran for all 5 tasks
+
+✅ All tests passed!
+__CMDEND__1__
+[?2004hroot@b1eff7d0257d:/app# cat > /tmp/test_interrupt.py << 'EOF'
+[?2004l[?2004h> import asyncio
+[?2004l[?2004h> import signal
+[?2004l[?2004h> import sys
+[?2004l[?2004h> sys.path.insert(0, '/app')
+[?2004l[?2004h> from run import run_tasks
+[?2004l[?2004h> 
+[?2004l[?2004h> print("Test: Cleanup on cancellation")
+[?2004l[?2004h> cleanup_ran = []
+[?2004l[?2004h> started = []
+[?2004l[?2004h> 
+[?2004l[?2004h> async def task_with_cleanup(task_id):
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         started.append(task_id)
+[?2004l[?2004h>         await asyncio.sleep(10)  # Long running task
+[?2004l[?2004h>     except asyncio.CancelledError:
+[?2004l[?2004h>         print(f"Task {task_id} cancelled, running cleanup...")
+[?2004l[?2004h>         raise
+[?2004l[?2004h>     finally:
+[?2004l[?2004h>         cleanup_ran.append(task_id)
+[?2004l[?2004h>         print(f"Task {task_id} cleanup completed")
+[?2004l[?2004h> 
+[?2004l[?2004h> async def test_interrupt():
+[?2004l[?2004h>     global cleanup_ran, started
+[?2004l[?2004h>     cleanup_ran = []
+[?2004l[?2004h>     started = []
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Create tasks
+[?2004l[?2004h>     tasks = [lambda i=i: task_with_cleanup(i) for i in range(5)]
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Start tasks and cancel after a short delay
+[?2004l[?2004h>     task = asyncio.create_task(run_tasks(tasks, max_concurrent=2))
+[?2004l[?2004h>     await asyncio.sleep(0.3)  # Let some tasks start
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Cancel the task
+[?2004l[?2004h>     task.cancel()
+[?2004l[?2004h>     
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         await task
+[?2004l[?2004h>     except asyncio.CancelledError:
+[?2004l[?2004h>         print("run_tasks was cancelled")
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Give time for cleanup
+[?2004l[?2004h>     await asyncio.sleep(0.1)
+[?2004l[?2004h>     
+[?2004l[?2004h>     print(f"\nStarted: {len(started)} tasks")
+[?2004l[?2004h>     print(f"Cleanup ran for: {len(cleanup_ran)} tasks")
+[?2004l[?2004h>     print(f"✓ Cleanup code executed for all started tasks")
+[?2004l[?2004h> 
+[?2004l[?2004h> asyncio.run(test_interrupt())
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@b1eff7d0257d:/app# python3 /tmp/test_interrupt.py; printf '%s\n' '__CMDEND__2__'
+[?2004lTest: Cleanup on cancellation
+Task 0 cancelled, running cleanup...
+Task 0 cleanup completed
+Task 1 cancelled, running cleanup...
+Task 1 cleanup completed
+run_tasks was cancelled
+
+Started: 2 tasks
+Cleanup ran for: 2 tasks
+✓ Cleanup code executed for all started tasks
+__CMDEND__2__
+[?2004hroot@b1eff7d0257d:/app# cat > /app/run.py << 'EOF'
+[?2004ltasks
+        results = await asyncio.gather(*task_coroutines, return_exceptions=True)
+        
+        # Re-raise any exceptions that occurred (except CancelledError)
+        for result in results:
+            if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+                raise result
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # On interrupt or cancellation, cancel all running tasks
+        for task_coro in task_coroutines:
+            if not task_coro.done():
+                task_coro.cancel()
+        
+        # Wait for all tasks to finish their cleanup
+        await asyncio.gather(*task_coroutines, return_exceptions=True)
+        raise
+EOF
+[?2004h> import asyncio
+[?2004l[?2004h> from typing import Callable, Awaitable
+[?2004l[?2004h> 
+[?2004l[?2004h> 
+[?2004l[?2004h> async def run_tasks(tasks: list[Callable[[], Awaitable[None]]], max_concurrent: int) -> None:
+[?2004l[?2004h>     """Run async tasks with a maximum concurrency limit.
+[?2004l[?2004h>     
+[?2004l[?2004h>     Args:
+[?2004l[?2004h>         tasks: List of async callables that return Awaitable[None]
+[?2004l[?2004h>         max_concurrent: Maximum number of tasks that can run concurrently
+[?2004l[?2004h>     
+[?2004l[?2004h>     Handles KeyboardInterrupt and cancellation gracefully, allowing cleanup code to run.
+[?2004l[?2004h>     """
+[?2004l[?2004h>     semaphore = asyncio.Semaphore(max_concurrent)
+[?2004l[?2004h>     
+[?2004l[?2004h>     async def run_with_semaphore(task: Callable[[], Awaitable[None]]) -> None:
+[?2004l[?2004h>         """Wrapper to run a task with semaphore control."""
+[?2004l[?2004h>         async with semaphore:
+[?2004l[?2004h>             await task()
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Create all task coroutines
+[?2004l[?2004h>     task_coroutines = [asyncio.create_task(run_with_semaphore(task)) for task in tasks]
+[?2004l[?2004h>     
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         # Gather all tasks, allowing them to run with concurrency control
+[?2004l[?2004h>         # return_exceptions=True ensures exceptions don't stop other tasks
+[?2004l[?2004h>         results = await asyncio.gather(*task_coroutines, return_exceptions=True)
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Re-raise any exceptions that occurred (except CancelledError)
+[?2004l[?2004h>         for result in results:
+[?2004l[?2004h>             if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+[?2004l[?2004h>                 raise result
+[?2004l[?2004h>     except (KeyboardInterrupt, asyncio.CancelledError):
+[?2004l[?2004h>         # On interrupt or cancellation, cancel all running tasks
+[?2004l[?2004h>         for task_coro in task_coroutines:
+[?2004l[?2004h>             if not task_coro.done():
+[?2004l[?2004h>                 task_coro.cancel()
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Wait for all tasks to finish their cleanup
+[?2004l[?2004h>         await asyncio.gather(*task_coroutines, return_exceptions=True)
+[?2004l[?2004h>         raise
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@b1eff7d0257d:/app# PYTHONPATH=/app python3 /tmp/test_run.py; printf '%s\n' '__CMDEND__3__'
+[?2004lTest 1: Basic functionality
+✓ All 3 tasks executed: [1, 2, 3]
+
+Test 2: Concurrency limiting
+✓ Max concurrent tasks was 3 (limit: 3)
+
+Test 3: Cleanup code runs
+✓ Cleanup ran for all 5 tasks
+
+✅ All tests passed!
+__CMDEND__3__
+[?2004hroot@b1eff7d0257d:/app# python3 /tmp/test_interrupt.py; printf '%s\n' '__CMDEND__4__'
+[?2004lTest: Cleanup on cancellation
+Task 0 cancelled, running cleanup...
+Task 0 cleanup completed
+Task 1 cancelled, running cleanup...
+Task 1 cleanup completed
+run_tasks was cancelled
+
+Started: 2 tasks
+Cleanup ran for: 2 tasks
+✓ Cleanup code executed for all started tasks
+__CMDEND__4__
+[?2004hroot@b1eff7d0257d:/app# cd /app && python3 -c "from run import run_tasks; import inspect; print('Import successful!'); print('Function signature:', inspect.signature(run_tasks)); print('Is coroutine function:', inspect.iscoroutinefunction(run_tasks))"
+[?2004lbash: !': event not found
+[?2004hroot@b1eff7d0257d:/app# cd /app && python3 << 'PYEOF'
+[?2004l[?2004h> from run import run_tasks
+[?2004l[?2004h> import inspect
+[?2004l[?2004h> print('Import successful!')
+[?2004l[?2004h> print('Function signature:', inspect.signature(run_tasks))
+[?2004l[?2004h> print('Is coroutine function:', inspect.iscoroutinefunction(run_tasks))
+[?2004l[?2004h> PYEOF
+[?2004lImport successful!
+Function signature: (tasks: list[typing.Callable[[], typing.Awaitable[NoneType]]], max_concurrent: int) -> None
+Is coroutine function: True
+[?2004hroot@b1eff7d0257d:/app# rm -f /tmp/test_run.py /tmp/test_interrupt.py; printf '%s\n' '__CMDEND__5__'
+[?2004l__CMDEND__5__
+[?2004hroot@b1eff7d0257d:/app# ls -la /app/run.py; printf '%s\n' '__CMDEND__6__'
+[?2004l-rw-r--r-- 1 root root 1704 Apr  4 23:09 /app/run.py
+__CMDEND__6__
+[?2004hroot@b1eff7d0257d:/app# cat /app/run.py; printf '%s\n' '__CMDEND__7__'
+[?2004limport asyncio
+from typing import Callable, Awaitable
+
+
+async def run_tasks(tasks: list[Callable[[], Awaitable[None]]], max_concurrent: int) -> None:
+    """Run async tasks with a maximum concurrency limit.
+    
+    Args:
+        tasks: List of async callables that return Awaitable[None]
+        max_concurrent: Maximum number of tasks that can run concurrently
+    
+    Handles KeyboardInterrupt and cancellation gracefully, allowing cleanup code to run.
+    """
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def run_with_semaphore(task: Callable[[], Awaitable[None]]) -> None:
+        """Wrapper to run a task with semaphore control."""
+        async with semaphore:
+            await task()
+    
+    # Create all task coroutines
+    task_coroutines = [asyncio.create_task(run_with_semaphore(task)) for task in tasks]
+    
+    try:
+        # Gather all tasks, allowing them to run with concurrency control
+        # return_exceptions=True ensures exceptions don't stop other tasks
+        results = await asyncio.gather(*task_coroutines, return_exceptions=True)
+        
+        # Re-raise any exceptions that occurred (except CancelledError)
+        for result in results:
+            if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+                raise result
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # On interrupt or cancellation, cancel all running tasks
+        for task_coro in task_coroutines:
+            if not task_coro.done():
+                task_coro.cancel()
+        
+        # Wait for all tasks to finish their cleanup
+        await asyncio.gather(*task_coroutines, return_exceptions=True)
+        raise
+__CMDEND__7__
+[?2004hroot@b1eff7d0257d:/app# ls /tmp/test*.py 2>/dev/null || echo 'No test files in /tmp'
+[?2004lNo test files in /tmp
+[?2004hroot@b1eff7d0257d:/app# ls -la /app/; printf '%s\n' '__CMDEND__8__'
+[?2004ltotal 16
+drwxr-xr-x 1 root root 4096 Apr  4 23:08 .
+drwxr-xr-x 1 root root 4096 Apr  4 23:07 ..
+drwxr-xr-x 2 root root 4096 Apr  4 23:09 __pycache__
+-rw-r--r-- 1 root root 1704 Apr  4 23:09 run.py
+__CMDEND__8__
+[?2004hroot@b1eff7d0257d:/app# rm -rf /app/__pycache__; printf '%s\n' '__CMDEND__9__'
+[?2004l__CMDEND__9__
+[?2004hroot@b1eff7d0257d:/app# ls -la /app/; printf '%s\n' '__CMDEND__10__'
+[?2004ltotal 12
+drwxr-xr-x 1 root root 4096 Apr  4 23:09 .
+drwxr-xr-x 1 root root 4096 Apr  4 23:07 ..
+-rw-r--r-- 1 root root 1704 Apr  4 23:09 run.py
+__CMDEND__10__
+[?2004hroot@b1eff7d0257d:/app# python3 << 'PYEOF'
+[?2004l[?2004h> import asyncio
+[?2004l[?2004h> import sys
+[?2004l[?2004h> sys.path.insert(0, '/app')
+[?2004l[?2004h> from run import run_tasks
+[?2004l[?2004h> 
+[?2004l[?2004h> print("Final Verification Test")
+[?2004l[?2004h> print("=" * 50)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test 1: Import and basic functionality
+[?2004l[?2004h> print("\n1. Testing import and basic execution...")
+[?2004l[?2004h> executed = []
+[?2004l[?2004h> 
+[?2004l[?2004h> async def simple_task(n):
+[?2004l[?2004h>     executed.append(n)
+[?2004l[?2004h>     await asyncio.sleep(0.05)
+[?2004l[?2004h> 
+[?2004l[?2004h> async def test1():
+[?2004l[?2004h>     tasks = [lambda i=i: simple_task(i) for i in range(5)]
+[?2004l[?2004h>     await run_tasks(tasks, max_concurrent=2)
+[?2004l[?2004h>     assert len(executed) == 5
+[?2004l[?2004h>     print(f"   ✓ All {len(executed)} tasks executed")
+[?2004l[?2004h> 
+[?2004l[?2004h> asyncio.run(test1())
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test 2: Cleanup on cancellation
+[?2004l[?2004h> print("\n2. Testing cleanup on cancellation...")
+[?2004l[?2004h> cleanup_count = 0
+[?2004l[?2004h> 
+[?2004l[?2004h> async def task_with_cleanup():
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         await asyncio.sleep(10)
+[?2004l[?2004h>     finally:
+[?2004l[?2004h>         global cleanup_count
+[?2004l[?2004h>         cleanup_count += 1
+[?2004l[?2004h> 
+[?2004l[?2004h> async def test2():
+[?2004l[?2004h>     global cleanup_count
+[?2004l[?2004h>     cleanup_count = 0
+[?2004l[?2004h>     tasks = [task_with_cleanup for _ in range(3)]
+[?2004l[?2004h>     task = asyncio.create_task(run_tasks(tasks, max_concurrent=2))
+[?2004l[?2004h>     await asyncio.sleep(0.1)
+[?2004l[?2004h>     task.cancel()
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         await task
+[?2004l[?2004h>     except asyncio.CancelledError:
+[?2004l[?2004h>         pass
+[?2004l[?2004h>     await asyncio.sleep(0.1)
+[?2004l[?2004h>     print(f"   ✓ Cleanup ran for {cleanup_count} tasks")
+[?2004l[?2004h> 
+[?2004l[?2004h> asyncio.run(test2())
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\n" + "=" * 50)
+[?2004l[?2004h> print("✅ All verification tests passed!")
+[?2004l[?2004h> print("\nFunction is ready to use:")
+[?2004l[?2004h> print("  from run import run_tasks")
+[?2004l[?2004h> PYEOF
+[?2004lFinal Verification Test
+==================================================
+
+1. Testing import and basic execution...
+   ✓ All 5 tasks executed
+
+2. Testing cleanup on cancellation...
+   ✓ Cleanup ran for 2 tasks
+
+==================================================
+✅ All verification tests passed!
+
+Function is ready to use:
+  from run import run_tasks
+[?2004hroot@b1eff7d0257d:/app# ls -la /app/; printf '%s\n' '__CMDEND__11__'
+[?2004ltotal 16
+drwxr-xr-x 1 root root 4096 Apr  4 23:10 .
+drwxr-xr-x 1 root root 4096 Apr  4 23:07 ..
+drwxr-xr-x 2 root root 4096 Apr  4 23:10 __pycache__
+-rw-r--r-- 1 root root 1704 Apr  4 23:09 run.py
+__CMDEND__11__
+[?2004hroot@b1eff7d0257d:/app# rm -rf /app/__pycache__; printf '%s\n' '__CMDEND__12__'
+[?2004l__CMDEND__12__
+[?2004hroot@b1eff7d0257d:/app# ls -la /app/; printf '%s\n' '__CMDEND__13__'
+[?2004ltotal 12
+drwxr-xr-x 1 root root 4096 Apr  4 23:10 .
+drwxr-xr-x 1 root root 4096 Apr  4 23:07 ..
+-rw-r--r-- 1 root root 1704 Apr  4 23:09 run.py
+__CMDEND__13__
+[?2004hroot@b1eff7d0257d:/app# head -20 /app/run.py; printf '%s\n' '__CMDEND__14__'
+[?2004limport asyncio
+from typing import Callable, Awaitable
+
+
+async def run_tasks(tasks: list[Callable[[], Awaitable[None]]], max_concurrent: int) -> None:
+    """Run async tasks with a maximum concurrency limit.
+    
+    Args:
+        tasks: List of async callables that return Awaitable[None]
+        max_concurrent: Maximum number of tasks that can run concurrently
+    
+    Handles KeyboardInterrupt and cancellation gracefully, allowing cleanup code to run.
+    """
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def run_with_semaphore(task: Callable[[], Awaitable[None]]) -> None:
+        """Wrapper to run a task with semaphore control."""
+        async with semaphore:
+            await task()
+    
+__CMDEND__14__
+[?2004hroot@b1eff7d0257d:/app# cat /app/run.py; printf '%s\n' '__CMDEND__15__'
+[?2004limport asyncio
+from typing import Callable, Awaitable
+
+
+async def run_tasks(tasks: list[Callable[[], Awaitable[None]]], max_concurrent: int) -> None:
+    """Run async tasks with a maximum concurrency limit.
+    
+    Args:
+        tasks: List of async callables that return Awaitable[None]
+        max_concurrent: Maximum number of tasks that can run concurrently
+    
+    Handles KeyboardInterrupt and cancellation gracefully, allowing cleanup code to run.
+    """
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def run_with_semaphore(task: Callable[[], Awaitable[None]]) -> None:
+        """Wrapper to run a task with semaphore control."""
+        async with semaphore:
+            await task()
+    
+    # Create all task coroutines
+    task_coroutines = [asyncio.create_task(run_with_semaphore(task)) for task in tasks]
+    
+    try:
+        # Gather all tasks, allowing them to run with concurrency control
+        # return_exceptions=True ensures exceptions don't stop other tasks
+        results = await asyncio.gather(*task_coroutines, return_exceptions=True)
+        
+        # Re-raise any exceptions that occurred (except CancelledError)
+        for result in results:
+            if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+                raise result
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # On interrupt or cancellation, cancel all running tasks
+        for task_coro in task_coroutines:
+            if not task_coro.done():
+                task_coro.cancel()
+        
+        # Wait for all tasks to finish their cleanup
+        await asyncio.gather(*task_coroutines, return_exceptions=True)
+        raise
+__CMDEND__15__
+[?2004hroot@b1eff7d0257d:/app# ls /app/; printf '%s\n' '__CMDEND__16__'
+[?2004lrun.py
+__CMDEND__16__
+[?2004hroot@b1eff7d0257d:/app# 

@@ -1,0 +1,132 @@
+New Terminal Output:
+
+root@e46f4ec08a64:/app# cat > /app/attack.py << 'EOF'
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def partial_decrypt_last_two_rounds(ct, key4, key5):
+>     """Decrypt the last two rounds given keys 4 and 5"""
+>     CT_L, CT_R = getleft(ct), getright(ct)
+>
+>     # Undo post-round mixing: left ^= right
+>     # Before: left_before, right_before
+>     # After: left_before ^ right_before, right_before
+>     # So: CT_L = left_before ^ right_before, CT_R = right_before
+>     left4 = CT_L ^ CT_R
+>     right4 = CT_R
+>
+>     # Undo round 4
+>     # Before round 4: left3, right3
+>     # After: left4 = right3, right4 = left3 ^ f(right3 ^ key5)
+>     right3 = left4
+>     left3 = right4 ^ f_function(right3 ^ key5)
+>
+>     # Undo round 3
+>     right2 = left3
+>     left2 = right3 ^ f_function(right2 ^ key4)
+>
+>     return left2, right2
+>
+> def attack(encrypt_fn):
+>     # Collect a single plaintext-ciphertext pair
+>     pt = 0
+>     ct = encrypt_fn(pt)
+>
+>     # Try all combinations of key[4] and key[5]
+>     # For each combination, partially decrypt and check if the result makes sense
+>
+>     # We'll use a second pair to verify
+>     pt2 = 1
+>     ct2 = encrypt_fn(pt2)
+>
+>     # Try all seeds for key[5] and key[4]
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         for seed4 in range(0x10000):
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # Partially decrypt both ciphertexts
+>             l2_1, r2_1 = partial_decrypt_last_two_rounds(ct, key4, key5)
+>             l2_2, r2_2 = partial_decrypt_last_two_rounds(ct2, key4, key5)
+>
+>             # Now check if these could plausibly come from plaintexts 0 and 1
+>             # This is where we need a good heuristic...
+>
+>             # For now, let's just store the first combination we find
+>             # (This won't work, but let me think...)
+>             pass
+>
+>     # This approach is too slow (2^32 combinations)
+>     # Let me think of a better way
+>
+>     # Actually, maybe I should just try all key[5] values
+>     # and return the one that seems most likely based on SOME criterion
+>
+>     # Let me try: for each key[5], compute the round 3 states for multiple pairs
+>     # and check if they follow a consistent pattern
+>
+>     pairs = []
+>     for i in range(8):
+>         pt = i * 0x123456789ABCDEF
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # For each key[5] candidate, score it
+>     scores = {}
+>
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         # Compute round 3 states
+>         states = []
+>         for pt, ct in pairs:
+>             CT_L, CT_R = getleft(ct), getright(ct)
+>             r3 = CT_R ^ CT_L
+>             l3 = CT_L ^ f_function(r3 ^ key5)
+>             states.append((l3, r3))
+>
+>         # Score based on...? I still don't have a good metric
+>         # Let me try: sum of all XORs between consecutive states
+>         score = 0
+>         for i in range(len(states) - 1):
+>             l3_1, r3_1 = states[i]
+>             l3_2, r3_2 = states[i+1]
+>             xor_sum = (l3_1 ^ l3_2) + (r3_1 ^ r3_2)
+>             score += xor_sum
+>
+>         scores[seed5] = score
+>
+>     # Return the key with... minimum score? maximum score?
+>     # Let's try minimum (more structure)
+>     best_seed = min(scores, key=scores.get)
+>     return (best_seed * 1234567) & 0xFFFFFFFF
+> EOF
+root@e46f4ec08a64:/app#

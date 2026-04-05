@@ -1,0 +1,53 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# python3 << 'EOF'
+> # Parse sequences
+> with open('sequences.fasta', 'r') as f:
+>     lines = f.readlines()
+>
+> seqs = {}
+> current = None
+> for line in lines:
+>     line = line.strip()
+>     if line.startswith('>'):
+>         current = line[1:]
+>         seqs[current] = ''
+>     else:
+>         seqs[current] += line
+>
+> # Find where egfp starts in output
+> egfp_start = seqs['output'].find(seqs['egfp'][:50])
+> print(f"eGFP starts at position: {egfp_start}")
+> print(f"eGFP in input: {seqs['input'].find(seqs['egfp'][:50])}")
+>
+> # Find where flag starts in output
+> flag_start = seqs['output'].find(seqs['flag'][:30])
+> print(f"FLAG starts at position: {flag_start}")
+>
+> # Find where snap starts in output
+> snap_start = seqs['output'].find(seqs['snap'][:50])
+> print(f"SNAP starts at position: {snap_start}")
+>
+> # Check the order
+> print(f"\nSequence order in output: egfp({egfp_start}) -> flag({flag_start}) -> snap({snap_start})")
+>
+> # Find what was replaced
+> print(f"\nInput length: {len(seqs['input'])}")
+> print(f"Output length: {len(seqs['output'])}")
+> print(f"Difference: {len(seqs['output']) - len(seqs['input'])}")
+> print(f"Insert lengths: egfp={len(seqs['egfp'])}, flag={len(seqs['flag'])}, snap={len(seqs['snap'])}, total={len(seqs['egfp'])+len(seqs['flag'])+len(seqs['sna
+p'])}")
+>
+> EOF
+eGFP starts at position: 210
+eGFP in input: -1
+FLAG starts at position: -1
+SNAP starts at position: -1
+
+Sequence order in output: egfp(210) -> flag(-1) -> snap(-1)
+
+Input length: 2727
+Output length: 3591
+Difference: 864
+Insert lengths: egfp=717, flag=90, snap=549, total=1356
+root@40713b84f85c:/app#

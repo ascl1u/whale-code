@@ -1,0 +1,148 @@
+New Terminal Output:
+
+root@e46f4ec08a64:/app# cat > /app/attack.py << 'EOF'
+follow a pattern?
+        # For the correct key, there should be structure in how
+        # different plaintexts lead to different round 3 states
+
+        # Use differential analysis on the computed states
+        score = 0
+        for i in range(len(diff_pairs)):
+            pt1, ct1, pt2, ct2 = diff_pairs[i]
+
+            CT1_L, CT1_R = getleft(ct1), getright(ct1)
+            CT2_L, CT2_R = getleft(ct2), getright(ct2)
+
+            right3_1 = CT1_R ^ CT1_L
+            left3_1 = CT1_L ^ f_function(right3_1 ^ candidate_key5)
+
+            right3_2 = CT2_R ^ CT2_L
+            left3_2 = CT2_L ^ f_function(right3_2 ^ candidate_key5)
+
+            # Check the differences
+            diff_left3 = left3_1 ^ left3_2
+            diff_right3 = right3_1 ^ right3_2
+
+            # For a Feistel cipher, the differences should follow certain patterns
+            # The right metric is tricky, but let's try:
+            # - Count the number of bits in the differences
+            # - The correct key should produce more structured differences
+
+            bit_count = bin(diff_left3).count('1') + bin(diff_right3).count('1')
+            score += bit_count
+
+        if score < best_score:
+            best_score = score
+            best_seed = seed
+
+    return (best_seed * 1234567) & 0xFFFFFFFF
+EOF
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     # Collect plaintext-ciphertext pairs with specific structure
+>     pairs = []
+>
+>     # Use plaintexts that might create patterns
+>     for i in range(30):
+>         pt = i * 0x0101010101010101
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # Collect differential pairs
+>     diff_pairs = []
+>     for i in range(20):
+>         pt1 = i << 32
+>         pt2 = pt1 ^ 0x80000000  # Single bit difference
+>         ct1 = encrypt_fn(pt1)
+>         ct2 = encrypt_fn(pt2)
+>         diff_pairs.append((pt1, ct1, pt2, ct2))
+>
+>     # Try all possible seeds
+>     best_seed = 0
+>     best_score = float('inf')
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # For each ciphertext, compute what left3 and right3 would be
+>         states_after_round3 = []
+>
+>         for pt, ct in pairs:
+>             CT_L = getleft(ct)
+>             CT_R = getright(ct)
+>
+>             # From analysis:
+>             # right3 = CT_R ^ CT_L
+>             # left3 = CT_L ^ f((CT_R ^ CT_L) ^ key[5])
+>
+>             right3 = CT_R ^ CT_L
+>             left3 = CT_L ^ f_function(right3 ^ candidate_key5)
+>
+>             states_after_round3.append((left3, right3))
+>
+>         # Now check consistency: do these states follow a pattern?
+>         # For the correct key, there should be structure in how
+>         # different plaintexts lead to different round 3 states
+>
+>         # Use differential analysis on the computed states
+>         score = 0
+>         for i in range(len(diff_pairs)):
+>             pt1, ct1, pt2, ct2 = diff_pairs[i]
+>
+>             CT1_L, CT1_R = getleft(ct1), getright(ct1)
+>             CT2_L, CT2_R = getleft(ct2), getright(ct2)
+>
+>             right3_1 = CT1_R ^ CT1_L
+>             left3_1 = CT1_L ^ f_function(right3_1 ^ candidate_key5)
+>
+>             right3_2 = CT2_R ^ CT2_L
+>             left3_2 = CT2_L ^ f_function(right3_2 ^ candidate_key5)
+>
+>             # Check the differences
+>             diff_left3 = left3_1 ^ left3_2
+>             diff_right3 = right3_1 ^ right3_2
+>
+>             # For a Feistel cipher, the differences should follow certain patterns
+>             # The right metric is tricky, but let's try:
+>             # - Count the number of bits in the differences
+>             # - The correct key should produce more structured differences
+>
+>             bit_count = bin(diff_left3).count('1') + bin(diff_right3).count('1')
+>             score += bit_count
+>
+>         if score < best_score:
+>             best_score = score
+>             best_seed = seed
+>
+>     return (best_seed * 1234567) & 0xFFFFFFFF
+> EOF
+root@e46f4ec08a64:/app#

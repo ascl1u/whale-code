@@ -1,0 +1,91 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> seqs = read_fasta('sequences.fasta')
+> input_seq = seqs['input']
+> output_seq = seqs['output']
+> egfp = seqs['egfp']
+> flag = seqs['flag']
+> snap = seqs['snap']
+>
+> # The fusion starts at position 210 in output
+> fusion_start = 210
+> egfp_no_stop = egfp[:-3]
+> flag_no_start_no_stop = flag[3:-3]
+> snap_no_start = snap[3:]
+> fusion = egfp_no_stop + flag_no_start_no_stop + snap_no_start
+> fusion_end = fusion_start + len(fusion)
+>
+> print(f"Fusion in output: positions {fusion_start}-{fusion_end}")
+> print(f"Before fusion: {output_seq[fusion_start-30:fusion_start]}")
+> print(f"After fusion: {output_seq[fusion_end:fusion_end+30]}")
+> print()
+>
+> # Find these sequences in input
+> before_seq = output_seq[fusion_start-30:fusion_start]
+> after_seq = output_seq[fusion_end:fusion_end+30]
+>
+> input_before = input_seq.find(before_seq)
+> input_after = input_seq.find(after_seq)
+>
+> print(f"Before sequence in input at: {input_before}")
+> print(f"After sequence in input at: {input_after}")
+> print()
+>
+> if input_before >= 0 and input_after >= 0:
+>     input_cut_start = input_before + 30
+>     input_cut_end = input_after
+>
+>     print(f"Input plasmid cut points: {input_cut_start} and {input_cut_end}")
+>     print(f"Removed from input: {input_seq[input_cut_start:input_cut_end][:50]}...")
+>     print(f"Removed length: {input_cut_end - input_cut_start} bp")
+>     print()
+>
+>     print("Assembly structure:")
+>     print(f"1. Input backbone: positions 0-{input_cut_start} and {input_cut_end}-end")
+>     print(f"2. Insert: eGFP(no stop) + FLAG(no ATG, no stop) + SNAP(no ATG)")
+>     print()
+>     print(f"Overhangs needed:")
+>     print(f"  - Left junction: {input_seq[input_cut_start-4:input_cut_start]} | {egfp[:4]}")
+>     print(f"  - Right junction: {snap[-4:]} | {input_seq[input_cut_end:input_cut_end+4]}")
+>
+> EOF
+Fusion in output: positions 210-1554
+Before fusion: tttgtttaactttaagaaggagatatacat
+After fusion: tgaggatcccgggaattctcgagtaaggtt
+
+Before sequence in input at: 180
+After sequence in input at: 690
+
+Input plasmid cut points: 210 and 690
+Removed from input: atgatcagtctgattgcggcgttagcggtagatcgcgttatcggcatgga...
+Removed length: 480 bp
+
+Assembly structure:
+1. Input backbone: positions 0-210 and 690-end
+2. Insert: eGFP(no stop) + FLAG(no ATG, no stop) + SNAP(no ATG)
+
+Overhangs needed:
+  - Left junction: acat | atga
+  - Right junction: ttaa | tgag
+root@a0b49dcae9e4:/app#

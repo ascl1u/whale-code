@@ -1,0 +1,87 @@
+New Terminal Output:
+
+Testing attack...
+cat > attack.py << 'EOF'
+#!/usr/bin/env python3
+
+def g_function(a, b, x):
+    temp = (a + b + x) & 0xFF
+    return ((temp << 2) | (temp >> 6)) & 0xFF
+
+def f_function(input_val):
+    x = [0] * 4
+    y = [0] * 4
+    for i in range(4):
+        x[i] = input_val & 0xFF
+        input_val >>= 8
+    y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+    y[3] = g_function(x[3], y[2], 0)
+    y[1] = g_function(x[1] ^ x[0], y[2], 0)
+    y[0] = g_function(x[0], y[1], 1)
+    output = 0
+    for i in range(4):
+        output |= y[i] << (8 * i)
+    return output & 0xFFFFFFFF
+
+def getleft(x):
+    return (x >> 32) & 0xFFFFFFFF
+
+def getright(x):
+    return x & 0xFFFFFFFF
+
+def attack(encrypt_fn):
+    """Recover key[5] using chosen plaintext attack"""
+
+    # Optimized approach: use fewer pairs and faster scoring
+    # Collect a small set of plaintext-ciphertext pairs
+    pairs = []
+    for i in range(32):
+        pt = i * 0x0101010101010101
+        ct = encrypt_fn(pt)
+        pairs.append((pt, ct))
+
+    # Create differential pairs
+    diff_pairs = []
+    for i in range(16):
+        pt1 = i << 32
+        pt2 = (i << 32) | 0x80000000
+        ct1 = encrypt_fn(pt1)
+        ct2 = encrypt_fn(pt2)
+        diff_pairs.append((ct1, ct2))
+
+    # Score candidates more efficiently
+    best_key = 0
+    best_score = -1
+
+    for seed in range(0x10000):
+        candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+        score = 0
+
+        # Quick scoring based on differential pairs only
+        for ct1, ct2 in diff_pairs:
+            fr1 = getleft(ct1)
+            fl1 = getright(ct1)
+            rb1 = fl1 ^ fr1
+            lb1 = fr1 ^ f_function(rb1 ^ candidate_key5)
+
+            fr2 = getleft(ct2)
+            fl2 = getright(ct2)
+            rb2 = fl2 ^ fr2
+            lb2 = fr2 ^ f_function(rb2 ^ candidate_key5)
+
+            # Score based on XOR difference
+            diff = (lb1 ^ lb2) | (rb1 ^ rb2)
+            # Count set bits
+            bits = bin(diff).count('1')
+            # Prefer moderate bit counts (16-48 bits set out of 64)
+            if 16 <= bits <= 48:
+                score += 1
+
+        if score > best_score:
+            best_score = score
+            best_key = candidate_key5
+
+    return best_key
+
+EOF
+

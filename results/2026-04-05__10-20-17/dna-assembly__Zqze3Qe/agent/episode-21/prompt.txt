@@ -1,0 +1,80 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# python3 << 'EOF'
+> import subprocess
+>
+> def calculate_tm(seq):
+>     cmd = ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq]
+>     result = subprocess.run(cmd, capture_output=True, text=True)
+>     return float(result.stdout.strip())
+>
+> # Parse primers
+> primers = {}
+> with open('primers.fasta', 'r') as f:
+>     lines = f.readlines()
+>     for i in range(0, len(lines), 2):
+>         name = lines[i].strip()[1:]
+>         seq = lines[i+1].strip()
+>         primers[name] = seq
+>
+> print("=== Verifying Primers ===")
+> print()
+>
+> # For each primer, extract the annealing region (after GGTCTCN and 4bp overhang)
+> for name, seq in primers.items():
+>     # Structure: GGTCTCN[4bp overhang][annealing region]
+>     # GGTCTCN = 7 characters
+>     # 4bp overhang = 4 characters
+>     # So annealing starts at position 11
+>     anneal = seq[11:]
+>     tm = calculate_tm(anneal)
+>     print(f"{name}:")
+>     print(f"  Full primer: {seq}")
+>     print(f"  Annealing region: {anneal} (length: {len(anneal)})")
+>     print(f"  Tm: {tm:.1f}°C")
+>     print()
+>
+> EOF
+=== Verifying Primers ===
+
+input_fwd:
+  Full primer: GGTCTCNTGAGTGAGGATCCCGGGAATTC
+  Annealing region: TGAGGATCCCGGGAATTC (length: 18)
+  Tm: 59.8°C
+
+input_rev:
+  Full primer: GGTCTCNATGTATGTATATCTCCTTCTTAAAGTTAAACAAAAT
+  Annealing region: ATGTATATCTCCTTCTTAAAGTTAAACAAAAT (length: 32)
+  Tm: 59.8°C
+
+egfp_fwd:
+  Full primer: GGTCTCNACATATGAGCAAGGGCGAGGAGCTG
+  Annealing region: ATGAGCAAGGGCGAGGAGCTG (length: 21)
+  Tm: 68.5°C
+
+egfp_rev:
+  Full primer: GGTCTCNTACCTTTGTACAGCTCGTCCATGCCGAG
+  Annealing region: TTTGTACAGCTCGTCCATGCCGAG (length: 24)
+  Tm: 68.5°C
+
+flag_fwd:
+  Full primer: GGTCTCNGGTAGGTAGTGGCTCCGGTAGCGGTAG
+  Annealing region: GGTAGTGGCTCCGGTAGCGGTAG (length: 23)
+  Tm: 69.5°C
+
+flag_rev:
+  Full primer: GGTCTCNTGTCTGAACCACTACCTGAACCAGAACCGG
+  Annealing region: TGAACCACTACCTGAACCAGAACCGG (length: 26)
+  Tm: 69.4°C
+
+snap_fwd:
+  Full primer: GGTCTCNGACAGACAAAGACTGCGAAATGAAGCGCACCA
+  Annealing region: GACAAAGACTGCGAAATGAAGCGCACCA (length: 28)
+  Tm: 71.2°C
+
+snap_rev:
+  Full primer: GGTCTCNCTCATTAACCCAGCCCAGGCTTACCCAGTC
+  Annealing region: TTAACCCAGCCCAGGCTTACCCAGTC (length: 26)
+  Tm: 71.2°C
+
+root@40713b84f85c:/app#

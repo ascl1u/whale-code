@@ -1,0 +1,141 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# cat >> design_primers.py << 'SCRIPT_EOF'
+>
+_> def design_primer_pair(template_name, template_seq, left_overhang, right_overhang,
+>                        min_len=15, max_len=45, min_tm=58, max_tm=72, max_delta_tm=5):
+>     """
+>     Design forward and reverse primers for a template
+
+  >     left_overhang: overhang on the 5' end of the insert
+f>     right_overhang: overhang on the 3' end of the insert
+>     """
+>     best_fwd = None
+>     best_rev = None
+>     best_delta = float('inf')
+>
+>     # Try different annealing lengths
+>     for fwd_len in range(min_len, max_len + 1):
+w>         for rev_len in range(min_len, max_len + 1):
+>             # Forward primer annealing region
+>             fwd_anneal = template_seq[:fwd_len]
+>             fwd_tm = calculate_tm(fwd_anneal)
+>
+>             # Reverse primer annealing region (binds to end of template)
+>             rev_anneal = template_seq[-rev_len:]
+>             rev_tm = calculate_tm(rev_anneal)
+>
+\>             # Check constraints
+\>             if (min_tm <= fwd_tm <= max_tm and
+>                 min_tm <= rev_tm <= max_tm and
+>                 abs(fwd_tm - rev_tm) <= max_delta_tm):
+>
+IP>                 delta = abs(fwd_tm - rev_tm)
+>                 if delta < best_delta:
+>                     best_delta = delta
+>
+>                     # Build full primers
+>                     # Forward: GGTCTC-N-[overhang]-[anneal]
+>                     fwd_primer = 'GGTCTCN' + left_overhang + fwd_anneal
+>
+>                     # Reverse: GGTCTC-N-[overhang_RC]-[anneal_RC]
+>                     right_oh_rc = reverse_complement(right_overhang)
+>                     rev_anneal_rc = reverse_complement(rev_anneal)
+>                     rev_primer = 'GGTCTCN' + right_oh_rc + rev_anneal_rc
+>
+>                     best_fwd = (fwd_primer, fwd_anneal, fwd_tm)
+>                     best_rev = (rev_primer, rev_anneal, rev_tm)
+>
+>     return best_fwd, best_rev
+>
+> print("\n=== Fragment Design ===")
+> print(f"Fragment 1 (input): oh4 -> backbone -> oh1")
+> print(f"Fragment 2 (eGFP): oh1 -> egfp(no stop) -> oh2")
+> print(f"Fragment 3 (FLAG): oh2 -> flag(no start/stop) -> oh3")
+> print(f"Fragment 4 (SNAP): oh3 -> snap(no start) -> oh4")
+>
+> # Prepare template sequences
+> egfp_template = seqs['egfp'][:-3].upper()  # Remove stop codon TAA
+> flag_template = seqs['flag'][3:-3].upper()  # Remove start ATG and stop TAA
+> snap_template = seqs['snap'][3:].upper()  # Remove start ATG, keep stop
+>
+> # Input backbone: from position 690 to end, then start to 210
+> input_backbone = (input_seq[690:] + input_seq[:210]).upper()
+>
+> print(f"\neGFP template length: {len(egfp_template)}")
+> print(f"FLAG template length: {len(flag_template)}")
+> print(f"SNAP template length: {len(snap_template)}")
+> print(f"Input backbone length: {len(input_backbone)}")
+>
+> # Design primers for each fragment
+> print("\n=== Designing eGFP primers ===")
+> egfp_fwd, egfp_rev = design_primer_pair('egfp', egfp_template, oh1, oh2)
+> if egfp_fwd and egfp_rev:
+>     print(f"Forward: Tm={egfp_fwd[2]:.1f}°C, anneal_len={len(egfp_fwd[1])}")
+>     print(f"Reverse: Tm={egfp_rev[2]:.1f}°C, anneal_len={len(egfp_rev[1])}")
+> else:
+>     print("Failed to design eGFP primers")
+>
+> print("\n=== Designing FLAG primers ===")
+> flag_fwd, flag_rev = design_primer_pair('flag', flag_template, oh2, oh3)
+> if flag_fwd and flag_rev:
+>     print(f"Forward: Tm={flag_fwd[2]:.1f}°C, anneal_len={len(flag_fwd[1])}")
+>     print(f"Reverse: Tm={flag_rev[2]:.1f}°C, anneal_len={len(flag_rev[1])}")
+> else:
+>     print("Failed to design FLAG primers")
+>
+> print("\n=== Designing SNAP primers ===")
+> snap_fwd, snap_rev = design_primer_pair('snap', snap_template, oh3, oh4)
+> if snap_fwd and snap_rev:
+>     print(f"Forward: Tm={snap_fwd[2]:.1f}°C, anneal_len={len(snap_fwd[1])}")
+>     print(f"Reverse: Tm={snap_rev[2]:.1f}°C, anneal_len={len(snap_rev[1])}")
+> else:
+>     print("Failed to design SNAP primers")
+>
+> print("\n=== Designing Input backbone primers ===")
+> input_fwd, input_rev = design_primer_pair('input', input_backbone, oh4, oh1)
+> if input_fwd and input_rev:
+>     print(f"Forward: Tm={input_fwd[2]:.1f}°C, anneal_len={len(input_fwd[1])}")
+>     print(f"Reverse: Tm={input_rev[2]:.1f}°C, anneal_len={len(input_rev[1])}")
+> else:
+>     print("Failed to design input primers")
+>
+> # Write primers to FASTA file
+> print("\n=== Writing primers.fasta ===")
+>
+> with open('primers.fasta', 'w') as f:
+>     # Input primers
+>     if input_fwd and input_rev:
+>         f.write(f">input_fwd\n")
+>         f.write(f"{input_fwd[0]}\n")
+>         f.write(f">input_rev\n")
+>         f.write(f"{input_rev[0]}\n")
+>
+>     # eGFP primers
+>     if egfp_fwd and egfp_rev:
+>         f.write(f">egfp_fwd\n")
+>         f.write(f"{egfp_fwd[0]}\n")
+>         f.write(f">egfp_rev\n")
+>         f.write(f"{egfp_rev[0]}\n")
+>
+>     # FLAG primers
+>     if flag_fwd and flag_rev:
+>         f.write(f">flag_fwd\n")
+>         f.write(f"{flag_fwd[0]}\n")
+>         f.write(f">flag_rev\n")
+>         f.write(f"{flag_rev[0]}\n")
+>
+>     # SNAP primers
+>     if snap_fwd and snap_rev:
+>         f.write(f">snap_fwd\n")
+>         f.write(f"{snap_fwd[0]}\n")
+>         f.write(f">snap_rev\n")
+>         f.write(f"{snap_rev[0]}\n")
+>
+> print("Primers written to primers.fasta")
+> print("\nSummary:")
+> print(f"Total primer pairs: 4")
+> print(f"Total primers: 8")
+>
+> SCRIPT_EOF
+root@40713b84f85c:/app#

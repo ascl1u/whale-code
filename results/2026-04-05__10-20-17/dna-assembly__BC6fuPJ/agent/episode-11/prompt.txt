@@ -1,0 +1,58 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat > check_sequences2.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> egfp_start = 210
+> output_egfp = seqs['output'][egfp_start:egfp_start+len(seqs['egfp'])]
+>
+> print(f"EGFP length: {len(seqs['egfp'])}")
+> print(f"Position 714 in EGFP: {seqs['egfp'][710:720]}")
+> print(f"Position 714 in output: {output_egfp[710:720]}")
+> print(f"\nLast 20bp of EGFP: {seqs['egfp'][-20:]}")
+> print(f"Last 20bp of output_egfp: {output_egfp[-20:]}")
+>
+> # Check if EGFP without stop codon matches
+> egfp_no_stop = seqs['egfp'][:-3] if seqs['egfp'].endswith('TAA') or seqs['egfp'].endswith('TAG') or seqs['egfp'].endswith('TGA') else seqs['egfp']
+> print(f"\nEGFP ends with: {seqs['egfp'][-10:]}")
+> print(f"Is it a stop codon? {seqs['egfp'][-3:] in ['TAA', 'TAG', 'TGA']}")
+>
+> if seqs['egfp'][-3:] in ['TAA', 'TAG', 'TGA']:
+>     print("\nTrying without stop codon...")
+>     output_egfp_no_stop = seqs['output'][egfp_start:egfp_start+len(egfp_no_stop)]
+>     if output_egfp_no_stop == egfp_no_stop:
+>         print("EGFP without stop codon matches!")
+>         egfp_end = egfp_start + len(egfp_no_stop)
+>         print(f"EGFP ends at position {egfp_end}")
+>         print(f"\nAfter EGFP: {seqs['output'][egfp_end:egfp_end+20]}")
+>         print(f"FLAG starts: {seqs['flag'][:20]}")
+>
+> EOF
+root@b088ecd58d39:/app# python3 check_sequences2.py
+EGFP length: 717
+Position 714 in EGFP: CAAATAA
+Position 714 in output: CAAAGGT
+
+Last 20bp of EGFP: TGGACGAGCTGTACAAATAA
+Last 20bp of output_egfp: TGGACGAGCTGTACAAAGGT
+
+EGFP ends with: GTACAAATAA
+Is it a stop codon? True
+
+Trying without stop codon...
+EGFP without stop codon matches!
+EGFP ends at position 924
+
+After EGFP: GGTAGTGGCTCCGGTAGCGG
+FLAG starts: ATGGGTAGTGGCTCCGGTAG
+root@b088ecd58d39:/app#

@@ -1,0 +1,25 @@
+New Terminal Output:
+
+root@b4f8d1bbdfe9:/app# grep -A 20 'def mask_to_polyline' /app/convert_masks.py
+def mask_to_polyline(mask):
+    """Convert binary mask to polyline coordinates."""
+    contour = get_largest_contour(mask)
+    if contour is None or len(contour) < 3:
+        return None, None, None, None
+
+    # Simplify contour to reduce number of points
+    epsilon = 1.0  # Adjust this for more/less simplification
+    contour = cv2.approxPolyDP(contour, epsilon, True)
+
+    # Extract coordinates
+    coords_x = [int(point[0][0]) for point in contour]
+    coords_y = [int(point[0][1]) for point in contour]
+
+    # Calculate bounding box
+    xmin = min(coords_x)
+    xmax = max(coords_x)
+    ymin = min(coords_y)
+    ymax = max(coords_y)
+
+    return xmin, ymin, xmax, ymax, coords_x, coords_y
+root@b4f8d1bbdfe9:/app#

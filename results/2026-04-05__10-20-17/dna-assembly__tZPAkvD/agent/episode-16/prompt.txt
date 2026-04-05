@@ -1,0 +1,77 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > verify_fusion.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> print("Checking fusion protein structure...\n")
+>
+> # egfp without stop codon
+> egfp_no_stop = seqs['egfp'][:-3]  # Remove TAA
+> print(f"egfp without stop codon: {len(egfp_no_stop)} bp")
+> print(f"  Ends with: ...{egfp_no_stop[-30:]}")
+>
+> # flag without start codon
+> flag_no_start = seqs['flag'][3:]  # Remove ATG
+> print(f"\nflag without start codon: {len(flag_no_start)} bp")
+> print(f"  Starts with: {flag_no_start[:30]}...")
+> print(f"  Ends with: ...{flag_no_start[-30:]}")
+>
+> # snap without start codon
+> snap_no_start = seqs['snap'][3:]  # Remove ATG
+> print(f"\nsnap without start codon: {len(snap_no_start)} bp")
+> print(f"  Starts with: {snap_no_start[:30]}...")
+> print(f"  Ends with: ...{snap_no_start[-30:]}")
+>
+> # Check in output
+> egfp_start = 210
+> egfp_end = egfp_start + len(egfp_no_stop)
+> print(f"\n=== Checking in output ===")
+> print(f"\negfp (no stop) should be at output[{egfp_start}:{egfp_end}]")
+> if seqs['output'][egfp_start:egfp_end] == egfp_no_stop:
+>     print("  ✓ egfp matches!")
+>
+>     flag_start = egfp_end
+>     flag_end = flag_start + len(flag_no_start)
+>     print(f"\nflag (no start) should be at output[{flag_start}:{flag_end}]")
+>     if seqs['output'][flag_start:flag_end] == flag_no_start:
+>         print("  ✓ flag matches!")
+>
+>         snap_start = flag_end
+>         snap_end = snap_start + len(snap_no_start)
+>         print(f"\nsnap (no start) should be at output[{snap_start}:{snap_end}]")
+>         if seqs['output'][snap_start:snap_end] == snap_no_start:
+>             print("  ✓ snap matches!")
+>             print(f"\nFusion protein ends at position {snap_end}")
+>             print(f"After fusion: {seqs['output'][snap_end:snap_end+30]}")
+>         else:
+>             print("  ✗ snap doesn't match")
+>             # Check if snap WITH start codon matches
+>             if seqs['output'][snap_start:snap_start+len(seqs['snap'])] == seqs['snap']:
+>                 print("  But snap WITH start codon matches!")
+>                 snap_end = snap_start + len(seqs['snap'])
+>                 print(f"  snap ends at position {snap_end}")
+>     else:
+>         print("  ✗ flag doesn't match")
+> else:
+>     print("  ✗ egfp doesn't match")
+>
+> # Summary
+> print("\n=== SUMMARY ===")
+> print(f"Expected structure in output:")
+> print(f"  Position {egfp_start}: start of egfp (without stop codon)")
+> print(f"  Position {egfp_end}: start of flag (without start codon)")
+> if 'flag_end' in locals():
+>     print(f"  Position {flag_end}: start of snap (check if with or without start codon)")
+>
+> EOF
+root@5727c976f434:/app#

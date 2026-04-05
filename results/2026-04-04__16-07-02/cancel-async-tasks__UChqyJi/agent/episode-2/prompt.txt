@@ -1,0 +1,36 @@
+New Terminal Output:
+
+root@c7d49774f253:/app# cat > /app/run.py << 'EOF'
+> import asyncio
+> from typing import Callable, Awaitable
+>
+>
+> async def run_tasks(tasks: list[Callable[[], Awaitable[None]]], max_concurrent: int) -> None:
+>     """Run async tasks with limited concurrency.
+>
+>     Args:
+>         tasks: List of async callables that return None
+>         max_concurrent: Maximum number of tasks that can run concurrently
+>
+>     When a keyboard interrupt occurs, tasks are cancelled but their cleanup
+>     code (finally blocks, async context manager __aexit__, etc.) will still run.
+>     """
+>     if not tasks:
+>         return
+>
+>     semaphore = asyncio.Semaphore(max_concurrent)
+>
+>     async def _run_with_semaphore(task: Callable[[], Awaitable[None]]) -> None:
+>         """Wrapper to run a task with semaphore-controlled concurrency."""
+>         async with semaphore:
+>             await task()
+>
+>     # Create all task coroutines
+>     task_coroutines = [_run_with_semaphore(task) for task in tasks]
+>
+>     # Run all tasks concurrently (limited by semaphore)
+>     # return_exceptions=False means exceptions will be raised
+>     # CancelledError will propagate, allowing cleanup code to run
+>     await asyncio.gather(*task_coroutines)
+> EOF
+root@c7d49774f253:/app#

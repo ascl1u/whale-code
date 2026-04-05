@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>     data = []
+>     for i in range(8):
+>         pt1 = i
+>         pt2 = i ^ 1
+>         ct1 = encrypt_fn(pt1)
+>         ct2 = encrypt_fn(pt2)
+>         data.append((ct1, ct2))
+>
+>     # Try all possible seeds and score them
+>     best_key = 0
+>     best_score = -1
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>         score = 0
+>
+>         for ct1, ct2 in data:
+>             fr1, fl1 = getleft(ct1), getright(ct1)
+>             fr2, fl2 = getleft(ct2), getright(ct2)
+>
+>             rb1 = fl1 ^ fr1
+>             rb2 = fl2 ^ fr2
+>
+>             lb1 = fr1 ^ f_function(rb1 ^ candidate_key5)
+>             lb2 = fr2 ^ f_function(rb2 ^ candidate_key5)
+>
+>             # Score based on hamming weight of left difference
+>             left_diff = lb1 ^ lb2
+>             bits = bin(left_diff).count('1')
+>             score += bits
+>
+>         # Look for maximum score this time
+>         if score > best_score:
+>             best_score = score
+>             best_key = candidate_key5
+>
+>     return best_key
+>
+> EOF
+root@486aac7a4fa6:/app#

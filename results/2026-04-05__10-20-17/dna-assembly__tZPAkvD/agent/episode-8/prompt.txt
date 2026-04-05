@@ -1,0 +1,65 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > detailed_analysis.py << 'EOF'
+> import re
+>
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> print("Sequence lengths:")
+> for name in ['input', 'egfp', 'flag', 'snap', 'output']:
+>     print(f"  {name}: {len(seqs[name])} bp")
+>
+> # Find where egfp starts and ends in output
+> egfp_start = seqs['output'].find(seqs['egfp'])
+> egfp_end = egfp_start + len(seqs['egfp'])
+> print(f"\negfp: positions {egfp_start}-{egfp_end} in output")
+>
+> # Find where flag starts and ends in output
+> flag_start = seqs['output'].find(seqs['flag'])
+> flag_end = flag_start + len(seqs['flag'])
+> print(f"flag: positions {flag_start}-{flag_end} in output")
+>
+> # Find where snap starts and ends in output
+> snap_start = seqs['output'].find(seqs['snap'])
+> snap_end = snap_start + len(seqs['snap'])
+> print(f"snap: positions {snap_start}-{snap_end} in output")
+>
+> # Find the junction sequences
+> print("\nJunction analysis:")
+> print(f"Output[0:{egfp_start}] = {seqs['output'][:egfp_start][-30:]}")
+> print(f"Input match: checking if this is in input...")
+>
+> # Check if the beginning of output matches input
+> if seqs['output'][:egfp_start] in seqs['input']:
+>     print("  YES - beginning of output matches input")
+>     input_cut_pos = seqs['input'].find(seqs['output'][:egfp_start]) + egfp_start
+>     print(f"  Input is cut at position {input_cut_pos}")
+> else:
+>     # Find the longest match
+>     for i in range(egfp_start, 0, -1):
+>         if seqs['output'][:i] in seqs['input']:
+>             print(f"  Match found: output[0:{i}] is in input")
+>             input_cut_pos = seqs['input'].find(seqs['output'][:i]) + i
+>             print(f"  Input cut position: {input_cut_pos}")
+>             break
+>
+> # Check what comes after snap in output
+> after_snap = seqs['output'][snap_end:snap_end+30]
+> print(f"\nAfter snap in output: {after_snap}")
+> if after_snap in seqs['input']:
+>     print("  This sequence is in input")
+>     input_resume_pos = seqs['input'].find(after_snap)
+>     print(f"  Input resumes at position {input_resume_pos}")
+>
+> EOF
+root@5727c976f434:/app#

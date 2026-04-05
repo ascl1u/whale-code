@@ -1,0 +1,79 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > find_exact_sequences.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> # egfp is at 210, ends at 927
+> egfp_start = 210
+> egfp_end = 927
+>
+> print("EGFP:")
+> print(f"  egfp in file ends: ...{seqs['egfp'][-20:]}")
+> print(f"  egfp in output ends: ...{seqs['output'][egfp_end-20:egfp_end]}")
+> print(f"  Difference: egfp TAA -> GGT in output")
+>
+> # Find where flag sequence (without ATG) appears
+> flag_no_atg = seqs['flag'][3:]  # Remove ATG
+> print(f"\nFLAG (without ATG):")
+> print(f"  Searching for: {flag_no_atg[:40]}")
+> flag_pos = seqs['output'].find(flag_no_atg[:40])
+> print(f"  Found at: {flag_pos}")
+>
+> # Check if it's right after egfp
+> print(f"\nAfter egfp (pos {egfp_end}):")
+> print(f"  Next 90bp: {seqs['output'][egfp_end:egfp_end+90]}")
+> print(f"  flag no ATG: {flag_no_atg[:40]}")
+> print(f"  Match: {seqs['output'][egfp_end:egfp_end+87] == flag_no_atg[:-3]}")
+>
+> flag_start = egfp_end
+> flag_end = flag_start + len(flag_no_atg) - 3  # -3 for stop codon
+> print(f"\nFLAG spans: {flag_start} to {flag_end}")
+>
+> # Find snap (without ATG)
+> snap_no_atg = seqs['snap'][3:]
+> print(f"\nSNAP (without ATG):")
+> print(f"  Searching for: {snap_no_atg[:40]}")
+> snap_pos = seqs['output'].find(snap_no_atg[:40])
+> print(f"  Found at: {snap_pos}")
+>
+> if snap_pos > 0:
+>     snap_end = snap_pos + len(snap_no_atg)
+>     print(f"  SNAP spans: {snap_pos} to {snap_end}")
+>     print(f"  Last 20bp: {seqs['output'][snap_end-20:snap_end]}")
+>     print(f"  Next 20bp: {seqs['output'][snap_end:snap_end+20]}")
+>
+> EOF
+root@11eec39dc770:/app# python3 find_exact_sequences.py
+EGFP:
+  egfp in file ends: ...tggacgagctgtacaaataa
+  egfp in output ends: ...tggacgagctgtacaaaggt
+  Difference: egfp TAA -> GGT in output
+
+FLAG (without ATG):
+  Searching for: ggtagtggctccggtagcggtagcggcagcgactacaagg
+  Found at: 924
+
+After egfp (pos 927):
+  Next 90bp: agtggctccggtagcggtagcggcagcgactacaaggacgacgacgacaagggttccggttctggttcaggtagtggttcagacaaagac
+  flag no ATG: ggtagtggctccggtagcggtagcggcagcgactacaagg
+  Match: False
+
+FLAG spans: 927 to 1011
+
+SNAP (without ATG):
+  Searching for: gacaaagactgcgaaatgaagcgcaccaccctggatagcc
+  Found at: 1008
+  SNAP spans: 1008 to 1554
+  Last 20bp: gtaagcctgggctgggttaa
+  Next 20bp: tgaggatcccgggaattctc
+root@11eec39dc770:/app#

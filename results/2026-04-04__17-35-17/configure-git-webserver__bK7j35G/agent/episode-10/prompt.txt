@@ -1,0 +1,31 @@
+New Terminal Output:
+
+root@68af9fa3b59c:/git/server/hooks# cat > post-receive << 'EOF'
+> #!/bin/bash
+>
+> # Post-receive hook to deploy to web server
+> WEB_DIR="/var/www/html"
+> GIT_DIR="/git/server"
+> WORK_DIR="/tmp/git-work"
+>
+> # Read the pushed branch
+> while read oldrev newrev refname; do
+>   # Check if this is the master branch
+>   if [[ $refname == "refs/heads/master" ]]; then
+>     echo "Deploying to web server..."
+>
+>     # Create or clean the work directory
+>     rm -rf "$WORK_DIR"
+>     mkdir -p "$WORK_DIR"
+>
+>     # Checkout the files to the work directory
+>     git --work-tree="$WORK_DIR" --git-dir="$GIT_DIR" checkout -f master
+>
+>     # Copy files to web directory
+>     cp -r "$WORK_DIR"/* "$WEB_DIR"/
+>
+>     echo "Deployment complete!"
+>   fi
+> done
+> EOF
+root@68af9fa3b59c:/git/server/hooks#

@@ -1,0 +1,38 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > analyze_sequences.py << 'EOF'
+> import re
+>
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> # Print sequence lengths
+> for name, seq in seqs.items():
+>     print(f"{name}: {len(seq)} bp")
+>
+> # Find where egfp starts in output
+> egfp_start = seqs['output'].find(seqs['egfp'][:50])
+> print(f"\negfp starts at position {egfp_start} in output")
+>
+> # Find where snap ends in output
+> snap_end_pos = seqs['output'].find(seqs['snap'][-50:])
+> if snap_end_pos >= 0:
+>     snap_end_pos += 50
+>     print(f"snap ends at position {snap_end_pos} in output")
+>
+> # Find junction sequences
+> if egfp_start > 0:
+>     print(f"\nBefore egfp (input): ...{seqs['output'][egfp_start-20:egfp_start]}")
+>     print(f"egfp start: {seqs['egfp'][:20]}...")
+>
+> EOF
+root@5727c976f434:/app#

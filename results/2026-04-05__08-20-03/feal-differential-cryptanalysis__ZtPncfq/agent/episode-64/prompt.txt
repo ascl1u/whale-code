@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>             for c2 in candidates:
+>                 key2 = (c2 * 1234567) & 0xFFFFFFFF
+>                 for c3 in candidates:
+>                     key3 = (c3 * 1234567) & 0xFFFFFFFF
+>                     for c4 in candidates:
+>                         key4 = (c4 * 1234567) & 0xFFFFFFFF
+>
+>                         # Try all seeds for key[5]
+>                         for seed5 in range(0x10000):
+>                             key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>                             keys = [key0, key1, key2, key3, key4, key5]
+>
+>                             # Quick check with first pair only for speed
+>                             if encrypt_with_keys(pairs[0][0], keys) == pairs[0][1]:
+>                                 # Verify with other pairs
+>                                 if all(encrypt_with_keys(pt, keys) == ct for pt, ct in pairs[1:]):
+>                                     return key5
+>
+>     return 0
+> EOF
+root@e46f4ec08a64:/app# python3 << 'PYEOF'
+> import sys
+> sys.path.insert(0, '/app')
+> import feal
+> import attack
+> import time
+>
+> feal.create_random_keys()
+> print(f"Actual key[5] = {feal.key[5]}")
+>
+> start = time.time()
+> recovered = attack.attack(feal.encrypt)
+> end = time.time()
+>
+> print(f"Recovered key[5] = {recovered}")
+> print(f"Time: {end-start:.2f}s")
+> print(f"Success: {recovered == feal.key[5]}")
+> PYEOF
+Actual key[5] = 957611098
+

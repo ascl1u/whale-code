@@ -1,0 +1,45 @@
+New Terminal Output:
+
+root@e3c1bf174cb4:/app# cat > /tmp/test_finally2.py << 'EOF'
+> import asyncio
+> import sys
+> sys.path.insert(0, '/app')
+> from run import run_tasks
+>
+> print("Test: Finally with except CancelledError")
+>
+> log = []
+>
+> async def task_with_except_and_finally(task_id):
+>     try:
+>         log.append(f"task{task_id}_start")
+>         await asyncio.sleep(10)
+>         log.append(f"task{task_id}_done")
+>     except asyncio.CancelledError:
+>         log.append(f"task{task_id}_cleanup")
+>         print(f"Cleanup for task{task_id} executed")
+>         raise
+>     finally:
+>         log.append(f"task{task_id}_finally")
+>         print(f"Finally block for task{task_id} executed")
+>
+> async def test():
+>     task = asyncio.create_task(
+>         run_tasks([lambda: task_with_except_and_finally(0)], max_concurrent=1)
+>     )
+>     await asyncio.sleep(0.1)
+>     task.cancel()
+>
+>     try:
+>         await task
+>     except asyncio.CancelledError:
+>         print("Main task cancelled")
+>
+>     await asyncio.sleep(0.1)  # Give time for cleanup
+>     print(f"\nLog: {log}")
+>     print(f"Cleanup in log: {'task0_cleanup' in log}")
+>     print(f"Finally in log: {'task0_finally' in log}")
+>
+> asyncio.run(test())
+> EOF
+root@e3c1bf174cb4:/app#

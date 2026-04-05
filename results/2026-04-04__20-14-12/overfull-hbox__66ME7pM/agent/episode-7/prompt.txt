@@ -1,0 +1,41 @@
+New Terminal Output:
+
+root@bc17e3cbd220:/app# cat > fix_overfull.py << 'EOF'
+> import re
+>
+> # Read synonyms
+> synonyms = {}
+> with open('synonyms.txt', 'r') as f:
+>     for line in f:
+>         words = [w.strip() for w in line.strip().split(',')]
+>         for word in words:
+>             synonyms[word.lower()] = [w for w in words]
+>
+> # Read input.tex
+> with open('input.tex', 'r') as f:
+>     content = f.read()
+>
+> # Target replacements to fix overfull hbox issues
+> # Replace longer words with shorter synonyms
+> replacements = [
+>     ('curious', 'odd'),  # Line 5: curious (7 chars) -> odd (3 chars)
+>     ('confidences', 'secrets'),  # Not in synonyms, skip
+>     ('unsought', 'unwanted'),  # Line 5: unsought (8 chars) -> unwanted (8 chars) - same length, try uninvited
+>     ('riotous', 'wild'),  # Line 7: riotous (7 chars) -> wild (4 chars)
+>     ('excursions', 'trips'),  # Line 7: excursions (10 chars) -> trips (5 chars)
+>     ('responsiveness', 'awareness'),  # Line 7: responsiveness (14 chars) -> awareness (9 chars)
+>     ('creative', 'artistic'),  # Line 7: creative (8 chars) -> artistic (8 chars) - try inventive
+>     ('temperament', 'nature'),  # Line 7: temperament (11 chars) -> nature (6 chars)
+>     ('wisdom', 'insight'),  # Line 13: wisdom (6 chars) -> insight (7 chars) - longer! Try knowledge
+>     ('pathfinder', 'pioneer'),  # Line 19: pathfinder (10 chars) -> pioneer (7 chars)
+> ]
+>
+> print("Checking which words can be replaced:")
+> for old, new in replacements:
+>     if old.lower() in synonyms:
+>         print(f"{old} -> {new}: {new in [w.lower() for w in synonyms[old.lower()]]}")
+>     else:
+>         print(f"{old} not in synonyms")
+>
+> EOF
+root@bc17e3cbd220:/app#

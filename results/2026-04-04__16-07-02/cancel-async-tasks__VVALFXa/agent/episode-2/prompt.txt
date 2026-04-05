@@ -1,0 +1,49 @@
+New Terminal Output:
+
+root@e3c1bf174cb4:/app# cat > /app/run.py << 'EOF'
+> import asyncio
+> from typing import Callable, Awaitable
+>
+>
+> async def run_tasks(tasks: list[Callable[[], Awaitable[None]]], max_concurrent: int) -> None:
+>     """Run async tasks with a maximum concurrency limit.
+>
+>     Args:
+>         tasks: List of async callables to execute
+>         max_concurrent: Maximum number of tasks to run concurrently
+>
+>     Handles KeyboardInterrupt gracefully, allowing tasks to complete cleanup.
+>     """
+>     semaphore = asyncio.Semaphore(max_concurrent)
+>
+>     async def run_with_semaphore(task: Callable[[], Awaitable[None]]) -> None:
+>         """Run a single task with semaphore control."""
+>         async with semaphore:
+>             try:
+>                 await task()
+>             except asyncio.CancelledError:
+>                 # Allow the task to handle cancellation and cleanup
+>                 # Re-raise so the task can be properly cancelled
+>                 raise
+>
+>     # Create all task coroutines
+>     task_coroutines = [run_with_semaphore(task) for task in tasks]
+>
+>     # Gather all tasks
+>     gathered = asyncio.gather(*task_coroutines, return_exceptions=False)
+>
+>     try:
+>         await gathered
+>     except KeyboardInterrupt:
+>         # Cancel all running tasks
+>         gathered.cancel()
+>         try:
+>             # Wait for tasks to finish their cleanup
+>             await gathered
+>         except asyncio.CancelledError:
+>             # Expected when tasks are cancelled
+>             pass
+>         # Re-raise the KeyboardInterrupt
+>         raise
+> EOF
+root@e3c1bf174cb4:/app#

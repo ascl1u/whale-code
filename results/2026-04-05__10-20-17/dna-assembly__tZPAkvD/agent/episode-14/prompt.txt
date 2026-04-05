@@ -1,0 +1,71 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > check_structure.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> print("Checking sequence structure...\n")
+>
+> # Check egfp ending
+> print(f"egfp ends with: ...{seqs['egfp'][-30:]}")
+> print(f"egfp length: {len(seqs['egfp'])} bp\n")
+>
+> # Check flag beginning and ending
+> print(f"flag starts with: {seqs['flag'][:30]}...")
+> print(f"flag ends with: ...{seqs['flag'][-30:]}")
+> print(f"flag length: {len(seqs['flag'])} bp\n")
+>
+> # Check snap beginning
+> print(f"snap starts with: {seqs['snap'][:30]}...")
+> print(f"snap ends with: ...{seqs['snap'][-30:]}")
+> print(f"snap length: {len(seqs['snap'])} bp\n")
+>
+> # Now check in output
+> egfp_start = 210
+> print(f"\nIn output at position {egfp_start}:")
+> print(f"  {seqs['output'][egfp_start:egfp_start+30]}... (should be egfp start)")
+> print(f"\nAt position {egfp_start+714}:")
+> print(f"  {seqs['output'][egfp_start+714:egfp_start+714+30]}")
+> print(f"\nCompare with egfp[714:] = {seqs['egfp'][714:]}")
+> print(f"\nSo egfp in output is: output[{egfp_start}:{egfp_start+714}]")
+> print(f"  Last 30 bp: ...{seqs['output'][egfp_start+714-30:egfp_start+714]}")
+> print(f"  Compare to egfp[684:714]: {seqs['egfp'][684:714]}")
+>
+> # Check what follows
+> after_egfp_pos = egfp_start + 714
+> print(f"\nAfter egfp at position {after_egfp_pos}:")
+> print(f"  {seqs['output'][after_egfp_pos:after_egfp_pos+30]}")
+> print(f"\nDoes flag start here?")
+> print(f"  flag starts: {seqs['flag'][:30]}")
+>
+> if seqs['output'][after_egfp_pos:after_egfp_pos+len(seqs['flag'])] == seqs['flag']:
+>     print("  YES! flag matches exactly")
+>     flag_end = after_egfp_pos + len(seqs['flag'])
+>     print(f"\nAfter flag at position {flag_end}:")
+>     print(f"  {seqs['output'][flag_end:flag_end+30]}")
+>     print(f"\nDoes snap start here?")
+>     print(f"  snap starts: {seqs['snap'][:30]}")
+>
+>     if seqs['output'][flag_end:flag_end+len(seqs['snap'])] == seqs['snap']:
+>         print("  YES! snap matches exactly")
+>         snap_end = flag_end + len(seqs['snap'])
+>         print(f"\nsnap ends at position {snap_end}")
+>         print(f"After snap: {seqs['output'][snap_end:snap_end+30]}")
+> else:
+>     print("  NO, checking for partial match...")
+>     for i in range(len(seqs['flag'])):
+>         if seqs['flag'][i] != seqs['output'][after_egfp_pos + i]:
+>             print(f"  Mismatch at position {i}")
+>             break
+>
+> EOF
+root@5727c976f434:/app#

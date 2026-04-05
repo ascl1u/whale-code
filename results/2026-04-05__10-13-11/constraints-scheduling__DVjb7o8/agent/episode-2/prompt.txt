@@ -1,0 +1,181 @@
+New Terminal Output:
+
+root@b99d382ae3d4:/app# cat > find_meeting_slot.py << 'EOF'
+> import datetime
+> from datetime import datetime as dt, timedelta
+>
+ > # Parse ICS file to extract meetings
+> def parse_ics(filename):
+>     meetings = []
+>     with open(filename, 'r') as f:
+>         content = f.read()
+>         events = content.split('BEGIN:VEVENT')[1:]  # Skip first split
+>         for event in events:
+>             lines = event.split('\n')
+>             start = None
+>             end = None
+>             for line in lines:
+   >                 if line.startswith('DTSTART:'):
+>                     start_str = line.split(':', 1)[1].strip()
+>                     start = dt.strptime(start_str, '%Y%m%dT%H%M%SZ')
+>                 elif line.startswith('DTEND:'):
+>                     end_str = line.split(':', 1)[1].strip()
+>                     end = dt.strptime(end_str, '%Y%m%dT%H%M%SZ')
+>             if start and end:
+>                 meetings.append((start, end))
+>     return meetings
+>
+> # Check if a time slot conflicts with existing meetings
+> def has_conflict(start, end, meetings):
+n>     for m_start, m_end in meetings:
+>         # Check for overlap
+>         if start < m_end and end > m_start:
+n>             return True
+>     return False
+>
+> # Check if slot is valid for Alice
+> def valid_for_alice(start, end):
+>     # Alice: 9 AM - 2 PM only (no meetings after 2 PM or before 9 AM)
+>     hour = start.hour
+>     minute = start.minute
+e>     end_hour = end.hour
+>     end_minute = end.minute
+DE>
+>     # Must start at or after 9 AM
+l>     if hour < 9:
+>         return False
+a>     # Must end by 2 PM (14:00)
+>     if end_hour > 14 or (end_hour == 14 and end_minute > 0):
+>         return False
+>     return True
+>
+> # Check if slot is valid for Bob
+> def valid_for_bob(start, end):
+>     # Bob: No meetings before 10 AM
+>     if start.hour < 10:
+>         return False
+c>
+e>     # Must leave by 4:30 PM on Tue/Thu (weekday 1=Tue, 3=Thu)
+>     weekday = start.weekday()
+>     if weekday in [1, 3]:  # Tuesday or Thursday
+>         # Must end by 4:30 PM (16:30)
+>         if end.hour > 16 or (end.hour == 16 and end.minute > 30):
+>             return False
+>
+>     return True
+>
+> # Check if slot is valid for Carol
+> def valid_for_carol(start, end):
+>     # Carol: Available 9 AM - 5 PM
+>     if start.hour < 9:
+>         return False
+>     if end.hour > 17 or (end.hour == 17 and end.minute > 0):
+>         return False
+>
+>     # Lunch break 12:00-12:30 PM unavailable
+>     lunch_start = start.replace(hour=12, minute=0, second=0)
+>     lunch_end = start.replace(hour=12, minute=30, second=0)
+>     if start < lunch_end and end > lunch_start:
+>         return False
+>
+>     return True
+>
+> # Check if Carol needs buffer after this meeting
+> def carol_needs_buffer(end, carol_meetings):
+>     # If meeting ends at 4:45 PM or later, needs 15-min buffer
+>     if end.hour > 16 or (end.hour == 16 and end.minute >= 45):
+>         # Check if there's a meeting within 15 minutes after this slot
+>         buffer_end = end + timedelta(minutes=15)
+>         for m_start, m_end in carol_meetings:
+>             if m_start < buffer_end and m_start >= end:
+>                 return True  # Conflict with buffer
+>     return False
+>
+> # Main logic
+> alice_meetings = parse_ics('/app/alice_calendar.ics')
+> bob_meetings = parse_ics('/app/bob_calendar.ics')
+> carol_meetings = parse_ics('/app/carol_calendar.ics')
+>
+> print("Alice meetings:", alice_meetings)
+> print("Bob meetings:", bob_meetings)
+> print("Carol meetings:", carol_meetings)
+>
+> # Date range: January 15-19, 2024 (Monday to Friday)
+> start_date = dt(2024, 1, 15, 9, 0, 0)  # Monday 9 AM
+> end_date = dt(2024, 1, 19, 18, 0, 0)   # Friday 6 PM
+>
+> # Try all possible 1-hour slots at minute granularity
+> current = start_date
+> valid_slots = []
+>
+> while current < end_date:
+>     slot_end = current + timedelta(hours=1)
+>
+>     # Check if within same day and business hours (9 AM - 6 PM)
+>     if current.date() == slot_end.date() and slot_end.hour <= 18:
+>         # Check all constraints
+>         if (valid_for_alice(current, slot_end) and
+>             valid_for_bob(current, slot_end) and
+>             valid_for_carol(current, slot_end) and
+>             not has_conflict(current, slot_end, alice_meetings) and
+>             not has_conflict(current, slot_end, bob_meetings) and
+>             not has_conflict(current, slot_end, carol_meetings) and
+>             not carol_needs_buffer(slot_end, carol_meetings)):
+>
+>             # Valid slot found
+>             is_monday = current.weekday() == 0
+>             valid_slots.append((current, slot_end, is_monday))
+>
+>     # Move to next minute
+>     current += timedelta(minutes=1)
+>
+>     # Skip to next day at 9 AM if we've passed 6 PM
+>     if current.hour >= 18:
+>         next_day = current.date() + timedelta(days=1)
+>         current = dt.combine(next_day, dt.min.time()) + timedelta(hours=9)
+>
+> print(f"\nFound {len(valid_slots)} valid slots")
+>
+> if valid_slots:
+>     # Find earliest slot
+>     # Among slots at same time, prefer non-Monday (Carol's preference)
+>     earliest = valid_slots[0]
+>     print(f"\nEarliest valid slot: {earliest[0]} to {earliest[1]}")
+>     print(f"Is Monday: {earliest[2]}")
+>
+>     # Generate ICS file
+>     meeting_start = earliest[0]
+>     meeting_end = earliest[1]
+>
+>     # Generate UID based on timestamp
+>     uid = f"team-planning-{meeting_start.strftime('%Y%m%dT%H%M%S')}@example.com"
+>
+>     ics_content = f"""BEGIN:VCALENDAR
+> VERSION:2.0
+> PRODID:-//Terminal-Bench//Team Meeting Scheduler//EN
+> CALSCALE:GREGORIAN
+> METHOD:PUBLISH
+>
+> BEGIN:VEVENT
+> UID:{uid}
+> DTSTART:{meeting_start.strftime('%Y%m%dT%H%M%SZ')}
+> DTEND:{meeting_end.strftime('%Y%m%dT%H%M%SZ')}
+> SUMMARY:Team Planning Meeting
+> DESCRIPTION:Team Planning Meeting with Alice, Bob, and Carol
+> ATTENDEE:alice@example.com
+> ATTENDEE:bob@example.com
+> ATTENDEE:carol@example.com
+> END:VEVENT
+>
+> END:VCALENDAR
+> """
+>
+>     with open('/app/meeting_scheduled.ics', 'w') as f:
+>         f.write(ics_content)
+>
+>     print(f"\nMeeting scheduled: {meeting_start} to {meeting_end}")
+>     print(f"ICS file created: /app/meeting_scheduled.ics")
+> else:
+>     print("No valid slot found!")
+> EOF
+root@b99d382ae3d4:/app#

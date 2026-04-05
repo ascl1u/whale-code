@@ -1,0 +1,129 @@
+New Terminal Output:
+
+root@8db1ad3c0d5d:/app# python3 << 'EOF'
+> import pandas as pd
+> import json
+>
+> print("=== VERIFICATION ===")
+> print()
+>
+> # Read all source files
+> with open('/data/source_a/users.json', 'r') as f:
+>     source_a = json.load(f)
+> source_b = pd.read_csv('/data/source_b/users.csv')
+> source_c = pd.read_parquet('/data/source_c/users.parquet')
+>
+> # Get unique user IDs from each source
+> ids_a = set([u['id'] for u in source_a])
+> ids_b = set(source_b['user_id'].tolist())
+> ids_c = set(source_c['userId'].tolist())
+>
+> all_source_ids = ids_a | ids_b | ids_c
+> print(f"Source A user IDs: {sorted(ids_a)}")
+> print(f"Source B user IDs: {sorted(ids_b)}")
+> print(f"Source C user IDs: {sorted(ids_c)}")
+> print(f"All unique user IDs from sources: {sorted(all_source_ids)}")
+> print()
+>
+> # Read merged file
+> merged = pd.read_parquet('/app/merged_users.parquet')
+> merged_ids = set(merged['user_id'].tolist())
+> print(f"Merged file user IDs: {sorted(merged_ids)}")
+> print()
+>
+> # Check if all users are included
+> if all_source_ids == merged_ids:
+>     print("✓ All unique users from all sources are included")
+> else:
+>     print("✗ Missing users:", all_source_ids - merged_ids)
+> print()
+>
+> # Check data types
+> print("Data types:")
+> print(merged.dtypes)
+> print()
+> if merged['user_id'].dtype == 'int64':
+>     print("✓ user_id is integer type")
+> else:
+>     print("✗ user_id is not integer type")
+> print()
+>
+> # Check date format
+> import re
+> date_pattern = r'^\d{4}-\d{2}-\d{2}$'
+> all_dates_valid = all(re.match(date_pattern, str(d)) if pd.notna(d) else True for d in merged['created_date'])
+> if all_dates_valid:
+>     print("✓ All dates are in YYYY-MM-DD format")
+> else:
+>     print("✗ Some dates are not in YYYY-MM-DD format")
+> print()
+>
+> # Read conflicts
+> with open('/app/conflicts.json', 'r') as f:
+>     conflicts = json.load(f)
+>
+> print(f"Total conflicts: {conflicts['total_conflicts']}")
+> print(f"Conflicts in list: {len(conflicts['conflicts'])}")
+> if conflicts['total_conflicts'] == len(conflicts['conflicts']):
+>     print("✓ Conflict count matches")
+> else:
+>     print("✗ Conflict count mismatch")
+> print()
+>
+> # Verify priority-based resolution for user 101
+> print("Verifying priority-based conflict resolution for user 101:")
+> user_101 = merged[merged['user_id'] == 101].iloc[0]
+> print(f"  name: {user_101['name']} (should be 'John Doe' from source_a)")
+> print(f"  email: {user_101['email']} (should be 'john@a.com' from source_a)")
+> print(f"  created_date: {user_101['created_date']} (should be '2024-01-15' from source_a)")
+> print(f"  status: {user_101['status']} (should be 'active' from source_a)")
+> print()
+>
+> if (user_101['name'] == 'John Doe' and
+>     user_101['email'] == 'john@a.com' and
+>     user_101['created_date'] == '2024-01-15' and
+>     user_101['status'] == 'active'):
+>     print("✓ Priority-based conflict resolution working correctly")
+> else:
+>     print("✗ Priority-based conflict resolution has issues")
+>
+> print()
+> print("=== VERIFICATION COMPLETE ===")
+> EOF
+=== VERIFICATION ===
+
+Source A user IDs: [101, 102]
+Source B user IDs: [101, 103]
+Source C user IDs: [101, 104]
+All unique user IDs from sources: [101, 102, 103, 104]
+
+Merged file user IDs: [101, 102, 103, 104]
+
+✓ All unique users from all sources are included
+
+Data types:
+user_id          int64
+name            object
+email           object
+created_date    object
+status          object
+dtype: object
+
+✓ user_id is integer type
+
+✓ All dates are in YYYY-MM-DD format
+
+Total conflicts: 3
+Conflicts in list: 3
+✓ Conflict count matches
+
+Verifying priority-based conflict resolution for user 101:
+  name: John Doe (should be 'John Doe' from source_a)
+  email: john@a.com (should be 'john@a.com' from source_a)
+  created_date: 2024-01-15 (should be '2024-01-15' from source_a)
+  status: active (should be 'active' from source_a)
+
+✓ Priority-based conflict resolution working correctly
+
+=== VERIFICATION COMPLETE ===
+root@8db1ad3c0d5d:/app#

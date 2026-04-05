@@ -1,0 +1,82 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> seqs = read_fasta('sequences.fasta')
+> input_seq = seqs['input']
+> output_seq = seqs['output']
+> egfp = seqs['egfp']
+> flag = seqs['flag']
+> snap = seqs['snap']
+>
+> print("Checking assembly structure...")
+>
+> # Check eGFP at position 210
+> egfp_pos = 210
+> if output_seq[egfp_pos:egfp_pos+len(egfp)] == egfp:
+>     print(f"✓ eGFP found at position {egfp_pos}")
+>
+>     # Check FLAG after eGFP
+>     flag_pos = egfp_pos + len(egfp)
+>     if output_seq[flag_pos:flag_pos+len(flag)] == flag:
+>         print(f"✓ FLAG found at position {flag_pos}")
+>
+>         # Check SNAP after FLAG
+>         snap_pos = flag_pos + len(flag)
+>         if output_seq[snap_pos:snap_pos+len(snap)] == snap:
+>             print(f"✓ SNAP found at position {snap_pos}")
+>
+>             # What comes after SNAP?
+>             after_snap = snap_pos + len(snap)
+>             print(f"\nAfter all inserts (position {after_snap}):")
+>             print(f"Output: {output_seq[after_snap:after_snap+40]}")
+>
+>             # Find this in input
+>             search_seq = output_seq[after_snap:after_snap+30]
+>             input_match = input_seq.find(search_seq)
+>             if input_match >= 0:
+>                 print(f"Found in input at position {input_match}")
+>
+>                 # What was before eGFP in output?
+>                 print(f"\nBefore eGFP (output position {egfp_pos}):")
+>                 print(f"Output: {output_seq[egfp_pos-40:egfp_pos]}")
+>
+>                 # Find this in input
+>                 search_before = output_seq[egfp_pos-30:egfp_pos]
+>                 input_before = input_seq.find(search_before)
+>                 if input_before >= 0:
+>                     print(f"Found in input at position {input_before}")
+>                     input_before_end = input_before + 30
+>
+>                     print(f"\n" + "="*80)
+>                     print("ASSEMBLY STRUCTURE:")
+>                     print(f"Input backbone: positions 0-{input_before_end} and {input_match}-end")
+>                     print(f"Insert at input position {input_before_end}")
+>                     print(f"Removed from input: positions {input_before_end}-{input_match} ({input_match - input_before_end} bp)")
+>                     print(f"Inserted: eGFP + FLAG + SNAP ({len(egfp)+len(flag)+len(snap)} bp)")
+>
+>                     removed_seq = input_seq[input_before_end:input_match]
+>                     print(f"\nRemoved sequence: {removed_seq[:60]}...")
+>
+> EOF
+Checking assembly structure...
+root@a0b49dcae9e4:/app#

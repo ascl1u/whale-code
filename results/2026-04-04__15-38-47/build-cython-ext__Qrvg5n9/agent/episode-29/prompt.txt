@@ -1,0 +1,38 @@
+New Terminal Output:
+
+root@7edb0233cfc0:/app/pyknotid# cat > /tmp/fix_numpy_types.py << 'EOFPY'
+> import os
+> import re
+>
+> def fix_numpy_types(filepath):
+>     with open(filepath, 'r') as f:
+>         content = f.read()
+>
+>     original = content
+>
+>     # Replace n.float with n.float64 (but not n.float16, n.float32, n.float64, n.float128)
+>     content = re.sub(r'\bn\.float(?![0-9])', 'n.float64', content)
+>
+>     # Replace n.int with n.intp (but not n.int8, n.int16, n.int32, n.int64)
+>     content = re.sub(r'\bn\.int(?![0-9_])', 'n.intp', content)
+>
+>     # Replace n.complex with n.complex128 (but not n.complex64, n.complex128, n.complex256)
+>     content = re.sub(r'\bn\.complex(?![0-9])', 'n.complex128', content)
+>
+>     if content != original:
+>         with open(filepath, 'w') as f:
+>             f.write(content)
+>         print(f"Fixed: {filepath}")
+>         return True
+>     return False
+>
+> # Find all Python files
+> for root, dirs, files in os.walk('/app/pyknotid/pyknotid'):
+>     for file in files:
+>         if file.endswith('.py'):
+>             filepath = os.path.join(root, file)
+>             fix_numpy_types(filepath)
+>
+> print("\nAll numpy type aliases have been fixed!")
+> EOFPY
+root@7edb0233cfc0:/app/pyknotid#

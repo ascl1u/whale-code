@@ -1,0 +1,159 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+>
+> def g_function(a, b, x):
+>     """FEAL G function (same as in feal.py)"""
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+>
+ > def f_function(input_val):
+>     """FEAL F function (same as in feal.py)"""
+>     x = [0] * 4
+n>     y = [0] * 4
+_>
+p>     # Extract bytes from input (big-endian)
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>
+>     # Apply G function operations
+ >     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>
+>     # Combine bytes into output (big-endian)
+ >     output = 0
+h>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>
+r>     return output & 0xFFFFFFFF
+>
+e>
+> def getleft(x):
+>     """Get the left (upper) 32 bits of a 64-bit value"""
+>     return (x >> 32) & 0xFFFFFFFF
+>
+ >
+ > def getright(x):
+ a >     """Get the right (lower) 32 bits of a 64-bit value"""
+>     return x & 0xFFFFFFFF
+>
+ >
+ > def attack(encrypt_fn):
+>     """Recover key[5] using chosen plaintext attack"""
+r>
+>     # Collect some plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(8):
+>         plaintext = i * 0x0101010101010101
+>         ciphertext = encrypt_fn(plaintext)
+>         pairs.append((plaintext, ciphertext))
+>
+>     # Try all possible 16-bit seeds for key[5]
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Test if this key is consistent with our observations
+>         consistent = True
+>
+>         for plaintext, ciphertext in pairs:
+>             # After encryption, the output is merge(right, left)
+>             # where right and left are the final values after all rounds
+>
+>             # From ciphertext: final_right = getleft(ciphertext), final_left = getright(ciphertext)
+>             final_right = getleft(ciphertext)
+>             final_left = getright(ciphertext)
+>
+>             # Before the swap: left ^= right was done
+>             # So: before_swap_left = final_left ^ final_right
+>             before_swap_left = final_left ^ final_right
+>             before_swap_right = final_right
+>
+>             # Now we need to reverse the last round (round 3, using key[5])
+>             # In the last round:
+>             # mixed = f_function(right_in ^ key[5])
+>             # right_out = left_in ^ mixed
+>             # left_out = right_in
+>
+>             # So: before_swap_left = right_in (after round 3)
+>             # before_swap_right = left_in (after round 3)
+>
+>             # We have: left_out = right_in, so right_in = before_swap_left
+>             # We have: right_out = left_in ^ mixed, so left_in = right_out ^ mixed
+>
+>             right_in_round3 = before_swap_left
+>             left_out_round3 = before_swap_right
+>
+>             # Compute what mixed should be using our candidate key
+>             mixed = f_function(right_in_round3 ^ candidate_key5)
+>
+>             # Compute what left_in should be
+>             left_in_round3 = left_out_round3 ^ mixed
+>
+>             # Now we can't easily verify this without knowing the other keys,
+>             # but we can use multiple pairs to find consistency
+>
+>         # For a better approach, let's use differential analysis
+>         # We need a more sophisticated method
+>
+>     # Let's try a different approach: use the structure more directly
+>     # We'll use chosen plaintexts that differ only in specific bits
+>
+>     # Simpler approach: just test each candidate thoroughly
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # We need to verify this candidate somehow
+>         # Let's use a voting system based on consistency
+>
+>         # Actually, let's think differently:
+>         # We can use the fact that we can partially decrypt
+>
+>     # Most direct approach: brute force with verification
+>     # Collect more pairs and use statistical analysis
+>
+>     test_pairs = []
+>     for i in range(32):
+>         pt = (i << 32) | i
+>         ct = encrypt_fn(pt)
+>         test_pairs.append((pt, ct))
+>
+>     best_candidate = None
+>     best_score = -1
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>         score = 0
+>
+>         # For each pair, try to verify consistency
+>         for i in range(len(test_pairs) - 1):
+>             pt1, ct1 = test_pairs[i]
+>             pt2, ct2 = test_pairs[i + 1]
+>
+>             # Partial decryption of last round
+>             # This is getting complex, let me try a different strategy
+>             pass
+>
+>     # Alternative: Use meet-in-the-middle or known plaintext structure
+>     # Let's use a more direct statistical approach
+>
+>     # Try each candidate and see which one makes sense
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # We'll return the first one that seems to work
+>         # But we need a way to verify...
+>
+>         # Let's use the encryption oracle more cleverly
+>         pass
+>
+>     # For now, return a placeholder
+>     # We need to implement proper differential cryptanalysis
+>     return 0
+>
+> EOF
+root@486aac7a4fa6:/app#

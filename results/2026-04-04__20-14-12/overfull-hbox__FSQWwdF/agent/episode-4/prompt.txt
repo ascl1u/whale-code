@@ -1,0 +1,90 @@
+New Terminal Output:
+
+root@b419d4b4dbd9:/app# cat > fix_overfull.py << 'EOF'
+> import re
+> import subprocess
+> import os
+>
+> # Parse synonyms.txt
+> def parse_synonyms(filename):
+>     synonym_map = {}
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if not line:
+>                 continue
+>             words = [w.strip() for w in line.split(',')]
+>             # Create mapping from each word to all its synonyms
+>             for word in words:
+>                 synonym_map[word] = words
+>     return synonym_map
+>
+> # Read input.tex
+> def read_input():
+>     with open('input.tex', 'r') as f:
+>         return f.read()
+>
+> # Write input.tex
+> def write_input(content):
+>     with open('input.tex', 'w') as f:
+>         f.write(content)
+>
+> # Compile and check for overfull hbox
+> def check_overfull():
+>     result = subprocess.run(['pdflatex', '-interaction=nonstopmode', 'main.tex'],
+>                           capture_output=True, text=True)
+>     output = result.stdout + result.stderr
+>     overfull_lines = [line for line in output.split('\n') if 'Overfull' in line]
+>     return overfull_lines
+>
+> # Replace a word with a shorter synonym
+> def replace_word(text, old_word, new_word):
+>     # Use word boundaries to avoid partial replacements
+>     pattern = r'\b' + re.escape(old_word) + r'\b'
+>     return re.sub(pattern, new_word, text)
+>
+> synonym_map = parse_synonyms('synonyms.txt')
+> original_text = read_input()
+>
+> # Strategy: Replace specific problematic words with shorter synonyms
+> replacements = [
+>     # Line 5-6 issues
+>     ('curious', 'odd'),  # curious (7 chars) -> odd (3 chars)
+>     ('natures', 'traits'),  # natures (7 chars) -> traits (6 chars)
+>     ('confidences', 'secrets'),  # confidences (11 chars) -> secrets (7 chars)
+>     ('unsought', 'unwanted'),  # unsought (8 chars) -> unwanted (8 chars) - same, try another
+>
+>     # Line 7-8 issues
+>     ('riotous', 'wild'),  # riotous (7 chars) -> wild (4 chars)
+>     ('excursions', 'trips'),  # excursions (10 chars) -> trips (5 chars)
+>     ('responsiveness', 'awareness'),  # responsiveness (15 chars) -> awareness (9 chars)
+>     ('temperament', 'nature'),  # temperament (11 chars) -> nature (6 chars)
+>
+>     # Line 13-14 issue
+>     ('wisdom', 'insight'),  # wisdom (6 chars) -> insight (7 chars) - longer, try knowledge
+>
+>     # Line 19 issue
+>     ('pathfinder', 'pioneer'),  # pathfinder (10 chars) -> pioneer (7 chars)
+> ]
+>
+> text = original_text
+>
+> print("Attempting replacements...")
+> for old, new in replacements:
+>     if old in synonym_map and new in synonym_map[old]:
+>         text = replace_word(text, old, new)
+>         print(f"Replaced '{old}' with '{new}'")
+>     else:
+>         print(f"Warning: '{new}' not a valid synonym for '{old}'")
+>
+> write_input(text)
+> print("\nChecking compilation...")
+> overfull = check_overfull()
+> if overfull:
+>     print(f"Still have {len(overfull)} overfull warnings:")
+>     for line in overfull:
+>         print(line)
+> else:
+>     print("No overfull hbox warnings!")
+> EOF
+root@b419d4b4dbd9:/app#

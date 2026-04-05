@@ -1,0 +1,50 @@
+New Terminal Output:
+
+root@a6872a517cdf:/app# python3 << 'EOF'
+> import pandas as pd
+> import re
+>
+> def clean_text(text):
+>     """Clean text for fasttext training"""
+>     # Convert to string and lowercase
+>     text = str(text).lower()
+>     # Remove newlines and extra spaces
+>     text = re.sub(r'\s+', ' ', text)
+>     # Remove special characters but keep basic punctuation
+>     text = re.sub(r'[^a-z0-9\s.,!?\'\-]', '', text)
+>     return text.strip()
+>
+> # Read train data
+> print("Reading train data...")
+> train_df = pd.read_parquet('data/train-00000-of-00001.parquet')
+>
+> # Read test data
+> print("Reading test data...")
+> test_df = pd.read_parquet('data/test-00000-of-00001.parquet')
+>
+> # Convert to fasttext format
+> print("Converting train data to fasttext format...")
+> with open('train.txt', 'w', encoding='utf-8') as f:
+>     for idx, row in train_df.iterrows():
+>         text = clean_text(row['text'])
+>         label = row['label']
+>         f.write(f'__label__{label} {text}\n')
+>         if idx % 100000 == 0:
+>             print(f"Processed {idx} train examples...")
+>
+> print("Converting test data to fasttext format...")
+> with open('test.txt', 'w', encoding='utf-8') as f:
+>     for idx, row in test_df.iterrows():
+>         text = clean_text(row['text'])
+>         label = row['label']
+>         f.write(f'__label__{label} {text}\n')
+>
+> print("Data conversion complete!")
+> print(f"Train examples: {len(train_df)}")
+> print(f"Test examples: {len(test_df)}")
+> EOF
+Reading train data...
+Reading test data...
+Converting train data to fasttext format...
+Processed 0 train examples...
+

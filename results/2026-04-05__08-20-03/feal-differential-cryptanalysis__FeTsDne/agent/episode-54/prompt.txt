@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>         # Quick check: try just a few key[4] values
+>         found = False
+>         for test_seed in [0, 1, 100, 1000, 10000, 32768, 65535]:  # Just 7 test values
+>             test_key4 = (test_seed * 1234567) & 0xFFFFFFFF
+>
+>             # Compute what L2 difference would be
+>             f_diff = f_function(L3_0 ^ test_key4) ^ f_function(L3_1 ^ test_key4)
+>             L2_diff = (R3_0 ^ R3_1) ^ f_diff
+>
+>             # Check if this L2 difference is valid (can come from round 2 with input diff 1)
+>             if L2_diff in valid_diffs:
+>                 found = True
+>                 break
+>
+>         if found:
+>             # Do additional validation with another pair
+>             c2_left = getleft(pairs[2][1])
+>             c2_right = getright(pairs[2][1])
+>             R4_2 = c2_left
+>             L4_2 = c2_right ^ R4_2
+>             R3_2 = L4_2
+>             L3_2 = R4_2 ^ f_function(R3_2 ^ key5)
+>
+>             # Check with pairs 1 and 2
+>             found2 = False
+>             for test_seed in [0, 1, 100, 1000, 10000, 32768, 65535]:
+>                 test_key4 = (test_seed * 1234567) & 0xFFFFFFFF
+>                 f_diff = f_function(L3_1 ^ test_key4) ^ f_function(L3_2 ^ test_key4)
+>                 L2_diff = (R3_1 ^ R3_2) ^ f_diff
+>                 if L2_diff in valid_diffs:
+>                     found2 = True
+>                     break
+>
+>             if found2:
+>                 return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

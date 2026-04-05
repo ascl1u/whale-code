@@ -1,0 +1,430 @@
+[?2004hroot@b5686e945626:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@b5686e945626:/app# clear
+[?2004l[H[J[?2004hroot@b5686e945626:/app# ls -lh /app/alpine.iso; printf '%s\n' '__CMDEND__1__'
+[?2004l-rw-r--r-- 1 root root 957M Dec  7  2023 /app/alpine.iso
+__CMDEND__1__
+[?2004hroot@b5686e945626:/app# which qemu-system-x86_64; printf '%s\n' '__CMDEND__2__'
+[?2004l/usr/bin/qemu-system-x86_64
+__CMDEND__2__
+[?2004hroot@b5686e945626:/app# qemu-system-x86_64 -m 512 -cdrom /app/alpine.iso -boot d -nographic -serial mon:telnet:127.0.0.1:6665,server,nowait &
+[?2004l[1] 131
+[?2004hroot@b5686e945626:/app# sleep 5; printf '%s\n' '__CMDEND__3__'
+[?2004l__CMDEND__3__
+[?2004hroot@b5686e945626:/app# netstat -tlnp | grep 6665
+[?2004lbash: netstat: command not found
+[?2004hroot@b5686e945626:/app# ss -tlnp | grep 6665
+[?2004lbash: ss: command not found
+[?2004hroot@b5686e945626:/app# ps aux | grep qemu
+[?2004lbash: ps: command not found
+[?2004hroot@b5686e945626:/app# which telnet; printf '%s\n' '__CMDEND__4__'
+[?2004l/usr/bin/telnet
+__CMDEND__4__
+[?2004hroot@b5686e945626:/app# timeout 3 telnet 127.0.0.1 6665 < /dev/null
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+Connection closed by foreign host.
+[?2004hroot@b5686e945626:/app# jobs; printf '%s\n' '__CMDEND__5__'
+[?2004l[1]+  Running                 qemu-system-x86_64 -m 512 -cdrom /app/alpine.iso -boot d -nographic -serial mon:telnet:127.0.0.1:6665,server,nowait &
+__CMDEND__5__
+[?2004hroot@b5686e945626:/app# kill %1; printf '%s\n' '__CMDEND__6__'
+[?2004l__CMDEND__6__
+[?2004hroot@b5686e945626:/app# qemu-system-x86_64: terminating on signal 15 from pid 58 (/bin/bash)
+mkdir -p /tmp/iso; printf '%s\n' '__CMDEND__7__'
+[?2004l[1]+  Done                    qemu-system-x86_64 -m 512 -cdrom /app/alpine.iso -boot d -nographic -serial mon:telnet:127.0.0.1:6665,server,nowait
+__CMDEND__7__
+[?2004hroot@b5686e945626:/app# mount -o loop /app/alpine.iso /tmp/iso; printf '%s\n' '__CMDEND__8__'
+[?2004lmount: /tmp/iso: mount failed: Operation not permitted.
+__CMDEND__8__
+[?2004hroot@b5686e945626:/app# which bsdtar; printf '%s\n' '__CMDEND__9__'
+[?2004l__CMDEND__9__
+[?2004hroot@b5686e945626:/app# which 7z; printf '%s\n' '__CMDEND__10__'
+[?2004l__CMDEND__10__
+[?2004hroot@b5686e945626:/app# ls /tmp/iso 2>/dev/null || echo 'not mounted'
+[?2004l[?2004hroot@b5686e945626:/app# which isoinfo; printf '%s\n' '__CMDEND__11__'
+[?2004l__CMDEND__11__
+[?2004hroot@b5686e945626:/app# which xorriso; printf '%s\n' '__CMDEND__12__'
+[?2004l__CMDEND__12__
+[?2004hroot@b5686e945626:/app# python3 -c "import sys; print(sys.version)"
+[?2004l3.9.2 (default, Mar 20 2025, 02:07:39) 
+[GCC 10.2.1 20210110]
+[?2004hroot@b5686e945626:/app# python3 << 'EOF'
+[?2004l[?2004h> import os
+[?2004l[?2004h> import struct
+[?2004l[?2004h> 
+[?2004l[?2004h> # Try to find and extract kernel and initrd from ISO
+[?2004l[?2004h> iso_path = '/app/alpine.iso'
+[?2004l[?2004h> 
+[?2004l[?2004h> # ISO 9660 basic parsing to find files
+[?2004l[?2004h> with open(iso_path, 'rb') as f:
+[?2004l[?2004h>     # Skip to volume descriptor at sector 16
+[?2004l[?2004h>     f.seek(16 * 2048)
+[?2004l[?2004h>     vd = f.read(2048)
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Check if it's a primary volume descriptor
+[?2004l[?2004h>     if vd[0:6] == b'\x01CD001':
+[?2004l[?2004h>         print("ISO 9660 format detected")
+[?2004l[?2004h>         # Root directory is at a specific location
+[?2004l[?2004h>         # This is complex, let's try a simpler approach
+[?2004l[?2004h>         
+[?2004l[?2004h> print("Trying simpler approach...")
+[?2004l[?2004h> EOF
+[?2004lISO 9660 format detected
+Trying simpler approach...
+[?2004hroot@b5686e945626:/app# which expect; printf '%s\n' '__CMDEND__13__'
+[?2004l/usr/bin/expect
+__CMDEND__13__
+[?2004hroot@b5686e945626:/app# strings /app/alpine.iso | grep -i 'vmlinuz\|boot/vmlinuz' | head -20
+[?2004lbash: strings: command not found
+[?2004hroot@b5686e945626:/app# python3 << 'EOF'
+[?2004l[?2004h> import os
+[?2004l[?2004h> 
+[?2004l[?2004h> # Search for kernel in ISO
+[?2004l[?2004h> iso_path = '/app/alpine.iso'
+[?2004l[?2004h> chunk_size = 1024 * 1024  # 1MB chunks
+[?2004l[?2004h> 
+[?2004l[?2004h> with open(iso_path, 'rb') as f:
+[?2004l[?2004h>     data = f.read()
+[?2004l[?2004h>     
+[?2004l[?2004h> # Look for common Alpine kernel paths
+[?2004l[?2004h> if b'boot/vmlinuz' in data:
+[?2004l[?2004h>     print("Found boot/vmlinuz reference")
+[?2004l[?2004h> if b'vmlinuz-lts' in data:
+[?2004l[?2004h>     print("Found vmlinuz-lts reference")
+[?2004l[?2004h> if b'vmlinuz-virt' in data:
+[?2004l[?2004h>     print("Found vmlinuz-virt reference")  
+[?2004l[?2004h> if b'initramfs' in data:
+[?2004l[?2004h>     print("Found initramfs reference")
+[?2004l[?2004h>     
+[?2004l[?2004h> EOF
+[?2004lFound boot/vmlinuz reference
+Found vmlinuz-lts reference
+Found initramfs reference
+[?2004hroot@b5686e945626:/app# python3 << 'EOF'
+[?2004l[?2004h> import struct
+[?2004l[?2004h> import os
+[?2004l[?2004h> 
+[?2004l[?2004h> def read_iso_directory(iso_path):
+[?2004l[?2004h>     with open(iso_path, 'rb') as f:
+[?2004l[?2004h>         # Read primary volume descriptor at sector 16
+[?2004l[?2004h>         f.seek(16 * 2048)
+[?2004l[?2004h>         pvd = f.read(2048)
+[?2004l[?2004h>         
+[?2004l[?2004h>         if pvd[0:6] != b'\x01CD001':
+[?2004l[?2004h>             return None
+[?2004l[?2004h>             
+[?2004l[?2004h>         # Root directory record starts at offset 156
+[?2004l[?2004h>         root_dir_record = pvd[156:156+34]
+[?2004l[?2004h>         root_lba = struct.unpack('<I', root_dir_record[2:6])[0]
+[?2004l[?2004h>         root_size = struct.unpack('<I', root_dir_record[10:14])[0]
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Read root directory
+[?2004l[?2004h>         f.seek(root_lba * 2048)
+[?2004l[?2004h>         root_data = f.read(root_size)
+[?2004l[?2004h>         
+[?2004l[?2004h>         return f, root_data, root_lba
+[?2004l[?2004h> 
+[?2004l[?2004h> result = read_iso_directory('/app/alpine.iso')
+[?2004l[?2004h> if result:
+[?2004l[?2004h>     print("Successfully parsed ISO structure")
+[?2004l[?2004h> else:
+[?2004l[?2004h>     print("Failed to parse ISO")
+[?2004l[?2004h>     
+[?2004l[?2004h> EOF
+[?2004lSuccessfully parsed ISO structure
+[?2004hroot@b5686e945626:/app# cat > /tmp/extract_iso.py << 'EOF'
+[?2004l                    dirs_to_search.append((record['lba'], record['size'], path + '/' + record['name']))
+                    else:
+                        for target in target_files:
+                            if target.lower() in full_path:
+                                found_files[target] = (record['lba'], record['size'])
+                                print(f"Found {target} at {full_path}")
+                
+                offset += record['length']
+        
+        return found_files
+
+# Find and extract kernel and initramfs
+target_files = ['vmlinuz-lts', 'initramfs-lts']
+found = find_and_extract_files('/app/alpine.iso', target_files)
+
+for name, (lba, size) in found.items():
+    output = f'/tmp/{name}'
+    extract_file('/app/alpine.iso', lba, size, output)
+    print(f"Extracted {name} to {output} ({size} bytes)")
+
+EOF
+[?2004h> import struct
+[?2004l[?2004h> import os
+[?2004l[?2004h> 
+[?2004l[?2004h> def parse_directory_record(data, offset):
+[?2004l[?2004h>     if offset >= len(data) or data[offset] == 0:
+[?2004l[?2004h>         return None
+[?2004l[?2004h>     
+[?2004l[?2004h>     length = data[offset]
+[?2004l[?2004h>     if length == 0:
+[?2004l[?2004h>         return None
+[?2004l[?2004h>         
+[?2004l[?2004h>     lba = struct.unpack('<I', data[offset+2:offset+6])[0]
+[?2004l[?2004h>     size = struct.unpack('<I', data[offset+10:offset+14])[0]
+[?2004l[?2004h>     flags = data[offset+25]
+[?2004l[?2004h>     name_len = data[offset+32]
+[?2004l[?2004h>     name = data[offset+33:offset+33+name_len].decode('ascii', errors='ignore')
+[?2004l[?2004h>     
+[?2004l[?2004h>     return {
+[?2004l[?2004h>         'length': length,
+[?2004l[?2004h>         'lba': lba,
+[?2004l[?2004h>         'size': size,
+[?2004l[?2004h>         'flags': flags,
+[?2004l[?2004h>         'name': name,
+[?2004l[?2004h>         'is_dir': (flags & 2) != 0
+[?2004l[?2004h>     }
+[?2004l[?2004h> 
+[?2004l[?2004h> def extract_file(iso_path, lba, size, output_path):
+[?2004l[?2004h>     with open(iso_path, 'rb') as f:
+[?2004l[?2004h>         f.seek(lba * 2048)
+[?2004l[?2004h>         data = f.read(size)
+[?2004l[?2004h>         with open(output_path, 'wb') as out:
+[?2004l[?2004h>             out.write(data)
+[?2004l[?2004h> 
+[?2004l[?2004h> def find_and_extract_files(iso_path, target_files):
+[?2004l[?2004h>     with open(iso_path, 'rb') as f:
+[?2004l[?2004h>         # Read primary volume descriptor
+[?2004l[?2004h>         f.seek(16 * 2048)
+[?2004l[?2004h>         pvd = f.read(2048)
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Get root directory
+[?2004l[?2004h>         root_dir_record = pvd[156:156+34]
+[?2004l[?2004h>         root_lba = struct.unpack('<I', root_dir_record[2:6])[0]
+[?2004l[?2004h>         root_size = struct.unpack('<I', root_dir_record[10:14])[0]
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Search directories
+[?2004l[?2004h>         dirs_to_search = [(root_lba, root_size, '')]
+[?2004l[?2004h>         found_files = {}
+[?2004l[?2004h>         
+[?2004l[?2004h>         while dirs_to_search:
+[?2004l[?2004h>             dir_lba, dir_size, path = dirs_to_search.pop(0)
+[?2004l[?2004h>             f.seek(dir_lba * 2048)
+[?2004l[?2004h>             dir_data = f.read(dir_size)
+[?2004l[?2004h>             
+[?2004l[?2004h>             offset = 0
+[?2004l[?2004h>             while offset < len(dir_data):
+[?2004l[?2004h>                 record = parse_directory_record(dir_data, offset)
+[?2004l[?2004h>                 if not record:
+[?2004l[?2004h>                     offset += 1
+[?2004l[?2004h>                     continue
+[?2004l[?2004h>                     
+[?2004l[?2004h>                 if record['name'] not in ['.', '..', '\x00']:
+[?2004l[?2004h>                     full_path = (path + '/' + record['name']).lower().strip('/')
+[?2004l[?2004h>                     
+[?2004l[?2004h>                     if record['is_dir']:
+[?2004l[?2004h>                         dirs_to_search.append((record['lba'], record['size'], path + '/' + record['name']))
+[?2004l[?2004h>                     else:
+[?2004l[?2004h>                         for target in target_files:
+[?2004l[?2004h>                             if target.lower() in full_path:
+[?2004l[?2004h>                                 found_files[target] = (record['lba'], record['size'])
+[?2004l[?2004h>                                 print(f"Found {target} at {full_path}")
+[?2004l[?2004h>                 
+[?2004l[?2004h>                 offset += record['length']
+[?2004l[?2004h>         
+[?2004l[?2004h>         return found_files
+[?2004l[?2004h> 
+[?2004l[?2004h> # Find and extract kernel and initramfs
+[?2004l[?2004h> target_files = ['vmlinuz-lts', 'initramfs-lts']
+[?2004l[?2004h> found = find_and_extract_files('/app/alpine.iso', target_files)
+[?2004l[?2004h> 
+[?2004l[?2004h> for name, (lba, size) in found.items():
+[?2004l[?2004h>     output = f'/tmp/{name}'
+[?2004l[?2004h>     extract_file('/app/alpine.iso', lba, size, output)
+[?2004l[?2004h>     print(f"Extracted {name} to {output} ({size} bytes)")
+[?2004l[?2004h> 
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@b5686e945626:/app# python3 /tmp/extract_iso.py; printf '%s\n' '__CMDEND__14__'
+[?2004lpython3 << 'EOF'
+import struct
+
+def parse_directory_record(data, offset):
+    if offset >= len(data) or data[offset] == 0:
+        return None
+    length = data[offset]
+    if length == 0:
+        return None
+    lba = struct.unpack('<I', data[offset+2:offset+6])[0]
+    size = struct.unpack('<I', data[offset+10:offset+14])[0]
+    flags = data[offset+25]
+    name_len = data[offset+32]
+    name = data[offset+33:offset+33+name_len].decode('ascii', errors='ignore')
+    return {'length': length, 'lba': lba, 'size': size, 'flags': flags, 'name': name, 'is_dir': (flags & 2) != 0}
+
+with open('/app/alpine.iso', 'rb') as f:
+    f.seek(16 * 2048)
+    pvd = f.read(2048)
+    root_dir_record = pvd[156:156+34]
+    root_lba = struct.unpack('<I', root_dir_record[2:6])[0]
+    root_size = struct.unpack('<I', root_dir_record[10:14])[0]
+    
+    dirs_to_search = [(root_lba, root_size, '')]
+    files_found = []
+    
+    while dirs_to_search and len(files_found) < 100:
+        dir_lba, dir_size, path = dirs_to_search.pop(0)
+        f.seek(dir_lba * 2048)
+        dir_data = f.read(dir_size)
+        offset = 0
+        while offset < len(dir_data):
+            record = parse_directory_record(dir_data, offset)
+            if not record:
+                offset += 1
+                continue
+            if record['name'] not in ['.', '..', '\x00']:
+                full_path = (path + '/' + record['name']).strip('/')
+                if record['is_dir']:
+                    dirs_to_search.append((record['lba'], record['size'], full_path))
+                else:
+                    files_found.append(full_path)
+                    if 'boot' in full_path.lower() or 'vmlinuz' in full_path.lower() or 'initr' in full_path.lower():
+                        print(f"{full_path} (LBA: {record['lba']}, Size: {record['size']})")
+            offset += record['length']
+
+EOF
+python3 << 'EOF'
+with open('/app/alpine.iso', 'rb') as f:
+    # Extract vmlinuz
+    f.seek(290 * 2048)
+    kernel = f.read(7219200)
+    with open('/tmp/vmlinuz-lts', 'wb') as out:
+        out.write(kernel)
+    print(f"Extracted vmlinuz-lts: {len(kernel)} bytes")
+    
+    # Extract initramfs
+    f.seek(3816 * 2048)
+    initramfs = f.read(39165952)
+    with open('/tmp/initramfs-lts', 'wb') as out:
+        out.write(initramfs)
+    print(f"Extracted initramfs-lts: {len(initramfs)} bytes")
+EOF
+ls -lh /tmp/vmlinuz-lts /tmp/initramfs-lts 2>&1
+
+^CTraceback (most recent call last):
+  File "/tmp/extract_iso.py", line 78, in <module>
+    found = find_and_extract_files('/app/alpine.iso', target_files)
+  File "/tmp/extract_iso.py", line 50, in find_and_extract_files
+    dir_lba, dir_size, path = dirs_to_search.pop(0)
+KeyboardInterrupt
+
+[?2004hroot@b5686e945626:/app# ls -lh /tmp/vmlinuz-lts /tmp/initramfs-lts 2>&1
+[?2004lls: cannot access '/tmp/vmlinuz-lts': No such file or directory
+ls: cannot access '/tmp/initramfs-lts': No such file or directory
+[?2004hroot@b5686e945626:/app# dd if=/app/alpine.iso of=/tmp/vmlinuz-lts bs=2048 skip=290 count=3525 2>&1 | tail -3
+[?2004l3525+0 records in
+3525+0 records out
+7219200 bytes (7.2 MB, 6.9 MiB) copied, 0.030552 s, 236 MB/s
+[?2004hroot@b5686e945626:/app# dd if=/app/alpine.iso of=/tmp/initramfs-lts bs=2048 skip=3816 count=19120 2>&1 | tail -3
+[?2004l19120+0 records in
+19120+0 records out
+39157760 bytes (39 MB, 37 MiB) copied, 0.147618 s, 265 MB/s
+[?2004hroot@b5686e945626:/app# qemu-system-x86_64 -m 512 -kernel /tmp/vmlinuz-lts -initrd /tmp/initramfs-lts -append "console=ttyS0" -cdrom /app/alpine.iso -nographic -serial mon:telnet:127.0.0.1:6665,server,nowait &
+[?2004l[1] 821
+[?2004hroot@b5686e945626:/app# qemu: linux kernel too old to load a ram disk
+jobs; printf '%s\n' '__CMDEND__15__'
+[?2004l[1]+  Exit 1                  qemu-system-x86_64 -m 512 -kernel /tmp/vmlinuz-lts -initrd /tmp/initramfs-lts -append "console=ttyS0" -cdrom /app/alpine.iso -nographic -serial mon:telnet:127.0.0.1:6665,server,nowait
+__CMDEND__15__
+[?2004hroot@b5686e945626:/app# file /tmp/vmlinuz-lts; printf '%s\n' '__CMDEND__16__'
+[?2004lbash: file: command not found
+__CMDEND__16__
+[?2004hroot@b5686e945626:/app# cat > /tmp/boot_qemu.exp << 'EOF'
+[?2004l[?2004h> #!/usr/bin/expect -f
+[?2004l[?2004h> set timeout 60
+[?2004l[?2004h> spawn qemu-system-x86_64 -m 512 -cdrom /app/alpine.iso -boot d -nographic -serial mon:telnet:127.0.0.1:6665,server,nowait
+[?2004l[?2004h> expect {
+[?2004l[?2004h>     timeout { puts "Timeout waiting for boot"; exit 1 }
+[?2004l[?2004h>     eof { puts "QEMU exited unexpectedly"; exit 1 }
+[?2004l[?2004h> }
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@b5686e945626:/app# hexdump -C /tmp/vmlinuz-lts | head -5
+[?2004lbash: hexdump: command not found
+[?2004hroot@b5686e945626:/app# qemu-system-x86_64 -m 512 -kernel /tmp/vmlinuz-lts -initrd /tmp/initramfs-lts -append "console=ttyS0 modules=loop,squashfs,sd-mod,usb-storage alpine_dev=cdrom:iso9660" -cdrom /app/alpine.iso -serial mon:telnet:127.0.0.1:6665,server,nowait -display none &
+[?2004l[1] 933
+[?2004hroot@b5686e945626:/app# qemu: linux kernel too old to load a ram disk
+[1]+  Exit 1                  qemu-system-x86_64 -m 512 -kernel /tmp/vmlinuz-lts -initrd /tmp/initramfs-lts -append "console=ttyS0 modules=loop,squashfs,sd-mod,usb-storage alpine_dev=cdrom:iso9660" -cdrom /app/alpine.iso -serial mon:telnet:127.0.0.1:6665,server,nowait -display none
+[?2004lbash: [1]+: command not found
+[1]+  Exit 1                  qemu-system-x86_64 -m 512 -kernel /tmp/vmlinuz-lts -initrd /tmp/initramfs-lts -append "console=ttyS0 modules=loop,squashfs,sd-mod,usb-storage alpine_dev=cdrom:iso9660" -cdrom /app/alpine.iso -serial mon:telnet:127.0.0.1:6665,server,nowait -display none
+[?2004hroot@b5686e945626:/app# python3 << 'EOF'
+[?2004l[?2004h> with open('/tmp/vmlinuz-lts', 'rb') as f:
+[?2004l[?2004h>     header = f.read(100)
+[?2004l[?2004h>     print("First 100 bytes (hex):", header[:100].hex())
+[?2004l[?2004h>     print("First 20 bytes (ascii):", header[:20])
+[?2004l[?2004h> EOF
+[?2004lFirst 100 bytes (hex): 636b65742061637475616c3a20256c752c20657870656374656420256c750a004261642049502076657273696f6e3a2025640a006e6f7420616e204950206164647265737300554450207061636b657420746f6f2073686f72743a20256c750a006e6574
+First 20 bytes (ascii): b'cket actual: %lu, ex'
+[?2004hroot@b5686e945626:/app# python3 << 'EOF'
+[?2004l[?2004h> import struct
+[?2004l[?2004h> 
+[?2004l[?2004h> # Re-parse ISO to get correct file location for VMLINUZ-LTS
+[?2004l[?2004h> with open('/app/alpine.iso', 'rb') as f:
+[?2004l[?2004h>     # Get root directory
+[?2004l[?2004h>     f.seek(16 * 2048)
+[?2004l[?2004h>     pvd = f.read(2048)
+[?2004l[?2004h>     root_lba = struct.unpack('<I', pvd[156+2:156+6])[0]
+[?2004l[?2004h>     root_size = struct.unpack('<I', pvd[156+10:156+14])[0]
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Find BOOT directory
+[?2004l[?2004h>     f.seek(root_lba * 2048)
+[?2004l[?2004h>     root_data = f.read(root_size)
+[?2004l[?2004h>     
+[?2004l[?2004h>     offset = 0
+[?2004l[?2004h>     boot_lba = None
+[?2004l[?2004h>     while offset < len(root_data):
+[?2004l[?2004h>         if root_data[offset] == 0:
+[?2004l[?2004h>             offset += 1
+[?2004l[?2004h>             continue
+[?2004l[?2004h>         length = root_data[offset]
+[?2004l[?2004h>         if length == 0:
+[?2004l[?2004h>             break
+[?2004l[?2004h>         name_len = root_data[offset+32]
+[?2004l[?2004h>         name = root_data[offset+33:offset+33+name_len].decode('ascii', errors='ignore')
+[?2004l[?2004h>         if 'BOOT' in name.upper():
+[?2004l[?2004h>             boot_lba = struct.unpack('<I', root_data[offset+2:offset+6])[0]
+[?2004l[?2004h>             boot_size = struct.unpack('<I', root_data[offset+10:offset+14])[0]
+[?2004l[?2004h>             print(f"Found BOOT dir at LBA {boot_lba}, size {boot_size}")
+[?2004l[?2004h>             break
+[?2004l[?2004h>         offset += length
+[?2004l[?2004h>     
+[?2004l[?2004h>     if boot_lba:
+[?2004l[?2004h>         # Read BOOT directory
+[?2004l[?2004h>         f.seek(boot_lba * 2048)
+[?2004l[?2004h>         boot_data = f.read(boot_size)
+[?2004l[?2004h>         
+[?2004l[?2004h>         offset = 0
+[?2004l[?2004h>         while offset < len(boot_data):
+[?2004l[?2004h>             if boot_data[offset] == 0:
+[?2004l[?2004h>                 offset += 1
+[?2004l[?2004h>                 continue
+[?2004l[?2004h>             length = boot_data[offset]
+[?2004l[?2004h>             if length == 0:
+[?2004l[?2004h>                 break
+[?2004l[?2004h>             name_len = boot_data[offset+32]
+[?2004l[?2004h>             name = boot_data[offset+33:offset+33+name_len].decode('ascii', errors='ignore')
+[?2004l[?2004h>             if 'VMLINUZ' in name.upper():
+[?2004l[?2004h>                 file_lba = struct.unpack('<I', boot_data[offset+2:offset+6])[0]
+[?2004l[?2004h>                 file_size = struct.unpack('<I', boot_data[offset+10:offset+14])[0]
+[?2004l[?2004h>                 print(f"Found {name} at LBA {file_lba}, size {file_size}")
+[?2004l[?2004h>                 
+[?2004l[?2004h>                 # Extract the file
+[?2004l[?2004h>                 f.seek(file_lba * 2048)
+[?2004l[?2004h>                 file_data = f.read(file_size)
+[?2004l[?2004h>                 with open('/tmp/vmlinuz-lts-new', 'wb') as out:
+[?2004l[?2004h>                     out.write(file_data)
+[?2004l[?2004h>                 print(f"Extracted to /tmp/vmlinuz-lts-new")
+[?2004l[?2004h>                 print(f"First 20 bytes: {file_data[:20].hex()}")
+[?2004l[?2004h>                 break
+[?2004l[?2004h>             offset += length
+[?2004l[?2004h> 
+[?2004l[?2004h> EOF
+[?2004lFound BOOT dir at LBA 62, size 2048
+Found VMLINUZ_LTS.;1 at LBA 483188, size 11879168
+Extracted to /tmp/vmlinuz-lts-new
+First 20 bytes: 4d5aea0700c0078cc88ed88ec08ed031e4fbfcbe
+[?2004hroot@b5686e945626:/app# 

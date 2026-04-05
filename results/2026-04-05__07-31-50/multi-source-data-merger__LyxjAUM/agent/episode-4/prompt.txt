@@ -1,0 +1,155 @@
+New Terminal Output:
+
+1     104  Alice Brown  alice@c.com  2024-04-01    True
+root@8db1ad3c0d5d:/app# cat > merge_users.py << 'EOF'
+> import pandas as pd
+> import json
+dump> from datetime import datetime
+>
+
+> # Read source A (JSON - highest priority)
+> with open('/data/source_a/users.json', 'r') as f:
+
+p>     source_a_data = json.load(f)
+>
+> # Convert to DataFrame and map fields
+> df_a = pd.DataFrame(source_a_data)
+> df_a = df_a.rename(columns={
+>     'id': 'user_id',
+>     'full_name': 'name',
+>     'registration_date': 'created_date'
+> })
+> df_a['source'] = 'source_a'
+>
+> # Read source B (CSV - medium priority)
+> df_b = pd.read_csv('/data/source_b/users.csv')
+> df_b = df_b.rename(columns={
+>     'name': 'name',
+>     'email_address': 'email',
+>     'created_at': 'created_date'
+> })
+> # Map is_active to status
+> df_b['status'] = df_b['is_active'].apply(lambda x: 'active' if x else 'inactive')
+> df_b = df_b.drop(columns=['is_active'])
+> df_b['source'] = 'source_b'
+>
+> # Read source C (Parquet - lowest priority)
+> df_c = pd.read_parquet('/data/source_c/users.parquet')
+> df_c = df_c.rename(columns={
+>     'userId': 'user_id',
+>     'userName': 'name',
+>     'joined': 'created_date'
+> })
+> # Map active to status
+> df_c['status'] = df_c['active'].apply(lambda x: 'active' if x else 'inactive')
+> df_c = df_c.drop(columns=['active'])
+> df_c['source'] = 'source_c'
+>
+> # Ensure all DataFrames have the same columns
+> all_columns = ['user_id', 'name', 'email', 'created_date', 'status', 'source']
+> for col in all_columns:
+>     if col not in df_a.columns:
+>         df_a[col] = None
+>     if col not in df_b.columns:
+>         df_b[col] = None
+>     if col not in df_c.columns:
+>         df_c[col] = None
+>
+> df_a = df_a[all_columns]
+> df_b = df_b[all_columns]
+> df_c = df_c[all_columns]
+>
+> # Combine all sources
+> all_data = pd.concat([df_a, df_b, df_c], ignore_index=True)
+>
+> # Convert user_id to integer
+> all_data['user_id'] = all_data['user_id'].astype(int)
+>
+> # Get unique user_ids
+> unique_users = all_data['user_id'].unique()
+>
+> # Initialize conflict tracking
+> conflicts = []
+> merged_records = []
+>
+> # Process each user
+> for user_id in sorted(unique_users):
+>     user_records = all_data[all_data['user_id'] == user_id]
+>
+>     # Initialize merged record
+>     merged = {'user_id': int(user_id)}
+>
+>     # Track which sources have this user
+>     sources_present = user_records['source'].tolist()
+>
+>     # For each field, merge with priority
+>     for field in ['name', 'email', 'created_date', 'status']:
+>         values = {}
+>
+>         # Collect values from each source
+>         for _, row in user_records.iterrows():
+>             source = row['source']
+>             value = row[field]
+>             if pd.notna(value):
+>                 values[source] = value
+>
+>         # Select value based on priority
+>         selected_value = None
+>         if 'source_a' in values:
+>             selected_value = values['source_a']
+>         elif 'source_b' in values:
+>             selected_value = values['source_b']
+>         elif 'source_c' in values:
+>             selected_value = values['source_c']
+>
+>         merged[field] = selected_value
+>
+>         # Check for conflicts (different values across sources)
+>         unique_values = set(v for v in values.values() if pd.notna(v))
+>         if len(unique_values) > 1:
+>             conflicts.append({
+>                 'user_id': int(user_id),
+>                 'field': field,
+>                 'values': values,
+>                 'selected': selected_value
+>             })
+>
+>     merged_records.append(merged)
+>
+> # Create merged DataFrame
+> merged_df = pd.DataFrame(merged_records)
+>
+> # Ensure correct column order and types
+> merged_df = merged_df[['user_id', 'name', 'email', 'created_date', 'status']]
+> merged_df['user_id'] = merged_df['user_id'].astype('int64')
+>
+> # Convert date format to YYYY-MM-DD if needed
+> def normalize_date(date_str):
+>     if pd.isna(date_str):
+>         return None
+>     # Already in YYYY-MM-DD format in our sources
+>     return str(date_str)
+>
+> merged_df['created_date'] = merged_df['created_date'].apply(normalize_date)
+>
+> # Save merged data as Parquet
+> merged_df.to_parquet('/app/merged_users.parquet', index=False)
+>
+> # Create conflict report
+> conflict_report = {
+>     'total_conflicts': len(conflicts),
+>     'conflicts': conflicts
+> }
+>
+> # Save conflict report as JSON
+> with open('/app/conflicts.json', 'w') as f:
+>     json.dump(conflict_report, f, indent=2)
+>
+> print(f"Merged {len(merged_df)} unique users")
+> print(f"Found {len(conflicts)} conflicts")
+> print("\nMerged data preview:")
+> print(merged_df.to_string())
+> print("\nConflict report:")
+> print(json.dumps(conflict_report, indent=2))
+> EOF
+root@8db1ad3c0d5d:/app#

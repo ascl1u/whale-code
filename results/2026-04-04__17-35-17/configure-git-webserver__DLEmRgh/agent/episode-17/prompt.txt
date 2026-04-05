@@ -1,0 +1,25 @@
+New Terminal Output:
+
+root@0d73dcb25246:/# ls -la /etc/systemd/system/ 2>/dev/null | head -5
+total 16
+drwxr-xr-x 4 root root 4096 Oct  1  2025 .
+drwxr-xr-x 4 root root 4096 Dec  6  2023 ..
+drwxr-xr-x 2 root root 4096 Oct  1  2025 multi-user.target.wants
+drwxr-xr-x 2 root root 4096 Oct  1  2025 timers.target.wants
+root@0d73dcb25246:/# cat > /etc/systemd/system/webserver.service << 'EOF'
+> [Unit]
+> Description=Web Server for Git Repository
+> After=network.target
+>
+> [Service]
+> Type=simple
+> ExecStart=/usr/bin/python3 /usr/local/bin/webserver.py
+> Restart=always
+> User=root
+> StandardOutput=append:/var/log/webserver.log
+> StandardError=append:/var/log/webserver.log
+>
+> [Install]
+> WantedBy=multi-user.target
+> EOF
+root@0d73dcb25246:/#

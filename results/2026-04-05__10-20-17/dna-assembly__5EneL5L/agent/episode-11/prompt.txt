@@ -1,0 +1,53 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> seqs = read_fasta('sequences.fasta')
+> output_seq = seqs['output']
+> egfp = seqs['egfp']
+>
+> print(f"eGFP length: {len(egfp)}")
+> print(f"eGFP starts: {egfp[:50]}")
+> print(f"Output at 214: {output_seq[214:264]}")
+> print(f"Match: {output_seq[214:214+len(egfp)] == egfp}")
+>
+> # Try with 'atg' prefix removed
+> if egfp.startswith('atg'):
+>     egfp_no_atg = egfp[3:]
+>     print(f"\nTrying without ATG...")
+>     print(f"Match: {output_seq[217:217+len(egfp_no_atg)] == egfp_no_atg}")
+>
+> # Search for egfp in output
+> pos = output_seq.find(egfp)
+> print(f"\neGFP position in output: {pos}")
+>
+> EOF
+eGFP length: 717
+eGFP starts: atgagcaagggcgaggagctgttcaccggggtggtgcccatcctggtcga
+Output at 214: gcaagggcgaggagctgttcaccggggtggtgcccatcctggtcgagctg
+Match: False
+
+Trying without ATG...
+Match: False
+
+eGFP position in output: -1
+root@a0b49dcae9e4:/app#

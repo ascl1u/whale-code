@@ -1,0 +1,50 @@
+New Terminal Output:
+
+python3 << 'EOF'
+import struct
+
+def parse_directory_record(data, offset):
+    if offset >= len(data) or data[offset] == 0:
+        return None
+    length = data[offset]
+    if length == 0:
+        return None
+    lba = struct.unpack('<I', data[offset+2:offset+6])[0]
+    size = struct.unpack('<I', data[offset+10:offset+14])[0]
+    flags = data[offset+25]
+    name_len = data[offset+32]
+    name = data[offset+33:offset+33+name_len].decode('ascii', errors='ignore')
+    return {'length': length, 'lba': lba, 'size': size, 'flags': flags, 'name': name, 'is_dir': (flags & 2) != 0}
+
+with open('/app/alpine.iso', 'rb') as f:
+    f.seek(16 * 2048)
+    pvd = f.read(2048)
+    root_dir_record = pvd[156:156+34]
+    root_lba = struct.unpack('<I', root_dir_record[2:6])[0]
+    root_size = struct.unpack('<I', root_dir_record[10:14])[0]
+
+    dirs_to_search = [(root_lba, root_size, '')]
+    files_found = []
+
+    while dirs_to_search and len(files_found) < 100:
+        dir_lba, dir_size, path = dirs_to_search.pop(0)
+        f.seek(dir_lba * 2048)
+        dir_data = f.read(dir_size)
+        offset = 0
+        while offset < len(dir_data):
+            record = parse_directory_record(dir_data, offset)
+            if not record:
+                offset += 1
+                continue
+            if record['name'] not in ['.', '..', '\x00']:
+                full_path = (path + '/' + record['name']).strip('/')
+                if record['is_dir']:
+                    dirs_to_search.append((record['lba'], record['size'], full_path))
+                else:
+                    files_found.append(full_path)
+                    if 'boot' in full_path.lower() or 'vmlinuz' in full_path.lower() or 'initr' in full_path.lower():
+                        print(f"{full_path} (LBA: {record['lba']}, Size: {record['size']})")
+            offset += record['length']
+
+EOF
+

@@ -1,0 +1,177 @@
+New Terminal Output:
+
+root@a51ddc59c050:/app# cat > /app/attack.py << 'EOFPYTHON'
+              ct_right = getright(ct)
+
+                # Undo post-round mixing
+                left_before_postmix = ct_right ^ ct_left
+                right_before_postmix = ct_left
+
+                # Undo round 3 with key[5]
+                right_after_round2 = left_before_postmix
+                f3 = f_function(right_after_round2 ^ candidate_key5)
+                left_after_round2 = right_before_postmix ^ f3
+
+                # Undo round 2 with key[4]
+                right_after_round1 = left_after_round2
+                f2 = f_function(right_after_round1 ^ candidate_key4)
+                left_after_round1 = right_after_round2 ^ f2
+
+                states.append((left_after_round1, right_after_round1))
+
+            # Check if these states are consistent
+            # For plaintexts (0,0), (0,1), (0,2), (0,3)
+            # After initial whitening and pre-mixing:
+            # left = key[0], right = key[1] ^ key[0] for pt (0,0)
+            # left = key[0], right = (key[1] ^ i) ^ key[0] for pt (0,i)
+            # So: right_i = key[1] ^ key[0] ^ i
+
+            # After 2 rounds, these should follow the Feistel structure
+            # We can check if the states are consistent by seeing if
+            # they could have come from the same initial key[0], key[1]
+
+            # A simple check: see if the differences between states
+            # match what we'd expect from the plaintext differences
+
+            # For now, use a simple heuristic: check if any key[4] works
+            # If we find one, this key[5] is a candidate
+            found_consistent_key4 = True
+            break  # Found a consistent key[4], so this key[5] is possible
+
+        if found_consistent_key4:
+            candidates_key5.append(candidate_key5)
+
+    # Now do a more thorough search on the candidates
+    # Try all key[4] values for each candidate key[5]
+    for candidate_key5 in candidates_key5:
+        for seed4 in range(0x10000):
+            candidate_> #!/usr/bin/env python3
+>
+)> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+w>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+cy
+   >
+ > def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+ > def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+l>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using chosen plaintext attack"""
+>
+>     # Collect a small number of plaintext-ciphertext pairs for verification
+>     pairs = []
+>     for i in range(4):
+>         pt = merge(0, i)
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # We'll try to recover key[4] and key[5] together
+>     # For each candidate pair, we check consistency
+>
+>     # Use the first 2 pairs to narrow down candidates
+>     pt0, ct0 = pairs[0]
+>     pt1, ct1 = pairs[1]
+>     pt2, ct2 = pairs[2]
+>     pt3, ct3 = pairs[3]
+>
+>     candidates_key5 = []
+>
+>     # First pass: find candidate key[5] values that could be consistent
+>     # by trying all combinations with a few key[4] values
+>     for seed5 in range(0x10000):
+>         candidate_key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         # For this key[5], try to find a consistent key[4]
+>         found_consistent_key4 = False
+>
+>         # Try a subset of key[4] values (or all if needed)
+>         for seed4 in range(0, 0x10000, 10):  # Sample every 10th value for speed
+>             candidate_key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # Partially decrypt all 4 ciphertexts with these keys
+>             states = []
+>             for pt, ct in pairs:
+>                 ct_left = getleft(ct)
+>                 ct_right = getright(ct)
+>
+>                 # Undo post-round mixing
+>                 left_before_postmix = ct_right ^ ct_left
+>                 right_before_postmix = ct_left
+>
+>                 # Undo round 3 with key[5]
+>                 right_after_round2 = left_before_postmix
+>                 f3 = f_function(right_after_round2 ^ candidate_key5)
+>                 left_after_round2 = right_before_postmix ^ f3
+>
+>                 # Undo round 2 with key[4]
+>                 right_after_round1 = left_after_round2
+>                 f2 = f_function(right_after_round1 ^ candidate_key4)
+>                 left_after_round1 = right_after_round2 ^ f2
+>
+>                 states.append((left_after_round1, right_after_round1))
+>
+>             # Check if these states are consistent
+>             # For plaintexts (0,0), (0,1), (0,2), (0,3)
+>             # After initial whitening and pre-mixing:
+>             # left = key[0], right = key[1] ^ key[0] for pt (0,0)
+>             # left = key[0], right = (key[1] ^ i) ^ key[0] for pt (0,i)
+>             # So: right_i = key[1] ^ key[0] ^ i
+>
+>             # After 2 rounds, these should follow the Feistel structure
+>             # We can check if the states are consistent by seeing if
+>             # they could have come from the same initial key[0], key[1]
+>
+>             # A simple check: see if the differences between states
+>             # match what we'd expect from the plaintext differences
+>
+>             # For now, use a simple heuristic: check if any key[4] works
+>             # If we find one, this key[5] is a candidate
+>             found_consistent_key4 = True
+>             break  # Found a consistent key[4], so this key[5] is possible
+>
+>         if found_consistent_key4:
+>             candidates_key5.append(candidate_key5)
+>
+>     # Now do a more thorough search on the candidates
+>     # Try all key[4] values for each candidate key[5]
+>     for candidate_key5 in candidates_key5:
+>         for seed4 in range(0x10000):
+>             candidate_key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # Decrypt with both keys and check full consistency
+>             # ... (similar code as above)
+>
+>             # For now, just return the first candidate
+>             # This is not ideal but let's see if it works
+>             pass
+>
+>     # Return the first candidate (or implement better verification)
+>     if candidates_key5:
+>         return candidates_key5[0]
+>
+>     # Fallback: return 0
+>     return 0
+>
+> EOFPYTHON
+root@a51ddc59c050:/app#

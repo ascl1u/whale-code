@@ -1,0 +1,69 @@
+New Terminal Output:
+
+root@85d65680eec8:/app# cat > train_fasttext_v2.py << 'EOF'
+> import pandas as pd
+> import fasttext
+> import os
+>
+> # Convert parquet to fasttext format
+> def convert_to_fasttext(parquet_file, output_file):
+>     df = pd.read_parquet(parquet_file)
+>     with open(output_file, 'w', encoding='utf-8') as f:
+>         for idx, row in df.iterrows():
+>             # Clean text: remove newlines and extra spaces
+>             text = str(row['text']).replace('\n', ' ').replace('\r', ' ').strip()
+>             label = row['label']
+>             f.write(f'__label__{label} {text}\n')
+>     print(f'Converted {parquet_file} to {output_file}')
+>
+> # Convert training and test data
+> print('Converting training data...')
+> convert_to_fasttext('data/train-00000-of-00001.parquet', 'train.txt')
+> print('Converting test data...')
+> convert_to_fasttext('data/test-00000-of-00001.parquet', 'test.txt')
+>
+> # Train the model with better hyperparameters
+> print('\nTraining fasttext model...')
+> model = fasttext.train_supervised(
+>     input='train.txt',
+>     epoch=10,
+>     lr=0.5,
+>     wordNgrams=2,
+>     dim=100,
+>     bucket=200000,  # Reduce bucket size to limit vocabulary
+>     minn=3,  # Use character n-grams for subword info
+>     maxn=6,
+>     loss='softmax',
+>     verbose=2
+> )
+>
+> print('\nBefore quantization:')
+> result_before = model.test('test.txt')
+> print(f'Test precision: {result_before[1]:.4f}')
+> print(f'Test recall: {result_before[2]:.4f}')
+>
+> # Quantize the model to reduce size
+> print('\nQuantizing model...')
+> model.quantize(input='train.txt', qnorm=True, retrain=True, cutoff=100000)
+>
+> # Save the quantized model
+> model.save_model('/app/model.bin')
+> print('\nModel saved to /app/model.bin')
+>
+> # Check model size
+> model_size = os.path.getsize('/app/model.bin') / (1024 * 1024)
+> print(f'Model size: {model_size:.2f} MB')
+>
+> # Test accuracy on quantized model
+> result = model.test('test.txt')
+> print(f'\nAfter quantization:')
+> print(f'Test samples: {result[0]}')
+> print(f'Test precision: {result[1]:.4f}')
+> print(f'Test recall: {result[2]:.4f}')
+>
+> # Clean up intermediate files
+> os.remove('train.txt')
+> os.remove('test.txt')
+> print('\nCleaned up intermediate files')
+> EOF
+root@85d65680eec8:/app#

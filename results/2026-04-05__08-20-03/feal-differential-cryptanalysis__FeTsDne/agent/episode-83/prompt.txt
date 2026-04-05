@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>
+>     # Try all key[5] seeds
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         # Decrypt last round for multiple pairs
+>         states = []
+>         for i in range(min(8, len(pairs))):
+>             c = pairs[i][1]
+>             c_left, c_right = getleft(c), getright(c)
+>             R4 = c_left
+>             R3 = c_right ^ R4
+>             L3 = R4 ^ f_function(R3 ^ key5)
+>             states.append((L3, R3))
+>
+>         # Count how many key[4] samples produce valid differentials
+>         # across MULTIPLE pairs
+>         good_samples = 0
+>
+>         for seed4 in range(0, 0x10000, 683):  # ~96 samples
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # Check multiple pair combinations
+>             valid_pairs = 0
+>             for i in range(len(states) - 1):
+>                 L2_i = states[i][1] ^ f_function(states[i][0] ^ key4)
+>                 L2_j = states[i+1][1] ^ f_function(states[i+1][0] ^ key4)
+>                 if (L2_i ^ L2_j) in valid_diffs:
+>                     valid_pairs += 1
+>
+>             # If most pairs are valid, this key4 sample is good
+>             if valid_pairs >= 3:
+>                 good_samples += 1
+>                 if good_samples >= 2:
+>                     return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

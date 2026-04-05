@@ -1,0 +1,123 @@
+New Terminal Output:
+
+root@e3c1bf174cb4:/app# cat > /tmp/test_run.py << 'EOF'
+h_cleanup(tid) for i in range(3)]
+        await run_tasks(tasks, max_concurrent=3)
+
+    task = asyncio.create_task(run_and_cancel())
+    await asyncio.sleep(0.2)  # Let tasks start
+    task.cancel()
+
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+    print(f"Cleanup results: {cleanup_ran}")
+    # Check that cleanup ran for started tasks
+    for i in range(3):
+        if f"task{i}_start" in cleanup_ran:
+            assert f"task{i}_cleanup" in cleanup_ran, f"Cleanup didn't run for task{i}"
+    print("✓ Cleanup test passed")
+
+asyncio.run(test_cleanup())
+
+print("\n✓ All tests passed!")
+EOF
+> import asyncio
+> import time
+> from run import run_tasks
+>
+> # Test 1: Basic import and functionality
+> print("Test 1: Basic import and functionality")
+>
+> results = []
+>
+> async def task1():
+>     results.append("task1_start")
+>     await asyncio.sleep(0.1)
+>     results.append("task1_end")
+>
+> async def task2():
+>     results.append("task2_start")
+>     await asyncio.sleep(0.1)
+>     results.append("task2_end")
+>
+> async def test_basic():
+>     await run_tasks([task1, task2], max_concurrent=2)
+>     print(f"Results: {results}")
+>     assert "task1_start" in results
+>     assert "task1_end" in results
+>     assert "task2_start" in results
+>     assert "task2_end" in results
+>     print("✓ Basic test passed")
+>
+> asyncio.run(test_basic())
+>
+> # Test 2: Concurrency limiting
+> print("\nTest 2: Concurrency limiting")
+>
+> concurrent_count = 0
+> max_concurrent_seen = 0
+>
+> async def concurrent_task():
+>     global concurrent_count, max_concurrent_seen
+>     concurrent_count += 1
+>     max_concurrent_seen = max(max_concurrent_seen, concurrent_count)
+>     await asyncio.sleep(0.1)
+>     concurrent_count -= 1
+>
+> async def test_concurrency():
+>     global max_concurrent_seen
+>     max_concurrent_seen = 0
+>     tasks = [concurrent_task for _ in range(10)]
+>     await run_tasks(tasks, max_concurrent=3)
+>     print(f"Max concurrent tasks seen: {max_concurrent_seen}")
+>     assert max_concurrent_seen <= 3, f"Expected max 3 concurrent, got {max_concurrent_seen}"
+>     print("✓ Concurrency limiting test passed")
+>
+> asyncio.run(test_concurrency())
+>
+> # Test 3: Cleanup on cancellation
+> print("\nTest 3: Cleanup on cancellation")
+>
+> cleanup_ran = []
+>
+> async def task_with_cleanup(task_id):
+>     try:
+>         cleanup_ran.append(f"task{task_id}_start")
+>         await asyncio.sleep(1)  # Long running
+>         cleanup_ran.append(f"task{task_id}_complete")
+>     except asyncio.CancelledError:
+>         cleanup_ran.append(f"task{task_id}_cleanup")
+>         raise
+>
+> async def test_cleanup():
+>     global cleanup_ran
+>     cleanup_ran = []
+>
+>     async def run_and_cancel():
+>         tasks = [lambda tid=i: task_with_cleanup(tid) for i in range(3)]
+>         await run_tasks(tasks, max_concurrent=3)
+>
+>     task = asyncio.create_task(run_and_cancel())
+>     await asyncio.sleep(0.2)  # Let tasks start
+>     task.cancel()
+>
+>     try:
+>         await task
+>     except asyncio.CancelledError:
+>         pass
+>
+>     print(f"Cleanup results: {cleanup_ran}")
+>     # Check that cleanup ran for started tasks
+>     for i in range(3):
+>         if f"task{i}_start" in cleanup_ran:
+>             assert f"task{i}_cleanup" in cleanup_ran, f"Cleanup didn't run for task{i}"
+>     print("✓ Cleanup test passed")
+>
+> asyncio.run(test_cleanup())
+>
+> print("\n✓ All tests passed!")
+> EOF
+root@e3c1bf174cb4:/app#

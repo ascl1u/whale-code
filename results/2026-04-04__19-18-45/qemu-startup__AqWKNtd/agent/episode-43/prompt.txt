@@ -1,0 +1,22 @@
+New Terminal Output:
+
+Escape character is '^]'.
+ * Caching service dependencies ... [ ok ]
+Connection closed by foreign host.
+root@d95971070d33:/app# cat > /tmp/wait_login.sh << 'EOF'
+> #!/bin/bash
+> for i in {1..30}; do
+>   echo "Attempt $i: Checking for login prompt..."
+>   output=$( (sleep 3; echo) | telnet 127.0.0.1 6665 2>&1 )
+>   if echo "$output" | grep -qi "login:"; then
+>     echo "Login prompt detected!"
+>     echo "---Output---"
+>     echo "$output" | tail -20
+>     exit 0
+>   fi
+>   sleep 2
+> done
+> echo "Timeout waiting for login"
+> exit 1
+> EOF
+root@d95971070d33:/app#

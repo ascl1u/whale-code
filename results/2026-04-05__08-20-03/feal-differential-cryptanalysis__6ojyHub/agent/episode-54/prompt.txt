@@ -1,0 +1,57 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > analyze_scores.py << 'EOF'
+> #!/usr/bin/env python3
+> import feal
+> import attack
+> import random
+>
+> feal.create_random_keys()
+> print("Actual key[5]:", feal.key[5])
+>
+> # Find correct seed
+> correct_seed = None
+> for seed in range(0x10000):
+>     if (seed * 1234567) & 0xFFFFFFFF == feal.key[5]:
+>         correct_seed = seed
+>         break
+>
+> print(f"Correct seed: {correct_seed}")
+>
+> # Collect data
+> data = []
+> for i in range(4):
+>     pt1 = i
+>     pt2 = i ^ 0x0000000080000000
+>     ct1 = feal.encrypt(pt1)
+>     ct2 = feal.encrypt(pt2)
+>     data.append((pt1, ct1, pt2, ct2))
+>
+> # Test a few seeds including the correct one
+> test_seeds = [0, 100, 1000, 10000, correct_seed, correct_seed-1, correct_seed+1]
+>
+> for seed in test_seeds:
+>     if seed < 0 or seed >= 0x10000:
+>         continue
+>     candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>     score = 0
+>
+>     for pt1, ct1, pt2, ct2 in data:
+>         fr1 = attack.getleft(ct1)
+>         fl1 = attack.getright(ct1)
+>         fr2 = attack.getleft(ct2)
+>         fl2 = attack.getright(ct2)
+>
+>         rb1 = fl1 ^ fr1
+>         rb2 = fl2 ^ fr2
+>
+>         lb1 = fr1 ^ attack.f_function(rb1 ^ candidate_key5)
+>         lb2 = fr2 ^ attack.f_function(rb2 ^ candidate_key5)
+>
+>         # Compute hamming weight
+>         score += bin(lb1 ^ lb2).count('1')
+>
+>     marker = " <-- CORRECT" if seed == correct_seed else ""
+>     print(f"Seed {seed:5d}: score = {score:3d}{marker}")
+> EOF
+root@486aac7a4fa6:/app#

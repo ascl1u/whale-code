@@ -1,0 +1,227 @@
+New Terminal Output:
+
+root@506b644d66f7:/app# cat > attack.py << 'EOF'
+ right = right, left ^ temp
+    # Round 3
+    temp = f_function(right ^ key4)
+    left, right = right, left ^ temp
+    return left, right
+
+def partial_decrypt(ciphertext, key5):
+    """Decrypt only the last round"""
+    c_left = getleft(ciphertext)
+    c_right = getright(ciphertext)
+    # Undo swap
+    R4 = c_left
+    L4_xored = c_right
+    # Undo post-round XOR
+    L4 = L4_xored ^ R4
+    # Undo round 4: R4 = L3 XOR f(R3 XOR key5), L4 = R3
+    R3 = L4
+    L3 = R4 ^ f_function(R3 ^ key5)
+    return L3, R3
+
+def attack(encrypt_fn):
+    """Recover key[5] using meet-in-the-middle attack"""
+
+    # Collect plaintext-ciphertext pairs
+    plaintext = 0
+    ciphertext = encrypt_fn(plaintext)
+
+    plaintext2 = 1
+    ciphertext2 = encrypt_fn(plaintext2)
+
+    # Build a table of possible states after round 3 by encrypting forward
+    # with all possible key combinations for first 5 keys
+    forward_table = {}
+
+    # This is too many: 2^80 combinations
+    # Let's try a different approach: sample the space
+
+    # Sample approach: try random key combinations
+    import random
+    random.seed(42)
+
+    for _ in range(100000):  # Sample 100k combinations
+        seed0 = random.randint(0, 0xFFFF)
+        seed1 = random.randint(0, 0xFFFF)
+        seed2 = random.randint(0, 0xFFFF)
+        seed3 = random.randint(0, 0xFFFF)
+        seed4 = random.randint(0, 0xFFFF)
+
+        key0 = (seed0 * 1234567) & 0xFFFFFFFF
+        key1 = (seed1 * 1234567) & 0xFFFFFFFF
+        key2 = (seed2 * 1234567) & 0xFFFFFFFF
+        key3 = (seed3 * 1234567) & 0xFFFFFFFF
+        key4 = (seed4 * 1234567) & 0xFFFFFFFF
+
+        p_left = getleft(plaintext)
+        p_right = getright(plaintext)
+        L3, R3 = partial_encrypt(p_left, p_right, key0, key1, key2, key3, key4)
+
+        # Store in table
+        state = (L3, R3)
+        if state not in forward_table:
+            forward_table[state] = []
+        forward_table[state].append((seed0, seed1, seed2, seed3, seed4))
+
+    # Now try all key[5] values and see if we get a match
+    for seed5 in range(0x10000):
+        key5 = (seed5 * 1234567) & 0xFFFFFFFF
+
+        L3, R3 = partial_decrypt(ciphertext, key5)
+
+        if (L3, R3) in forward_table:
+            # Found a match! Verify with second plaintext
+            candidates = forward_table[(L3, R3)]
+
+            for seed0, seed1, seed2, seed3, seed4 in candidates:
+                key0 = (seed0 * 1234567) & 0xFFFFFFFF
+                key1 = (seed1 * 1234567) & 0xFFFFFFFF
+                key2 = (seed2 * 1234567) & 0xFFFFFFFF
+                key3 = (seed3 * 1234567) & 0xFFFFFFFF
+                key4 = (seed4 * 1234567) & 0xFFFFFFFF
+
+                # Verify with second plaintext
+                p2_left = getleft(plaintext2)
+                p2_right = getright(plaintext2)
+                L3_2, R3_2 = partial_encrypt(p2_left, p2_right, key0, key1, key2, key3, key4)
+
+                L3_2_dec, R3_2_dec = partial_decrypt(ciphertext2, key5)
+
+                if L3_2 == L3_2_dec> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+rrect key!
+      >
+ > def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def partial_encrypt(left, right, key0, key1, key2, key3, key4):
+>     """Encrypt through first 4 rounds (not including key[5])"""
+>     # Initial whitening
+>     left ^= key0
+>     right ^= key1
+>     # Pre-round
+>     right ^= left
+>     # Round 1
+>     temp = f_function(right ^ key2)
+>     left, right = right, left ^ temp
+>     # Round 2
+>     temp = f_function(right ^ key3)
+>     left, right = right, left ^ temp
+>     # Round 3
+>     temp = f_function(right ^ key4)
+>     left, right = right, left ^ temp
+>     return left, right
+>
+> def partial_decrypt(ciphertext, key5):
+>     """Decrypt only the last round"""
+>     c_left = getleft(ciphertext)
+>     c_right = getright(ciphertext)
+>     # Undo swap
+>     R4 = c_left
+>     L4_xored = c_right
+>     # Undo post-round XOR
+>     L4 = L4_xored ^ R4
+>     # Undo round 4: R4 = L3 XOR f(R3 XOR key5), L4 = R3
+>     R3 = L4
+>     L3 = R4 ^ f_function(R3 ^ key5)
+>     return L3, R3
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using meet-in-the-middle attack"""
+>
+>     # Collect plaintext-ciphertext pairs
+>     plaintext = 0
+>     ciphertext = encrypt_fn(plaintext)
+>
+>     plaintext2 = 1
+>     ciphertext2 = encrypt_fn(plaintext2)
+>
+>     # Build a table of possible states after round 3 by encrypting forward
+>     # with all possible key combinations for first 5 keys
+>     forward_table = {}
+>
+>     # This is too many: 2^80 combinations
+>     # Let's try a different approach: sample the space
+>
+>     # Sample approach: try random key combinations
+>     import random
+>     random.seed(42)
+>
+>     for _ in range(100000):  # Sample 100k combinations
+>         seed0 = random.randint(0, 0xFFFF)
+>         seed1 = random.randint(0, 0xFFFF)
+>         seed2 = random.randint(0, 0xFFFF)
+>         seed3 = random.randint(0, 0xFFFF)
+>         seed4 = random.randint(0, 0xFFFF)
+>
+>         key0 = (seed0 * 1234567) & 0xFFFFFFFF
+>         key1 = (seed1 * 1234567) & 0xFFFFFFFF
+>         key2 = (seed2 * 1234567) & 0xFFFFFFFF
+>         key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>         key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>         p_left = getleft(plaintext)
+>         p_right = getright(plaintext)
+>         L3, R3 = partial_encrypt(p_left, p_right, key0, key1, key2, key3, key4)
+>
+>         # Store in table
+>         state = (L3, R3)
+>         if state not in forward_table:
+>             forward_table[state] = []
+>         forward_table[state].append((seed0, seed1, seed2, seed3, seed4))
+>
+>     # Now try all key[5] values and see if we get a match
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         L3, R3 = partial_decrypt(ciphertext, key5)
+>
+>         if (L3, R3) in forward_table:
+>             # Found a match! Verify with second plaintext
+>             candidates = forward_table[(L3, R3)]
+>
+>             for seed0, seed1, seed2, seed3, seed4 in candidates:
+>                 key0 = (seed0 * 1234567) & 0xFFFFFFFF
+>                 key1 = (seed1 * 1234567) & 0xFFFFFFFF
+>                 key2 = (seed2 * 1234567) & 0xFFFFFFFF
+>                 key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>                 key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>                 # Verify with second plaintext
+>                 p2_left = getleft(plaintext2)
+>                 p2_right = getright(plaintext2)
+>                 L3_2, R3_2 = partial_encrypt(p2_left, p2_right, key0, key1, key2, key3, key4)
+>
+>                 L3_2_dec, R3_2_dec = partial_decrypt(ciphertext2, key5)
+>
+>                 if L3_2 == L3_2_dec and R3_2 == R3_2_dec:
+>                     # Found the correct key!
+>                     return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

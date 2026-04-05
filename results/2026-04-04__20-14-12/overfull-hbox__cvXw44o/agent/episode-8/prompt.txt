@@ -1,0 +1,78 @@
+New Terminal Output:
+
+root@dc8c6ba9a243:/app# cat > find_replaceable.py << 'EOF'
+> import re
+>
+> # Read synonyms
+> synonyms = {}
+> with open('synonyms.txt', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line:
+>             words = [w.strip() for w in line.split(',')]
+>             for word in words:
+>                 synonyms[word] = words
+>
+> # Read input.tex
+> with open('input.tex', 'r') as f:
+>     lines = f.readlines()
+>
+> # Check line 5 (index 4) for words with shorter synonyms
+> print("\n=== Line 5 (problematic area with 'unsought') ===")
+> line5 = lines[4]
+> words_in_line = re.findall(r'\b[a-zA-Z]+\b', line5)
+> for word in set(words_in_line):
+>     if word.lower() in synonyms:
+>         syns = synonyms[word.lower()]
+>         shortest = min(syns, key=len)
+>         if len(shortest) < len(word):
+>             print(f"{word} -> {shortest} (saves {len(word) - len(shortest)} chars)")
+>
+> # Check line 13 (index 12) for words with shorter synonyms
+> print("\n=== Line 13 (problematic area with 'wisdom') ===")
+> line13 = lines[12]
+> words_in_line = re.findall(r'\b[a-zA-Z]+\b', line13)
+> for word in set(words_in_line):
+>     if word.lower() in synonyms:
+>         syns = synonyms[word.lower()]
+>         shortest = min(syns, key=len)
+>         if len(shortest) < len(word):
+>             print(f"{word} -> {shortest} (saves {len(word) - len(shortest)} chars)")
+>
+> EOF
+root@dc8c6ba9a243:/app# python3 find_replaceable.py
+
+=== Line 5 (problematic area with 'unsought') ===
+sleep -> rest (saves 1 chars)
+levity -> jest (saves 2 chars)
+suppressions -> censorings (saves 2 chars)
+fundamental -> basic (saves 6 chars)
+judgments -> opinions (saves 1 chars)
+veteran -> dated (saves 2 chars)
+quality -> trait (saves 2 chars)
+revelation -> exposure (saves 2 chars)
+quick -> fast (saves 1 chars)
+college -> school (saves 1 chars)
+young -> new (saves 2 chars)
+communicative -> open (saves 9 chars)
+abnormal -> unusual (saves 1 chars)
+plagiaristic -> copied (saves 6 chars)
+decencies -> manners (saves 2 chars)
+victim -> prey (saves 2 chars)
+intimate -> close (saves 3 chars)
+reserved -> quiet (saves 3 chars)
+infinite -> endless (saves 1 chars)
+revelations -> exposures (saves 2 chars)
+obvious -> clear (saves 2 chars)
+
+=== Line 13 (problematic area with 'wisdom') ===
+friendly -> kind (saves 4 chars)
+country -> land (saves 3 chars)
+electric -> powered (saves 1 chars)
+weatherbeaten -> worn (saves 9 chars)
+office -> study (saves 1 chars)
+young -> new (saves 2 chars)
+season -> time (saves 2 chars)
+practical -> useful (saves 3 chars)
+house -> home (saves 1 chars)
+root@dc8c6ba9a243:/app#

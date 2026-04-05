@@ -1,0 +1,96 @@
+New Terminal Output:
+
+root@e46f4ec08a64:/app# cat > /app/attack.py << 'EOF'
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     # Strategy: Use zero-difference pairs to find the key
+>     # If we encrypt the same plaintext twice, we should get the same ciphertext
+>     # This helps us verify our key recovery
+>
+>     # Collect pairs where we know the input difference
+>     data = []
+>
+>     # Use pairs with zero plaintext
+>     pt0 = 0x0000000000000000
+>     ct0 = encrypt_fn(pt0)
+>
+>     # Collect many pairs with small differences
+>     for i in range(256):
+>         pt = i
+>         ct = encrypt_fn(pt)
+>         data.append((pt, ct))
+>
+>     # Also collect pairs with differences in different positions
+>     for i in range(1, 33):
+>         pt = 1 << i
+>         ct = encrypt_fn(pt)
+>         data.append((pt, ct))
+>
+>     # Try all seeds and use a voting mechanism
+>     vote_count = {}
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>         vote_count[seed] = 0
+>
+>     # For each pair of data points, check which keys are consistent
+>     for i in range(len(data)):
+>         for j in range(i+1, min(i+20, len(data))):
+>             pt1, ct1 = data[i]
+>             pt2, ct2 = data[j]
+>
+>             CT1_L, CT1_R = getleft(ct1), getright(ct1)
+>             CT2_L, CT2_R = getleft(ct2), getright(ct2)
+>
+>             # For each candidate key, compute the state after round 3
+>             for seed in range(0x10000):
+>                 candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>                 right3_1 = CT1_R ^ CT1_L
+>                 left3_1 = CT1_L ^ f_function(right3_1 ^ candidate_key5)
+>
+>                 right3_2 = CT2_R ^ CT2_L
+>                 left3_2 = CT2_L ^ f_function(right3_2 ^ candidate_key5)
+>
+>                 # Check if the relationship between (left3_1, right3_1) and (left3_2, right3_2)
+>                 # makes sense given the plaintext difference
+>                 # This is still heuristic, but let's try:
+>
+>                 # If plaintexts are the same, states should be the same
+>                 if pt1 == pt2:
+>                     if left3_1 == left3_2 and right3_1 == right3_2:
+>                         vote_count[seed] += 10
+>                     else:
+>                         vote_count[seed] -= 10
+>
+>     # Find the seed with the most votes
+>     best_seed = max(vote_count, key=vote_count.get)
+>     return (best_seed * 1234567) & 0xFFFFFFFF
+> EOF
+root@e46f4ec08a64:/app#

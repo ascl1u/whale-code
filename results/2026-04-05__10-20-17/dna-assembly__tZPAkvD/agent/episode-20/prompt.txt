@@ -1,0 +1,80 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > final_structure.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> print("=== FINAL STRUCTURE ANALYSIS ===\n")
+>
+> # Define positions
+> egfp_start = 210
+> egfp_no_stop = seqs['egfp'][:-3]
+> egfp_end = egfp_start + len(egfp_no_stop)
+>
+> flag_start = egfp_end
+> flag_no_start_stop = seqs['flag'][3:-3]
+> flag_end = flag_start + len(flag_no_start_stop)
+>
+> snap_start = flag_end
+> snap_no_start = seqs['snap'][3:]
+>
+> print(f"egfp: output[{egfp_start}:{egfp_end}] = egfp[0:-3]")
+> print(f"flag: output[{flag_start}:{flag_end}] = flag[3:-3]")
+> print(f"snap: output[{snap_start}:{snap_start + len(snap_no_start)}] = snap[3:]")
+>
+> # Verify snap
+> if seqs['output'][snap_start:snap_start + len(snap_no_start)] == snap_no_start:
+>     print("\n✓ snap (no start) matches!")
+>     snap_end = snap_start + len(snap_no_start)
+>     print(f"snap ends at position {snap_end}")
+> else:
+>     print("\n✗ snap (no start) doesn't match")
+>     # Try with start
+>     if seqs['output'][snap_start:snap_start + len(seqs['snap'])] == seqs['snap']:
+>         print("  But snap WITH start matches!")
+>         snap_end = snap_start + len(seqs['snap'])
+>
+> # Find junction with input plasmid
+> print(f"\n=== JUNCTION ANALYSIS ===")
+> print(f"\nBefore insert (position 0 to {egfp_start}):")
+> print(f"  output[{egfp_start-20}:{egfp_start}] = {seqs['output'][egfp_start-20:egfp_start]}")
+>
+> # Check if this matches input
+> if seqs['output'][:egfp_start] in seqs['input']:
+>     input_cut1 = seqs['input'].find(seqs['output'][:egfp_start]) + egfp_start
+>     print(f"  ✓ This is in input, cut at position {input_cut1}")
+>     print(f"  input[{input_cut1-20}:{input_cut1}] = {seqs['input'][input_cut1-20:input_cut1]}")
+>
+> print(f"\nAfter insert (position {snap_end} onwards):")
+> print(f"  output[{snap_end}:{snap_end+20}] = {seqs['output'][snap_end:snap_end+20]}")
+>
+> # Check if this matches input
+> after_insert = seqs['output'][snap_end:snap_end+50]
+> if after_insert in seqs['input']:
+>     input_cut2 = seqs['input'].find(after_insert)
+>     print(f"  ✓ This is in input, resumes at position {input_cut2}")
+>     print(f"  input[{input_cut2}:{input_cut2+20}] = {seqs['input'][input_cut2:input_cut2+20]}")
+>
+> # Calculate what gets removed from input
+> if 'input_cut1' in locals() and 'input_cut2' in locals():
+>     removed_length = input_cut2 - input_cut1
+>     print(f"\n=== INPUT PLASMID MODIFICATION ===")
+>     print(f"  Input is cut from position {input_cut1} to {input_cut2}")
+>     print(f"  Removed: {removed_length} bp")
+>     print(f"  Inserted: {snap_end - egfp_start} bp (egfp+flag+snap fusion)")
+>     print(f"  Net change: {(snap_end - egfp_start) - removed_length:+d} bp")
+>     print(f"  Input length: {len(seqs['input'])} bp")
+>     print(f"  Output length: {len(seqs['output'])} bp")
+>     print(f"  Difference: {len(seqs['output']) - len(seqs['input'])} bp")
+>
+> EOF
+root@5727c976f434:/app#

@@ -1,0 +1,101 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> def extract_overhangs(primer, is_fwd):
+>     """Extract the 4bp overhang from a primer"""
+>     if is_fwd:
+>         # Forward: GGTCTCN[NNNN]template
+>         pos = primer.find('GGTCTCN')
+>         if pos >= 0:
+>             return primer[pos+7:pos+11]
+>     else:
+>         # Reverse: template[NNNN]NGAGACC
+>         pos = primer.find('NGAGACC')
+>         if pos >= 0:
+>             return primer[pos-4:pos]
+>     return None
+>
+> primers = read_fasta('primers.fasta')
+>
+> print("Validating Golden Gate Assembly Overhangs")
+> print("=" * 80)
+>
+> # Extract all overhangs
+> overhangs = {}
+> for name, seq in primers.items():
+>     is_fwd = 'fwd' in name
+>     oh = extract_overhangs(seq, is_fwd)
+>     overhangs[name] = oh
+>     print(f"{name:15s}: {oh}")
+>
+> print()
+> print("=" * 80)
+> print("Checking assembly compatibility:")
+> print("=" * 80)
+>
+> # Check if overhangs match for assembly
+> checks = [
+>     ('input_rev', 'egfp_fwd', 'Backbone-left <-> eGFP-left'),
+>     ('egfp_rev', 'flag_fwd', 'eGFP-right <-> FLAG-left'),
+>     ('flag_rev', 'snap_fwd', 'FLAG-right <-> SNAP-left'),
+>     ('snap_rev', 'input_fwd', 'SNAP-right <-> Backbone-right'),
+> ]
+>
+> all_match = True
+> for primer1, primer2, desc in checks:
+>     oh1 = overhangs[primer1]
+>     oh2 = overhangs[primer2]
+>     match = oh1 == oh2
+>     status = "✓" if match else "✗"
+>     print(f"{status} {desc}: {oh1} == {oh2} : {match}")
+>     if not match:
+>         all_match = False
+>
+> print()
+> if all_match:
+>     print("✓ All overhangs match correctly! Assembly will work.")
+> else:
+>     print("✗ Overhang mismatch detected!")
+>
+> EOF
+Validating Golden Gate Assembly Overhangs
+================================================================================
+input_fwd      : TTAA
+input_rev      : ATGT
+egfp_fwd       : ACAT
+egfp_rev       : TACC
+flag_fwd       : GGTA
+flag_rev       : TGTC
+snap_fwd       : GACA
+snap_rev       : TTAA
+
+================================================================================
+Checking assembly compatibility:
+================================================================================
+✗ Backbone-left <-> eGFP-left: ATGT == ACAT : False
+✗ eGFP-right <-> FLAG-left: TACC == GGTA : False
+✗ FLAG-right <-> SNAP-left: TGTC == GACA : False
+✓ SNAP-right <-> Backbone-right: TTAA == TTAA : True
+
+✗ Overhang mismatch detected!
+root@a0b49dcae9e4:/app#

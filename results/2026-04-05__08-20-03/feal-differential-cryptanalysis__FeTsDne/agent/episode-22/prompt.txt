@@ -1,0 +1,163 @@
+New Terminal Output:
+
+root@506b644d66f7:/app# cat > attack.py << 'EOF'
+
+            # The key observation:
+            # After round 1, L1_0 = key[0]^key[1], L1_1 = key[0]^key[1]^1
+            # So L1_0 ^ L1_1 = 1
+
+            # After round 2:
+            # R2 = L1 ^ f(R1 ^ key[3])
+            # L2 = R1
+
+            # So: L2_0 ^ L2_1 = R1_0 ^ R1_1
+            # And: R1_0 = key[0] ^ f((key[0]^key[1]) ^ key[2])
+            # And: R1_1 = key[0] ^ f((key[0]^key[1]^1) ^ key[2])
+
+            # This is still complex. Let me use a simpler check:
+            # For p=0 and p=0x100000000, the difference is in the left half
+            # After whitening: (key[0], key[1]) and (key[0]^1, key[1])
+            # After pre-round: (key[0], key[0]^key[1]) and (key[0]^1, key[0]^key[1]^1)
+
+            # Check: L2_0 ^ L2_2 should relate to the plaintext difference
+            # For correct keys, there's structure. For wrong keys, it's random.
+
+            # Use XOR relationships
+            diff_01_L = L2_0 ^ L2_1
+            diff_02_L = L2_0 ^ L2_2
+            diff_01_R = R2_0 ^ R2_1
+            diff_02_R = R2_0 ^ R2_2
+
+            # For the correct keys, these differences should have specific properties
+            # Try a simple check: the XOR of differences should have low hamming weight
+            combined = diff_01_L ^ diff_02_L ^ diff_01_R ^ diff_02_R
+            bits = bin(combined).count('1')
+
+            # This is still a weak heuristic. Let me try a different approach:
+            # Check if diff_01_L has very low hamming weight (indicating structure)
+            bits_01_L = bin(diff_01_L).count('1')
+            bits_02_L = bin(diff_02_L).count('1')
+
+            # For correct keys, these should be non-random
+            # This is a guess, but let's try it
+            if bits_01_L <= 4 and bits_02_L <= 4:
+                return key5
+
+    return 0
+
+EOF
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def decrypt_two_rounds(ciphertext, key4, key5):
+>     c_left = getleft(ciphertext)
+>     c_right = getright(ciphertext)
+>     R4 = c_left
+>     L4 = c_right ^ R4
+>     R3 = L4
+>     L3 = R4 ^ f_function(R3 ^ key5)
+>     R2 = L3
+>     L2 = R3 ^ f_function(R2 ^ key4)
+>     return L2, R2
+>
+> def attack(encrypt_fn):
+>     # Use specific plaintexts
+>     p0 = 0
+>     c0 = encrypt_fn(p0)
+>
+>     p1 = 1
+>     c1 = encrypt_fn(p1)
+>
+>     p2 = 0x100000000
+>     c2 = encrypt_fn(p2)
+>
+>     # Brute force key[4] and key[5]
+>     for seed4 in range(0x10000):
+>         key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>         for seed5 in range(0x10000):
+>             key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>             # Decrypt two rounds
+>             L2_0, R2_0 = decrypt_two_rounds(c0, key4, key5)
+>             L2_1, R2_1 = decrypt_two_rounds(c1, key4, key5)
+>             L2_2, R2_2 = decrypt_two_rounds(c2, key4, key5)
+>
+>             # For plaintext p=0: L=key[0], R=key[1] after whitening
+>             # After pre-round: L=key[0], R=key[0]^key[1]
+>             # After round 1: L=key[0]^key[1], R=key[0]^f((key[0]^key[1])^key[2])
+>             # After round 2: the state is (L2_0, R2_0)
+>
+>             # For plaintext p=1: L=key[0], R=key[1]^1 after whitening
+>             # After pre-round: L=key[0], R=key[0]^key[1]^1
+>             # After round 1: L=key[0]^key[1]^1, R=key[0]^f((key[0]^key[1]^1)^key[2])
+>
+>             # The key observation:
+>             # After round 1, L1_0 = key[0]^key[1], L1_1 = key[0]^key[1]^1
+>             # So L1_0 ^ L1_1 = 1
+>
+>             # After round 2:
+>             # R2 = L1 ^ f(R1 ^ key[3])
+>             # L2 = R1
+>
+>             # So: L2_0 ^ L2_1 = R1_0 ^ R1_1
+>             # And: R1_0 = key[0] ^ f((key[0]^key[1]) ^ key[2])
+>             # And: R1_1 = key[0] ^ f((key[0]^key[1]^1) ^ key[2])
+>
+>             # This is still complex. Let me use a simpler check:
+>             # For p=0 and p=0x100000000, the difference is in the left half
+>             # After whitening: (key[0], key[1]) and (key[0]^1, key[1])
+>             # After pre-round: (key[0], key[0]^key[1]) and (key[0]^1, key[0]^key[1]^1)
+>
+>             # Check: L2_0 ^ L2_2 should relate to the plaintext difference
+>             # For correct keys, there's structure. For wrong keys, it's random.
+>
+>             # Use XOR relationships
+>             diff_01_L = L2_0 ^ L2_1
+>             diff_02_L = L2_0 ^ L2_2
+>             diff_01_R = R2_0 ^ R2_1
+>             diff_02_R = R2_0 ^ R2_2
+>
+>             # For the correct keys, these differences should have specific properties
+>             # Try a simple check: the XOR of differences should have low hamming weight
+>             combined = diff_01_L ^ diff_02_L ^ diff_01_R ^ diff_02_R
+>             bits = bin(combined).count('1')
+>
+>             # This is still a weak heuristic. Let me try a different approach:
+>             # Check if diff_01_L has very low hamming weight (indicating structure)
+>             bits_01_L = bin(diff_01_L).count('1')
+>             bits_02_L = bin(diff_02_L).count('1')
+>
+>             # For correct keys, these should be non-random
+>             # This is a guess, but let's try it
+>             if bits_01_L <= 4 and bits_02_L <= 4:
+>                 return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

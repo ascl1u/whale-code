@@ -1,0 +1,72 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# python3 << 'EOF'
+> # Parse sequences
+> with open('sequences.fasta', 'r') as f:
+>     lines = f.readlines()
+>
+> seqs = {}
+> current = None
+> for line in lines:
+>     line = line.strip()
+>     if line.startswith('>'):
+>         current = line[1:]
+>         seqs[current] = ''
+>     else:
+>         seqs[current] += line
+>
+> # Map the complete fusion
+> egfp_no_stop = seqs['egfp'][:-3]
+> flag_no_start_stop = seqs['flag'][3:-3]
+> snap_no_start = seqs['snap'][3:]
+>
+> egfp_start = 210
+> egfp_end = egfp_start + len(egfp_no_stop)
+> flag_start = egfp_end
+> flag_end = flag_start + len(flag_no_start_stop)
+> snap_start = flag_end
+> snap_end = snap_start + len(snap_no_start)
+>
+> print("Fusion protein structure in output:")
+> print(f"eGFP (no stop): {egfp_start}-{egfp_end} ({len(egfp_no_stop)} bp)")
+> print(f"FLAG (no start/stop): {flag_start}-{flag_end} ({len(flag_no_start_stop)} bp)")
+> print(f"SNAP (no start): {snap_start}-{snap_end} ({len(snap_no_start)} bp)")
+> print(f"Total insert: {egfp_start}-{snap_end} ({snap_end - egfp_start} bp)")
+>
+> # Find what's before and after the insert
+> print(f"\nBefore insert (output[200:210]): {seqs['output'][200:210]}")
+> print(f"After insert (output[{snap_end}:{snap_end+10}]): {seqs['output'][snap_end:snap_end+10]}")
+>
+> # Find corresponding sequence in input
+> input_before = seqs['input'].find(seqs['output'][200:210])
+> print(f"\nBefore sequence in input at: {input_before}")
+>
+> input_after = seqs['input'].find(seqs['output'][snap_end:snap_end+20])
+> print(f"After sequence in input at: {input_after}")
+>
+> if input_before >= 0 and input_after >= 0:
+>     replaced_seq = seqs['input'][input_before+10:input_after]
+>     print(f"\nReplaced sequence in input: position {input_before+10} to {input_after}")
+>     print(f"Replaced sequence length: {len(replaced_seq)} bp")
+>     print(f"Replaced sequence: {replaced_seq}")
+>
+> EOF
+Fusion protein structure in output:
+eGFP (no stop): 210-924 (714 bp)
+FLAG (no start/stop): 924-1008 (84 bp)
+SNAP (no start): 1008-1554 (546 bp)
+Total insert: 210-1554 (1344 bp)
+
+Before insert (output[200:210]): agatatacat
+After insert (output[1554:1564]): tgaggatccc
+
+Before sequence in input at: 200
+After sequence in input at: 690
+
+Replaced sequence in input: position 210 to 690
+Replaced sequence length: 480 bp
+Replaced sequence: atgatcagtctgattgcggcgttagcggtagatcgcgttatcggcatggaaaacgccatgccgtggaacctgcctgccgatctcgcctggtttaaacgcaacaccttaaataaacccgtgattatgggccgccatacctgg
+gaatcaatcggtcgtccgttgccaggacgcaaaaatattatcctcagcagtcaaccgggtacggacgatcgcgtaacgtgggtgaagtcggtggatgaagccatcgcggcgtgtggtgacgtaccagaaatcatggtgattggcggcggtcgcgtttatg
+aacagttcttgccaaaagcgcaaaaactgtatctgacgcatatcgacgcagaagtggaaggcgacacccatttcccggattacgagccggatgactgggaatcggtattcagcgaattccacgatgctgatgcgcagaactctcacagctattgctttga
+gattctggagcggcggtaa
+root@40713b84f85c:/app#

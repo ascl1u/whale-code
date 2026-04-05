@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>
+>                         # Refine around seed5
+>                         for s5 in range(max(0, seed5-step_back), min(0x10000, seed5+step_back)):
+>                             for s4 in range(max(0, seed4-step_back), min(0x10000, seed4+step_back)):
+>                                 for s3 in range(max(0, seed3-step_fwd), min(0x10000, seed3+step_fwd)):
+>                                     for s2 in range(max(0, seed2-step_fwd), min(0x10000, seed2+step_fwd)):
+>                                         for s1 in range(max(0, seed1-step_fwd), min(0x10000, seed1+step_fwd)):
+>                                             for s0 in range(max(0, seed0-step_fwd), min(0x10000, seed0+step_fwd)):
+>                                                 # Full verification
+>                                                 k0 = (s0 * 1234567) & 0xFFFFFFFF
+>                                                 k1 = (s1 * 1234567) & 0xFFFFFFFF
+>                                                 k2 = (s2 * 1234567) & 0xFFFFFFFF
+>                                                 k3 = (s3 * 1234567) & 0xFFFFFFFF
+>                                                 k4 = (s4 * 1234567) & 0xFFFFFFFF
+>                                                 k5 = (s5 * 1234567) & 0xFFFFFFFF
+>
+>                                                 # Encrypt pt1 fully and check
+>                                                 l = 0 ^ k0
+>                                                 r = 0 ^ k1
+>                                                 r = r ^ l
+>                                                 for rnd, k in enumerate([k2, k3, k4, k5]):
+>                                                     nl = r
+>                                                     nr = l ^ f_function(r ^ k)
+>                                                     l = nl
+>                                                     r = nr
+>                                                 l = l ^ r
+>                                                 result = merge(r, l)
+>
+>                                                 if result == ct1:
+>                                                     print(f"Found! key[5]={k5}")
+>                                                     return k5
+>
+>                         # If refined search didn't find exact match, return approximate
+>                         return (seed5 * 1234567) & 0xFFFFFFFF
+>
+>     print("No match")
+>     return 0
+>
+> EOFPYTHON
+root@a51ddc59c050:/app#

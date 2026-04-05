@@ -1,0 +1,119 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > map_exact.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> print("Checking egfp:")
+> egfp_modified = seqs['egfp'][:-3] + 'ggt'  # Replace TAA with GGT
+> pos = seqs['output'].find(egfp_modified)
+> print(f"  Modified egfp found at: {pos}")
+> if pos >= 0:
+>     egfp_end = pos + len(egfp_modified)
+>     print(f"  Ends at: {egfp_end}")
+>     print(f"  Last 10bp: {seqs['output'][egfp_end-10:egfp_end]}")
+>     print(f"  Next 30bp: {seqs['output'][egfp_end:egfp_end+30]}")
+>
+> print("\nChecking flag (no ATG, no stop):")
+> flag_modified = seqs['flag'][3:-3]  # Remove ATG and TAA
+> print(f"  Looking for: {flag_modified[:30]}")
+> pos = seqs['output'].find(flag_modified)
+> print(f"  Found at: {pos}")
+> if pos >= 0:
+>     flag_end = pos + len(flag_modified)
+>     print(f"  Ends at: {flag_end}")
+>     print(f"  Last 10bp: {seqs['output'][flag_end-10:flag_end]}")
+>     print(f"  Next 30bp: {seqs['output'][flag_end:flag_end+30]}")
+>
+> print("\nChecking snap (no ATG):")
+> snap_modified = seqs['snap'][3:]  # Remove ATG, keep TAA
+> print(f"  Looking for: {snap_modified[:30]}")
+> pos = seqs['output'].find(snap_modified)
+> print(f"  Found at: {pos}")
+> if pos >= 0:
+>     snap_end = pos + len(snap_modified)
+>     print(f"  Ends at: {snap_end}")
+>     print(f"  Last 10bp: {seqs['output'][snap_end-10:snap_end]}")
+>     print(f"  Next 30bp: {seqs['output'][snap_end:snap_end+30]}")
+>
+> # Now let's understand the assembly
+> print("\n" + "="*60)
+> print("ASSEMBLY STRUCTURE:")
+> print("="*60)
+>
+> # Find in input where the break is
+> input_seq = seqs['input']
+> output_seq = seqs['output']
+>
+> # The output before position 210
+> before = output_seq[:210]
+> print(f"\nBefore insert (0-210): {len(before)} bp")
+> print(f"  Ends with: {before[-20:]}")
+>
+> # After snap
+> after_start = 1557
+> after = output_seq[after_start:]
+> print(f"\nAfter insert ({after_start}-end): {len(after)} bp")
+> print(f"  Starts with: {after[:20]}")
+>
+> # Find these in input
+> if before in input_seq:
+>     print(f"\nBefore sequence found in input: YES")
+> else:
+>     # Try last 50bp
+>     if before[-50:] in input_seq:
+>         pos = input_seq.find(before[-50:])
+>         print(f"\nLast 50bp of before found in input at: {pos}")
+>         print(f"  Input continues with: {input_seq[pos+50:pos+70]}")
+>
+> if after[:50] in input_seq:
+>     pos = input_seq.find(after[:50])
+>     print(f"\nFirst 50bp of after found in input at: {pos}")
+>     print(f"  Input before this: {input_seq[pos-20:pos]}")
+>
+> EOF
+root@11eec39dc770:/app# python3 map_exact.py
+Checking egfp:
+  Modified egfp found at: 210
+  Ends at: 927
+  Last 10bp: gtacaaaggt
+  Next 30bp: agtggctccggtagcggtagcggcagcgac
+
+Checking flag (no ATG, no stop):
+  Looking for: ggtagtggctccggtagcggtagcggcagc
+  Found at: 924
+  Ends at: 1008
+  Last 10bp: tagtggttca
+  Next 30bp: gacaaagactgcgaaatgaagcgcaccacc
+
+Checking snap (no ATG):
+  Looking for: gacaaagactgcgaaatgaagcgcaccacc
+  Found at: 1008
+  Ends at: 1554
+  Last 10bp: gctgggttaa
+  Next 30bp: tgaggatcccgggaattctcgagtaaggtt
+
+============================================================
+ASSEMBLY STRUCTURE:
+============================================================
+
+Before insert (0-210): 210 bp
+  Ends with: tttaagaaggagatatacat
+
+After insert (1557-end): 2034 bp
+  Starts with: ggatcccgggaattctcgag
+
+Before sequence found in input: YES
+
+First 50bp of after found in input at: 693
+  Input before this: ttctggagcggcggtaatga
+root@11eec39dc770:/app#

@@ -1,0 +1,77 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# python3 << 'EOF'
+> # Verify BsaI sites and overhangs
+> import subprocess
+>
+> def parse_fasta(filename):
+>     seqs = {}
+>     current = None
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 current = line[1:]
+>                 seqs[current] = ''
+>             else:
+>                 seqs[current] += line
+>     return seqs
+>
+> seqs = parse_fasta('sequences.fasta')
+> primers = parse_fasta('primers.fasta')
+>
+> print("=== BsaI Site Verification ===")
+> print("BsaI-HF v2 recognition: GGTCTC (forward) / GAGACC (reverse complement)")
+> print("Cuts 1 nt downstream on top strand, 5 nt on bottom strand")
+> print("Creates 4 bp 5' overhang")
+> print()
+>
+> # Check each primer has correct BsaI site
+> for name, seq in primers.items():
+>     if seq.startswith('GGTCTCN'):
+>         overhang = seq[7:11]
+>         anneal = seq[11:]
+>         print(f"{name}: GGTCTC-N-{overhang}-{anneal[:10]}...")
+>         print(f"  Overhang: {overhang}")
+>     else:
+>         print(f"{name}: ERROR - doesn't start with GGTCTCN")
+>
+> print()
+> print("=== Expected Assembly ===")
+> print("Fragment 1 (input): TGAG -> backbone -> ACAT")
+> print("Fragment 2 (egfp):  ACAT -> egfp -> GGTA")
+> print("Fragment 3 (flag):  GGTA -> flag -> GACA")
+> print("Fragment 4 (snap):  GACA -> snap -> TGAG")
+> print("\nThis creates a circular assembly: input -> egfp -> flag -> snap -> input")
+>
+> EOF
+=== BsaI Site Verification ===
+BsaI-HF v2 recognition: GGTCTC (forward) / GAGACC (reverse complement)
+Cuts 1 nt downstream on top strand, 5 nt on bottom strand
+Creates 4 bp 5' overhang
+
+input_fwd: GGTCTC-N-TGAG-TGAGGATCCC...
+  Overhang: TGAG
+input_rev: GGTCTC-N-ATGT-ATGTATATCT...
+  Overhang: ATGT
+egfp_fwd: GGTCTC-N-ACAT-ATGAGCAAGG...
+  Overhang: ACAT
+egfp_rev: GGTCTC-N-TACC-TTTGTACAGC...
+  Overhang: TACC
+flag_fwd: GGTCTC-N-GGTA-GGTAGTGGCT...
+  Overhang: GGTA
+flag_rev: GGTCTC-N-TGTC-TGAACCACTA...
+  Overhang: TGTC
+snap_fwd: GGTCTC-N-GACA-GACAAAGACT...
+  Overhang: GACA
+snap_rev: GGTCTC-N-CTCA-TTAACCCAGC...
+  Overhang: CTCA
+
+=== Expected Assembly ===
+Fragment 1 (input): TGAG -> backbone -> ACAT
+Fragment 2 (egfp):  ACAT -> egfp -> GGTA
+Fragment 3 (flag):  GGTA -> flag -> GACA
+Fragment 4 (snap):  GACA -> snap -> TGAG
+
+This creates a circular assembly: input -> egfp -> flag -> snap -> input
+root@40713b84f85c:/app#

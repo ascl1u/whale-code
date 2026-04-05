@@ -1,0 +1,161 @@
+New Terminal Output:
+
+root@506b644d66f7:/app# cat > attack.py << 'EOF'
+                = 1 ^ f((key[0]^F2)^key[3]) ^ f((key[0]^F2')^key[3])
+
+    # Brute force key[4] and key[5]
+    for seed5 in range(0x10000):
+        key5 = (seed5 * 1234567) & 0xFFFFFFFF
+
+        for seed4 in range(0x10000):
+            key4 = (seed4 * 1234567) & 0xFFFFFFFF
+
+            L2_0, R2_0 = decrypt_two_rounds(c0, key4, key5)
+            L2_1, R2_1 = decrypt_two_rounds(c1, key4, key5)
+
+            # Check the differential property
+            diff_L = L2_0 ^ L2_1
+            diff_R = R2_0 ^ R2_1
+
+            # diff_L = f(K01^key[2]) ^ f((K01^1)^key[2])
+            # For some value of K01 and key[2], this should be achievable
+            # We need to check if there exists K01 and key[2] such that this holds
+
+            # Try all possible K01 values (32-bit, too many)
+            # But we can sample or use a different check
+
+            # Actually, let's use a different observation:
+            # For p0 and p1, the input difference to f in round 1 is 1
+            # The output difference is diff_L
+            # We can check if this is a valid differential for f
+
+            # Try all possible inputs to f
+            found_valid = False
+            for test_input in range(0x10000):  # Sample 16-bit inputs
+                out1 = f_function(test_input)
+                out2 = f_function(test_input ^ 1)
+                if (out1 ^ out2) == diff_L:
+                    # Found a valid input! This means diff_L is achievable
+                    found_valid = True
+                    break
+
+            if found_valid:
+                # Additional check with diff_R
+                # This is more complex, so let's skip for now and just return
+                return key5
+
+    return 0
+
+EOF
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def decrypt_two_rounds(ciphertext, key4, key5):
+>     c_left = getleft(ciphertext)
+>     c_right = getright(ciphertext)
+>     R4 = c_left
+>     L4 = c_right ^ R4
+>     R3 = L4
+>     L3 = R4 ^ f_function(R3 ^ key5)
+>     R2 = L3
+>     L2 = R3 ^ f_function(R2 ^ key4)
+>     return L2, R2
+>
+> def attack(encrypt_fn):
+>     # Use plaintext 0 for simplicity
+>     p0 = 0
+>     c0 = encrypt_fn(p0)
+>
+>     p1 = 1
+>     c1 = encrypt_fn(p1)
+>
+>     # For p0=0: after whitening L=key[0], R=key[1]
+>     # After pre-round: L=key[0], R=key[0]^key[1]
+>     # Let K01 = key[0]^key[1]
+>     # After round 1: L=K01, R=key[0]^f(K01^key[2])
+>     # Let F2 = f(K01^key[2]), so R1=key[0]^F2
+>     # After round 2: L=key[0]^F2, R=K01^f((key[0]^F2)^key[3])
+>     # So: L2_0 = key[0]^F2, R2_0 = K01^f((key[0]^F2)^key[3])
+>
+>     # For p1=1: after whitening L=key[0], R=key[1]^1
+>     # After pre-round: L=key[0], R=key[0]^key[1]^1 = K01^1
+>     # After round 1: L=K01^1, R=key[0]^f((K01^1)^key[2])
+>     # Let F2' = f((K01^1)^key[2]), so R1=key[0]^F2'
+>     # After round 2: L=key[0]^F2', R=(K01^1)^f((key[0]^F2')^key[3])
+>     # So: L2_1 = key[0]^F2', R2_1 = (K01^1)^f((key[0]^F2')^key[3])
+>
+>     # Key observation: L2_0 ^ L2_1 = F2 ^ F2' = f(K01^key[2]) ^ f((K01^1)^key[2])
+>     # This depends only on K01 and key[2], not on key[0] individually!
+>
+>     # Similarly: R2_0 ^ R2_1 = [K01^f((key[0]^F2)^key[3])] ^ [(K01^1)^f((key[0]^F2')^key[3])]
+>     #                        = 1 ^ f((key[0]^F2)^key[3]) ^ f((key[0]^F2')^key[3])
+>
+>     # Brute force key[4] and key[5]
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         for seed4 in range(0x10000):
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             L2_0, R2_0 = decrypt_two_rounds(c0, key4, key5)
+>             L2_1, R2_1 = decrypt_two_rounds(c1, key4, key5)
+>
+>             # Check the differential property
+>             diff_L = L2_0 ^ L2_1
+>             diff_R = R2_0 ^ R2_1
+>
+>             # diff_L = f(K01^key[2]) ^ f((K01^1)^key[2])
+>             # For some value of K01 and key[2], this should be achievable
+>             # We need to check if there exists K01 and key[2] such that this holds
+>
+>             # Try all possible K01 values (32-bit, too many)
+>             # But we can sample or use a different check
+>
+>             # Actually, let's use a different observation:
+>             # For p0 and p1, the input difference to f in round 1 is 1
+>             # The output difference is diff_L
+>             # We can check if this is a valid differential for f
+>
+>             # Try all possible inputs to f
+>             found_valid = False
+>             for test_input in range(0x10000):  # Sample 16-bit inputs
+>                 out1 = f_function(test_input)
+>                 out2 = f_function(test_input ^ 1)
+>                 if (out1 ^ out2) == diff_L:
+>                     # Found a valid input! This means diff_L is achievable
+>                     found_valid = True
+>                     break
+>
+>             if found_valid:
+>                 # Additional check with diff_R
+>                 # This is more complex, so let's skip for now and just return
+>                 return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

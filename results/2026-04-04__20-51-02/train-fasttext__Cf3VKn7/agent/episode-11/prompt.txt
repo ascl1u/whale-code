@@ -1,0 +1,43 @@
+New Terminal Output:
+
+root@a6872a517cdf:/app# python3 << 'EOF'
+> import fasttext
+> import os
+>
+> print("Training fasttext model...")
+> print("Parameters: dim=100, epoch=25, lr=0.5, wordNgrams=2")
+>
+> # Train the model with size-optimized parameters
+> model = fasttext.train_supervised(
+>     input='train.txt',
+>     dim=100,           # Lower dimension to reduce size
+>     epoch=25,          # Good number of epochs for convergence
+>     lr=0.5,            # Learning rate
+>     wordNgrams=2,      # Bigrams help with accuracy
+>     bucket=200000,     # Smaller bucket size to reduce memory
+>     loss='softmax',    # Softmax for multi-class
+>     verbose=2
+> )
+>
+> print("\nTraining complete!")
+>
+> # Save the model
+> model.save_model('model.bin')
+> print("\nModel saved as model.bin")
+>
+> # Check model size
+> model_size = os.path.getsize('model.bin') / (1024 * 1024)
+> print(f"Model size: {model_size:.2f} MB")
+>
+> # Test on test set
+> print("\nEvaluating on test set...")
+> result = model.test('test.txt')
+> print(f"Test samples: {result[0]}")
+> print(f"Precision: {result[1]:.4f}")
+> print(f"Recall: {result[2]:.4f}")
+>
+> EOF
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'fasttext'
+root@a6872a517cdf:/app#

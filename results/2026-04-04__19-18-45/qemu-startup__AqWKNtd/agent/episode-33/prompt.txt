@@ -1,0 +1,111 @@
+New Terminal Output:
+
+root@d95971070d33:/app# qemu-system-x86_64: terminating on signal 15 from pid 58 (/bin/bash)
+python3 << 'PYEOF'
+:162])[0]
+    root_length = struct.unpack('<I', pvd[166:170])[0]
+
+    # Read root directory
+    root_entries = read_iso_directory(f, root_extent, root_length)
+
+    # Find boot directory
+    boot_extent = None
+    for name, extent, length, is_dir in root_entries:
+        if 'BOOT' in name.upper() and is_dir:
+            boot_extent = extent
+            boot_length = length
+            break
+
+    if boot_extent:
+        boot_entries = read_iso_directory(f, boot_extent, boot_length)
+        print("Boot directory contents:")
+        for name, extent, length, is_dir in boot_entries:
+            print(f"  {name} - extent: {extent}, length: {length}, is_dir: {is_dir}")
+
+            # Extract vmlinuz and initramfs
+            if 'VMLINUZ' in name.upper() or 'INITRAMFS' in name.upper() or name.endswith('.GZ'):
+                f.seek(extent * 2048)
+                data = f.read(length)
+                outname = name.split(';')[0].lower()
+                outpath = f'/tmp/{outname}'
+              > import struct
+> import os
+>
+> # Simple ISO9660 reader to extract files
+> iso_path = '/app/alpine.iso'
+>
+> def read_iso_directory(iso_file, extent_location, extent_length):
+>     iso_file.seek(extent_location * 2048)
+>     data = iso_file.read(extent_length * 2048)
+>     entries = []
+>     pos = 0
+>     while pos < len(data):
+>         if data[pos] == 0:
+>             break
+>         length = data[pos]
+>         if length == 0:
+>             break
+>         entry = data[pos:pos+length]
+>         name_len = entry[32]
+>         name = entry[33:33+name_len].decode('ascii', errors='ignore')
+>         extent_loc = struct.unpack('<I', entry[2:6])[0]
+>         extent_len = struct.unpack('<I', entry[10:14])[0]
+>         is_dir = entry[25] & 2
+>         entries.append((name, extent_loc, extent_len, is_dir))
+>         pos += length
+>     return entries
+>
+> with open(iso_path, 'rb') as f:
+>     # Read primary volume descriptor
+>     f.seek(16 * 2048)
+>     pvd = f.read(2048)
+>
+>     # Get root directory location
+>     root_extent = struct.unpack('<I', pvd[158:162])[0]
+>     root_length = struct.unpack('<I', pvd[166:170])[0]
+>
+>     # Read root directory
+>     root_entries = read_iso_directory(f, root_extent, root_length)
+>
+>     # Find boot directory
+>     boot_extent = None
+>     for name, extent, length, is_dir in root_entries:
+>         if 'BOOT' in name.upper() and is_dir:
+>             boot_extent = extent
+>             boot_length = length
+>             break
+>
+>     if boot_extent:
+>         boot_entries = read_iso_directory(f, boot_extent, boot_length)
+>         print("Boot directory contents:")
+>         for name, extent, length, is_dir in boot_entries:
+>             print(f"  {name} - extent: {extent}, length: {length}, is_dir: {is_dir}")
+>
+>             # Extract vmlinuz and initramfs
+>             if 'VMLINUZ' in name.upper() or 'INITRAMFS' in name.upper() or name.endswith('.GZ'):
+>                 f.seek(extent * 2048)
+>                 data = f.read(length)
+>                 outname = name.split(';')[0].lower()
+>                 outpath = f'/tmp/{outname}'
+>                 with open(outpath, 'wb') as out:
+>                     out.write(data)
+>                 print(f"Extracted: {outpath}")
+> PYEOF
+Boot directory contents:
+   - extent: 62, length: 2048, is_dir: 2
+   - extent: 20, length: 2048, is_dir: 2
+  AMD_UCODE.IMG;1 - extent: 377338, length: 61440, is_dir: 0
+  CONFIG_LTS.;1 - extent: 377368, length: 261013, is_dir: 0
+  DTBS_LTS - extent: 63, length: 2048, is_dir: 2
+  GRUB - extent: 64, length: 2048, is_dir: 2
+  INITRAMFS_LTS.;1 - extent: 377583, length: 20486092, is_dir: 0
+Extracted: /tmp/initramfs_lts.
+  INTEL_UCODE.IMG;1 - extent: 475863, length: 7367952, is_dir: 0
+  MODLOOP_LTS.;1 - extent: 387587, length: 180789248, is_dir: 0
+  SYSLINUX - extent: 65, length: 2048, is_dir: 2
+  SYSTEM.MAP_LTS;1 - extent: 480379, length: 5751847, is_dir: 0
+  VMLINUZ_LTS.;1 - extent: 483188, length: 11879168, is_dir: 0
+Extracted: /tmp/vmlinuz_lts.
+[1]+  Done                    qemu-system-x86_64 -m 1024 -cdrom /app/alpine.iso -boot d -display none -chardev socket,id=serial0,host=127.0.0.1,port=6665,server
+=on,wait=off,telnet=on -serial chardev:serial0
+root@d95971070d33:/app#

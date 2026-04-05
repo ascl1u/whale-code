@@ -1,0 +1,42 @@
+New Terminal Output:
+
+root@dc8c6ba9a243:/app# cat > check_remaining.py << 'EOF'
+> import re
+>
+> # Read synonyms
+> synonyms = {}
+> with open('synonyms.txt', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line:
+>             words = [w.strip() for w in line.split(',')]
+>             for word in words:
+>                 synonyms[word] = words
+>
+> # Words to check from the problematic areas
+> words_to_check = ['terms', 'express', 'usually', 'father', 'suggested', 'snobbily', 'snobbish', 'snobbishly']
+>
+> print("Checking for shorter synonyms:")
+> for word in words_to_check:
+>     if word.lower() in synonyms:
+>         syns = synonyms[word.lower()]
+>         shortest = min(syns, key=len)
+>         print(f"{word}: {syns}")
+>         print(f"  Shortest: {shortest} (len={len(shortest)}, original len={len(word)})")
+>         if len(shortest) < len(word):
+>             print(f"  -> Can save {len(word) - len(shortest)} chars")
+>     else:
+>         print(f"{word}: No synonyms found")
+> EOF
+root@dc8c6ba9a243:/app# python3 check_remaining.py
+Checking for shorter synonyms:
+terms: ['terms', 'conditions', 'words', 'expressions', 'periods', 'relationships']
+  Shortest: terms (len=5, original len=5)
+express: No synonyms found
+usually: No synonyms found
+father: No synonyms found
+suggested: No synonyms found
+snobbily: No synonyms found
+snobbish: No synonyms found
+snobbishly: No synonyms found
+root@dc8c6ba9a243:/app#

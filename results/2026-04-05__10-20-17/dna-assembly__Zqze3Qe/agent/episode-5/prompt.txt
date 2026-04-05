@@ -1,0 +1,64 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# python3 << 'EOF'
+> # Parse sequences
+> with open('sequences.fasta', 'r') as f:
+>     lines = f.readlines()
+>
+> seqs = {}
+> current = None
+> for line in lines:
+>     line = line.strip()
+>     if line.startswith('>'):
+>         current = line[1:]
+>         seqs[current] = ''
+>     else:
+>         seqs[current] += line
+>
+> # Look at egfp more carefully
+> print("eGFP sequence (first 50 bp):")
+> print(seqs['egfp'][:50])
+> print("\neGFP sequence (last 50 bp):")
+> print(seqs['egfp'][-50:])
+>
+> # Look at flag
+> print("\nFLAG sequence (full):")
+> print(seqs['flag'])
+> print(f"Length: {len(seqs['flag'])}")
+>
+> # Look at snap
+> print("\nSNAP sequence (first 50 bp):")
+> print(seqs['snap'][:50])
+> print("\nSNAP sequence (last 50 bp):")
+> print(seqs['snap'][-50:])
+>
+> # Check if flag is in output without start codon
+> flag_no_start = seqs['flag'][3:]  # Remove ATG
+> flag_pos = seqs['output'].find(flag_no_start[:30])
+> print(f"\nFLAG without start codon: {flag_pos}")
+>
+> # Check if flag is in output without stop codon
+> flag_no_stop = seqs['flag'][:-3]  # Remove TAA
+> flag_pos2 = seqs['output'].find(flag_no_stop[-30:])
+> print(f"FLAG without stop codon (end): {flag_pos2}")
+>
+> EOF
+eGFP sequence (first 50 bp):
+atgagcaagggcgaggagctgttcaccggggtggtgcccatcctggtcga
+
+eGFP sequence (last 50 bp):
+tcgtgaccgccgccgggatcactctcggcatggacgagctgtacaaataa
+
+FLAG sequence (full):
+atgggtagtggctccggtagcggtagcggcagcgactacaaggacgacgacgacaagggttccggttctggttcaggtagtggttcataa
+Length: 90
+
+SNAP sequence (first 50 bp):
+atggacaaagactgcgaaatgaagcgcaccaccctggatagccctctggg
+
+SNAP sequence (last 50 bp):
+ggctgctggcccacgagggccacagactgggtaagcctgggctgggttaa
+
+FLAG without start codon: 924
+FLAG without stop codon (end): 978
+root@40713b84f85c:/app#

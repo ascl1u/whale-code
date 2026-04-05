@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>         ct1 = encrypt_fn(pt1)
+>         ct2 = encrypt_fn(pt2)
+>         data.append((ct1, ct2))
+>
+>     # Compute scores for all candidates
+>     scores = []
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>         score = 0
+>
+>         for ct1, ct2 in data:
+>             fr1, fl1 = getleft(ct1), getright(ct1)
+>             fr2, fl2 = getleft(ct2), getright(ct2)
+>
+>             rb1 = fl1 ^ fr1
+>             rb2 = fl2 ^ fr2
+>
+>             lb1 = fr1 ^ f_function(rb1 ^ candidate_key5)
+>             lb2 = fr2 ^ f_function(rb2 ^ candidate_key5)
+>
+>             # Different scoring: look at both left and right differences
+>             left_diff = lb1 ^ lb2
+>             right_diff = rb1 ^ rb2
+>
+>             # Score based on absolute difference from expected value
+>             left_bits = bin(left_diff).count('1')
+>             right_bits = bin(right_diff).count('1')
+>
+>             # Penalize if too similar or too different
+>             # Expect around 16 bits set (half of 32)
+>             score += abs(left_bits - 16) + abs(right_bits - 16)
+>
+>         scores.append((score, candidate_key5))
+>
+>     # Return the key with score closest to ideal (minimum penalty)
+>     scores.sort()
+>     return scores[0][1]
+>
+> EOF
+root@486aac7a4fa6:/app#

@@ -1,0 +1,123 @@
+New Terminal Output:
+
+root@4ff76c48fd89:/app# cat > /tmp/extract_iso.py << 'PYEOF'
+el and initrd
+            for name, extent, size in boot_entries:
+                for target in target_names:
+                    if target.upper() in name.upper():
+                        # Extract file
+                        f.seek(extent * 2048)
+                        file_data = f.read(size)
+                        out_file = f"{output_path}/{target}"
+                        with open(out_file, 'wb') as out:
+                            out.write(file_data)
+                        print(f"Extracted {name} ({size} bytes) to {out_file}")
+                        return out_file
+    return None
+
+# Extract kernel
+kernel = find_and_extract_file('/app/alpine.iso', ['vmlinuz', 'VMLINUZ'], '/tmp')
+if kernel:
+    print(f"Kernel found: {kernel}")
+else:
+    print("Kernel not found")
+
+# Extract initrd
+initrd = find_and_extract_file('/app/alpine.iso', ['initramfs', 'INITRAMFS', 'initrd'], '/tmp')
+if initrd:
+    print(f"Initrd found: {initrd}")
+else:
+    print("Initrd not found")
+PYEOF
+> import struct
+> import sys
+>
+> def read_iso_directory(iso_file, extent, size):
+>     """Read directory records from ISO"""
+>     iso_file.seek(extent * 2048)
+>     data = iso_file.read(size)
+>
+>     entries = []
+>     offset = 0
+>     while offset < len(data):
+>         record_len = data[offset]
+>         if record_len == 0:
+>             offset = ((offset // 2048) + 1) * 2048
+>             if offset >= len(data):
+>                 break
+>             continue
+>
+>         if offset + record_len > len(data):
+>             break
+>
+>         record = data[offset:offset + record_len]
+>
+>         # Parse directory record
+>         if len(record) >= 33:
+>             extent_loc = struct.unpack('<I', record[2:6])[0]
+>             data_len = struct.unpack('<I', record[10:14])[0]
+>             name_len = record[32]
+>
+>             if name_len > 0 and offset + 33 + name_len <= len(data):
+>                 name = record[33:33 + name_len].decode('ascii', errors='ignore')
+>                 entries.append((name, extent_loc, data_len))
+>
+>         offset += record_len
+>
+>     return entries
+>
+> def find_and_extract_file(iso_path, target_names, output_path):
+>     """Find and extract files from ISO"""
+>     with open(iso_path, 'rb') as f:
+>         # Read primary volume descriptor
+>         f.seek(16 * 2048)
+>         pvd = f.read(2048)
+>
+>         # Get root directory location
+>         root_extent = struct.unpack('<I', pvd[158:162])[0]
+>         root_size = struct.unpack('<I', pvd[166:170])[0]
+>
+>         # Read root directory
+>         root_entries = read_iso_directory(f, root_extent, root_size)
+>
+>         # Look for boot directory
+>         boot_extent = None
+>         boot_size = None
+>         for name, extent, size in root_entries:
+>             if 'BOOT' in name.upper():
+>                 boot_extent = extent
+>                 boot_size = size
+>                 break
+>
+>         if boot_extent:
+>             boot_entries = read_iso_directory(f, boot_extent, boot_size)
+>
+>             # Find kernel and initrd
+>             for name, extent, size in boot_entries:
+>                 for target in target_names:
+>                     if target.upper() in name.upper():
+>                         # Extract file
+>                         f.seek(extent * 2048)
+>                         file_data = f.read(size)
+>                         out_file = f"{output_path}/{target}"
+>                         with open(out_file, 'wb') as out:
+>                             out.write(file_data)
+>                         print(f"Extracted {name} ({size} bytes) to {out_file}")
+>                         return out_file
+>     return None
+>
+> # Extract kernel
+> kernel = find_and_extract_file('/app/alpine.iso', ['vmlinuz', 'VMLINUZ'], '/tmp')
+> if kernel:
+>     print(f"Kernel found: {kernel}")
+> else:
+>     print("Kernel not found")
+>
+> # Extract initrd
+> initrd = find_and_extract_file('/app/alpine.iso', ['initramfs', 'INITRAMFS', 'initrd'], '/tmp')
+> if initrd:
+>     print(f"Initrd found: {initrd}")
+> else:
+>     print("Initrd not found")
+> PYEOF
+root@4ff76c48fd89:/app#

@@ -1,0 +1,94 @@
+New Terminal Output:
+
+root@a5d065eeb03f:/app# python3 << 'EOF'
+> import asyncio
+> import time
+> from run import run_tasks
+>
+> print("Test 1: Import successful")
+>
+> # Test 2: Basic concurrency limiting
+> async def test_concurrency():
+>     concurrent_count = 0
+>     max_concurrent_seen = 0
+>     completed = []
+>
+>     async def task(task_id):
+>         nonlocal concurrent_count, max_concurrent_seen
+>         concurrent_count += 1
+>         max_concurrent_seen = max(max_concurrent_seen, concurrent_count)
+>         print(f"Task {task_id} started (concurrent: {concurrent_count})")
+>         await asyncio.sleep(0.1)
+>         concurrent_count -= 1
+>         completed.append(task_id)
+>         print(f"Task {task_id} completed")
+>
+>     tasks = [lambda i=i: task(i) for i in range(10)]
+>     await run_tasks(tasks, max_concurrent=3)
+>
+>     print(f"Test 2: Max concurrent seen: {max_concurrent_seen} (expected: 3)")
+>     print(f"Test 2: All tasks completed: {len(completed) == 10}")
+>     assert max_concurrent_seen <= 3, "Concurrency limit exceeded!"
+>     assert len(completed) == 10, "Not all tasks completed!"
+>
+> asyncio.run(test_concurrency())
+>
+> # Test 3: Cleanup code runs
+> async def test_cleanup():
+>     cleanup_ran = []
+>
+>     async def task_with_cleanup(task_id):
+>         try:
+>             print(f"Task {task_id} running")
+>             await asyncio.sleep(0.05)
+>         finally:
+>             cleanup_ran.append(task_id)
+>             print(f"Task {task_id} cleanup ran")
+>
+>     tasks = [lambda i=i: task_with_cleanup(i) for i in range(5)]
+>     await run_tasks(tasks, max_concurrent=2)
+>
+>     print(f"Test 3: Cleanup ran for all tasks: {len(cleanup_ran) == 5}")
+>     assert len(cleanup_ran) == 5, "Cleanup didn't run for all tasks!"
+>
+> asyncio.run(test_cleanup())
+>
+> print("\nAll tests passed!")
+> EOF
+Test 1: Import successful
+Task 0 started (concurrent: 1)
+Task 1 started (concurrent: 2)
+Task 2 started (concurrent: 3)
+Task 0 completed
+Task 1 completed
+Task 2 completed
+Task 3 started (concurrent: 1)
+Task 4 started (concurrent: 2)
+Task 5 started (concurrent: 3)
+Task 3 completed
+Task 4 completed
+Task 5 completed
+Task 6 started (concurrent: 1)
+Task 7 started (concurrent: 2)
+Task 8 started (concurrent: 3)
+Task 6 completed
+Task 7 completed
+Task 8 completed
+Task 9 started (concurrent: 1)
+Task 9 completed
+Test 2: Max concurrent seen: 3 (expected: 3)
+Test 2: All tasks completed: True
+Task 0 running
+Task 1 running
+Task 0 cleanup ran
+Task 1 cleanup ran
+Task 2 running
+Task 3 running
+Task 2 cleanup ran
+Task 3 cleanup ran
+Task 4 running
+Task 4 cleanup ran
+Test 3: Cleanup ran for all tasks: True
+
+All tests passed!
+root@a5d065eeb03f:/app#

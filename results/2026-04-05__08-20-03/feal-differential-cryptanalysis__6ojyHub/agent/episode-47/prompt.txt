@@ -1,0 +1,73 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using differential cryptanalysis"""
+>
+>     # Collect just 4 pairs for maximum speed
+>     data = []
+>     for i in range(4):
+>         pt1 = i
+>         pt2 = i ^ 0x0000000080000000
+>         ct1 = encrypt_fn(pt1)
+>         ct2 = encrypt_fn(pt2)
+>         data.append((ct1, ct2))
+>
+>     # Try to find the key with minimal computation
+>     # NEW: Look for MINIMUM score instead of maximum
+>     best_key = 0
+>     best_score = float('inf')
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>         score = 0
+>
+>         for ct1, ct2 in data:
+>             # Minimal computation
+>             fr1, fl1 = getleft(ct1), getright(ct1)
+>             fr2, fl2 = getleft(ct2), getright(ct2)
+>
+>             rb1 = fl1 ^ fr1
+>             rb2 = fl2 ^ fr2
+>
+>             lb1 = fr1 ^ f_function(rb1 ^ candidate_key5)
+>             lb2 = fr2 ^ f_function(rb2 ^ candidate_key5)
+>
+>             # Score based on hamming weight of XOR
+>             score += bin(lb1 ^ lb2).count('1')
+>
+>         if score < best_score:  # Changed to < for minimum
+>             best_score = score
+>             best_key = candidate_key5
+>
+>     return best_key
+>
+> EOF
+root@486aac7a4fa6:/app#

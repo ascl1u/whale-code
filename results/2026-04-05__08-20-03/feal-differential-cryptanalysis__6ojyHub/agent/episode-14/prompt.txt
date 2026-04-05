@@ -1,0 +1,30 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > debug_attack.py << 'EOF'
+> #!/usr/bin/env python3
+> import feal
+>
+> # Initialize with random keys
+> feal.create_random_keys()
+>
+> print("Actual key[5]:", feal.key[5])
+>
+> # Find what seed gives this key
+> for seed in range(0x10000):
+>     candidate = (seed * 1234567) & 0xFFFFFFFF
+>     if candidate == feal.key[5]:
+>         print(f"Seed for key[5]: {seed}")
+>         print(f"Verification: {seed} * 1234567 & 0xFFFFFFFF = {candidate}")
+>         break
+>
+> print("\nAll keys:")
+> for i in range(6):
+>     print(f"key[{i}] = {feal.key[i]}")
+>
+> # Test encryption with a simple plaintext
+> pt = 0x0123456789ABCDEF
+> ct = feal.encrypt(pt)
+> print(f"\nPlaintext: {pt:016x}")
+> print(f"Ciphertext: {ct:016x}")
+> EOF
+root@486aac7a4fa6:/app#

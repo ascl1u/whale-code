@@ -1,0 +1,89 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# cat > design_primers.py << 'EOF'
+> import subprocess
+> import re
+>
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> def reverse_complement(seq):
+>     complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
+>     return ''.join(complement[base] for base in reversed(seq))
+>
+> def get_tm(seq):
+>     """Get melting temperature using oligotm"""
+>     try:
+>         result = subprocess.run(
+>             ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq],
+>             capture_output=True, text=True, check=True
+>         )
+>         return float(result.stdout.strip())
+>     except:
+>         return None
+>
+> def find_insertion_site(input_seq, output_seq):
+>     """Find where the insert goes in the plasmid"""
+>     # Find the common parts
+>     # The output should have input sequence with something inserted
+>
+>     # Try to find a break point
+>     for i in range(len(input_seq)):
+>         # Check if input splits at position i
+>         left = input_seq[:i]
+>         right = input_seq[i:]
+>
+>         # Check if output starts with left
+>         if output_seq.startswith(left):
+>             # Find where right appears in output
+>             right_pos = output_seq.find(right)
+>             if right_pos > i:
+>                 # Found the insertion
+>                 insert = output_seq[i:right_pos]
+>                 return i, insert, left, right
+>
+>     return None, None, None, None
+>
+> # Read sequences
+> seqs = read_fasta('sequences.fasta')
+>
+> print("Analyzing sequences...")
+> print(f"Input length: {len(seqs['input'])}")
+> print(f"Output length: {len(seqs['output'])}")
+> print(f"eGFP length: {len(seqs['egfp'])}")
+> print(f"FLAG length: {len(seqs['flag'])}")
+> print(f"SNAP length: {len(seqs['snap'])}")
+>
+> # Find insertion site
+> pos, insert, left, right = find_insertion_site(seqs['input'], seqs['output'])
+> if pos:
+>     print(f"\nInsertion at position {pos}")
+>     print(f"Insert length: {len(insert)}")
+>     print(f"Insert sequence (first 50 bp): {insert[:50]}")
+>     print(f"Left flank (last 20 bp): {left[-20:]}")
+>     print(f"Right flank (first 20 bp): {right[:20]}")
+>
+>     # Check if insert matches egfp+flag+snap
+>     combined = seqs['egfp'] + seqs['flag'] + seqs['snap']
+>     print(f"\nCombined egfp+flag+snap length: {len(combined)}")
+>     print(f"Match with insert: {insert == combined}")
+>
+> EOF
+root@a0b49dcae9e4:/app#

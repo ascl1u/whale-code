@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>     data = []
+>     for i in range(8):
+>         pt1 = i << 32
+>         pt2 = (i << 32) | 1
+>         ct1 = encrypt_fn(pt1)
+>         ct2 = encrypt_fn(pt2)
+>         data.append((ct1, ct2))
+>
+>     best_key = 0
+>     best_score = -1
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>         score = 0
+>
+>         for ct1, ct2 in data:
+>             fr1 = getleft(ct1)
+>             fl1 = getright(ct1)
+>             rb1 = fl1 ^ fr1
+>             lb1 = fr1 ^ f_function(rb1 ^ candidate_key5)
+>
+>             fr2 = getleft(ct2)
+>             fl2 = getright(ct2)
+>             rb2 = fl2 ^ fr2
+>             lb2 = fr2 ^ f_function(rb2 ^ candidate_key5)
+>
+>             # Ultra-simple scoring
+>             diff = (lb1 ^ lb2) ^ (rb1 ^ rb2)
+>             # Count bits
+>             bits = bin(diff).count('1')
+>             score += bits
+>
+>         if score > best_score:
+>             best_score = score
+>             best_key = candidate_key5
+>
+>     return best_key
+>
+> EOF
+root@486aac7a4fa6:/app#

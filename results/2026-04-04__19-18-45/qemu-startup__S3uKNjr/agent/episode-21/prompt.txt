@@ -1,0 +1,110 @@
+New Terminal Output:
+
+root@b5686e945626:/app# cat > /tmp/extract_iso.py << 'EOF'
+                    dirs_to_search.append((record['lba'], record['size'], path + '/' + record['name']))
+                    else:
+                        for target in target_files:
+                            if target.lower() in full_path:
+                                found_files[target] = (record['lba'], record['size'])
+                                print(f"Found {target} at {full_path}")
+
+                offset += record['length']
+
+        return found_files
+
+# Find and extract kernel and initramfs
+target_files = ['vmlinuz-lts', 'initramfs-lts']
+found = find_and_extract_files('/app/alpine.iso', target_files)
+
+for name, (lba, size) in found.items():
+    output = f'/tmp/{name}'
+    extract_file('/app/alpine.iso', lba, size, output)
+    print(f"Extracted {name} to {output} ({size} bytes)")
+
+EOF
+> import struct
+> import os
+>
+> def parse_directory_record(data, offset):
+>     if offset >= len(data) or data[offset] == 0:
+>         return None
+>
+>     length = data[offset]
+>     if length == 0:
+>         return None
+>
+>     lba = struct.unpack('<I', data[offset+2:offset+6])[0]
+>     size = struct.unpack('<I', data[offset+10:offset+14])[0]
+>     flags = data[offset+25]
+>     name_len = data[offset+32]
+>     name = data[offset+33:offset+33+name_len].decode('ascii', errors='ignore')
+>
+>     return {
+>         'length': length,
+>         'lba': lba,
+>         'size': size,
+>         'flags': flags,
+>         'name': name,
+>         'is_dir': (flags & 2) != 0
+>     }
+>
+> def extract_file(iso_path, lba, size, output_path):
+>     with open(iso_path, 'rb') as f:
+>         f.seek(lba * 2048)
+>         data = f.read(size)
+>         with open(output_path, 'wb') as out:
+>             out.write(data)
+>
+> def find_and_extract_files(iso_path, target_files):
+>     with open(iso_path, 'rb') as f:
+>         # Read primary volume descriptor
+>         f.seek(16 * 2048)
+>         pvd = f.read(2048)
+>
+>         # Get root directory
+>         root_dir_record = pvd[156:156+34]
+>         root_lba = struct.unpack('<I', root_dir_record[2:6])[0]
+>         root_size = struct.unpack('<I', root_dir_record[10:14])[0]
+>
+>         # Search directories
+>         dirs_to_search = [(root_lba, root_size, '')]
+>         found_files = {}
+>
+>         while dirs_to_search:
+>             dir_lba, dir_size, path = dirs_to_search.pop(0)
+>             f.seek(dir_lba * 2048)
+>             dir_data = f.read(dir_size)
+>
+>             offset = 0
+>             while offset < len(dir_data):
+>                 record = parse_directory_record(dir_data, offset)
+>                 if not record:
+>                     offset += 1
+>                     continue
+>
+>                 if record['name'] not in ['.', '..', '\x00']:
+>                     full_path = (path + '/' + record['name']).lower().strip('/')
+>
+>                     if record['is_dir']:
+>                         dirs_to_search.append((record['lba'], record['size'], path + '/' + record['name']))
+>                     else:
+>                         for target in target_files:
+>                             if target.lower() in full_path:
+>                                 found_files[target] = (record['lba'], record['size'])
+>                                 print(f"Found {target} at {full_path}")
+>
+>                 offset += record['length']
+>
+>         return found_files
+>
+> # Find and extract kernel and initramfs
+> target_files = ['vmlinuz-lts', 'initramfs-lts']
+> found = find_and_extract_files('/app/alpine.iso', target_files)
+>
+> for name, (lba, size) in found.items():
+>     output = f'/tmp/{name}'
+>     extract_file('/app/alpine.iso', lba, size, output)
+>     print(f"Extracted {name} to {output} ({size} bytes)")
+>
+> EOF
+root@b5686e945626:/app#

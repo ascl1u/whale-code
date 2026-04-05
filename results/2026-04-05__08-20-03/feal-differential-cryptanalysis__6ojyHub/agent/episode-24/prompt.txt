@@ -1,0 +1,162 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+    # New idea: For each candidate key[5], check if partial decryption
+    # gives states that satisfy certain algebraic properties
+
+    # Specifically, we'll use the fact that for plaintexts that differ by XOR,
+    # the partially decrypted states should show predictable patterns
+
+    best_key = None
+    best_score = float('-inf')
+
+    for seed in range(0x10000):
+        candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+
+        # Partially decrypt all pairs
+        decrypted = {}
+        for pt, ct in pairs:
+            fr = getleft(ct)
+            fl = getright(ct)
+            bxl = fl ^ fr
+            bxr = fr
+            rb = bxl
+            lb = bxr ^ f_function(rb ^ candidate_key5)
+            decrypted[pt] = (lb, rb)
+
+        # Score based on: check if XOR relationships are preserved
+        # For plaintexts pt1, pt2, compute pt1 ^ pt2
+        # Then check if the decrypted states also have a related XOR
+
+        score = 0
+
+        # Test specific XOR relationships
+        for i in range(10):
+            for j in range(i+1, 10):
+                pt1, pt2 = i, j
+                pt_xor = pt1 ^ pt2
+
+                lb1, rb1 = decrypted[pt1]
+                lb2, rb2 = decrypted[pt2]
+
+                lb_xor = lb1 ^ lb2
+                rb_xor = rb1 ^ rb2
+
+                # Heuristic: the XOR of decrypted states should be "reasonable"
+                # Count the Hamming weight
+                lb_weight = bin(lb_xor).count('1')
+                rb_weight = bin(rb_xor).count('1')
+
+                # Prefer moderate Hamming weights (not too low, not too high)
+                if 8 <= lb_weight <= 24:
+                    score += 1
+                if 8 <= rb_weight <= 24:
+                    score += 1
+
+        if score > best_score:
+            best_score = score
+            best_key = candidate_key5
+
+    return best_key
+
+EOF
+> #!/usr/bin/env python3
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using chosen plaintext attack"""
+>
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(50):
+>         plaintext = i
+>         ciphertext = encrypt_fn(plaintext)
+>         pairs.append((plaintext, ciphertext))
+>
+>     # New idea: For each candidate key[5], check if partial decryption
+>     # gives states that satisfy certain algebraic properties
+>
+>     # Specifically, we'll use the fact that for plaintexts that differ by XOR,
+>     # the partially decrypted states should show predictable patterns
+>
+>     best_key = None
+>     best_score = float('-inf')
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Partially decrypt all pairs
+>         decrypted = {}
+>         for pt, ct in pairs:
+>             fr = getleft(ct)
+>             fl = getright(ct)
+>             bxl = fl ^ fr
+>             bxr = fr
+>             rb = bxl
+>             lb = bxr ^ f_function(rb ^ candidate_key5)
+>             decrypted[pt] = (lb, rb)
+>
+>         # Score based on: check if XOR relationships are preserved
+>         # For plaintexts pt1, pt2, compute pt1 ^ pt2
+>         # Then check if the decrypted states also have a related XOR
+>
+>         score = 0
+>
+>         # Test specific XOR relationships
+>         for i in range(10):
+>             for j in range(i+1, 10):
+>                 pt1, pt2 = i, j
+>                 pt_xor = pt1 ^ pt2
+>
+>                 lb1, rb1 = decrypted[pt1]
+>                 lb2, rb2 = decrypted[pt2]
+>
+>                 lb_xor = lb1 ^ lb2
+>                 rb_xor = rb1 ^ rb2
+>
+>                 # Heuristic: the XOR of decrypted states should be "reasonable"
+>                 # Count the Hamming weight
+>                 lb_weight = bin(lb_xor).count('1')
+>                 rb_weight = bin(rb_xor).count('1')
+>
+>                 # Prefer moderate Hamming weights (not too low, not too high)
+>                 if 8 <= lb_weight <= 24:
+>                     score += 1
+>                 if 8 <= rb_weight <= 24:
+>                     score += 1
+>
+>         if score > best_score:
+>             best_score = score
+>             best_key = candidate_key5
+>
+>     return best_key
+>
+> EOF
+root@486aac7a4fa6:/app#

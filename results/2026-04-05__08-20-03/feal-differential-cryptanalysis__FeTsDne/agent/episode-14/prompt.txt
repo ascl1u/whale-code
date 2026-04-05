@@ -1,0 +1,189 @@
+New Terminal Output:
+
+root@506b644d66f7:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+ >     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+ > def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+ ^>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+ >     return output & 0xFFFFFFFF
+>
+ > def decrypt_two_rounds(ciphertext, key4, key5):
+>     """Decrypt the last two rounds"""
+ >     c_left = getleft(ciphertext)
+>     c_right = getright(ciphertext)
+>     R4 = c_left
+>     L4 = c_right ^ R4
+>     R3 = L4
+>     L3 = R4 ^ f_function(R3 ^ key5)
+>     R2 = L3
+>     L2 = R3 ^ f_function(R2 ^ key4)
+>     return L2, R2
+>
+o> def attack(encrypt_fn):
+>     """Recover key[5] using brute force with algebraic validation"""
+>
+>     # Use specific plaintexts that create algebraic relationships
+>     # Use plaintexts with simple structure
+>     p0 = 0x0000000000000000
+>     c0 = encrypt_fn(p0)
+>
+ >     p1 = 0x0000000000000001
+>     c1 = encrypt_fn(p1)
+ >
+>     p2 = 0x0000000100000000
+>     c2 = encrypt_fn(p2)
+>
+>     p3 = 0x0000000100000001
+>     c3 = encrypt_fn(p3)
+>
+>     # Brute force key[4] and key[5]
+>     for seed4 in range(0x10000):
+>         key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>         for seed5 in range(0x10000):
+>             key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>             # Decrypt two rounds for all plaintexts
+>             L2_0, R2_0 = decrypt_two_rounds(c0, key4, key5)
+>             L2_1, R2_1 = decrypt_two_rounds(c1, key4, key5)
+>             L2_2, R2_2 = decrypt_two_rounds(c2, key4, key5)
+O>             L2_3, R2_3 = decrypt_two_rounds(c3, key4, key5)
+>
+>             # Check for algebraic consistency
+>             # The differences in the decrypted states should follow
+>             # certain patterns based on the plaintext differences
+ >
+>             # For plaintexts that differ by 1 in the right half:
+>             # p0 and p1 differ by 1 in right half
+>             # After whitening and pre-round, this creates a specific difference
+>
+>             # Check if the differences make sense
+>             # This is a heuristic check
+>
+>             diff_01_L = L2_0 ^ L2_1
+>             diff_01_R = R2_0 ^ R2_1
+>             diff_02_L = L2_0 ^ L2_2
+>             diff_02_R = R2_0 ^ R2_2
+>             diff_03_L = L2_0 ^ L2_3
+>             diff_03_R = R2_0 ^ R2_3
+>
+>             # For correct keys, diff_03 should be related to diff_01 and diff_02
+>             # Specifically: diff_03 = diff_01 XOR diff_02 (if the cipher was linear)
+>             # But FEAL is non-linear, so this won't hold exactly
+>             # However, we can check if it's "close" in some sense
+>
+>             # Actually, let's use a different check:
+>             # Compute what the differences should be after decrypting rounds 1 and 2
+>             # and see if we can find consistent key[2] and key[3]
+>
+>             # This is still complex. Let me use a simpler statistical test:
+>             # For wrong keys, the decrypted values should look random
+>             # For right keys, there should be some structure
+>
+>             # Count how many bits are set in the differences
+>             total_bits = bin(diff_01_L).count('1') + bin(diff_01_R).count('1')
+>             total_bits += bin(diff_02_L).count('1') + bin(diff_02_R).count('1')
+>
+>             # For wrong keys, expect about 50% of bits set (random)
+>             # For right keys, might have fewer bits set (structure)
+>             # This is a weak test but might work
+>
+>             # Actually, this won't work well. Let me try yet another approach:
+>             # Just try to find key[3] that's consistent
+>
+>             # Sample a few key[3] values
+>             for seed3 in range(0, 0x10000, 512):  # Sample sparsely
+>                 key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>
+>                 # Decrypt round 2 for first two plaintexts
+>                 R1_0 = L2_0
+>                 L1_0 = R2_0 ^ f_function(R1_0 ^ key3)
+>
+>                 R1_1 = L2_1
+>                 L1_1 = R2_1 ^ f_function(R1_1 ^ key3)
+>
+>                 # Check if we can find a consistent key[2]
+>                 # Sample key[2] values
+>                 for seed2 in range(0, 0x10000, 512):  # Sample sparsely
+>                     key2 = (seed2 * 1234567) & 0xFFFFFFFF
+>
+>                     # Decrypt round 1
+>                     R0_0 = L1_0
+>                     L0_0 = R1_0 ^ f_function(R0_0 ^ key2)
+>
+>                     R0_1 = L1_1
+>                     L0_1 = R1_1 ^ f_function(R0_1 ^ key2)
+>
+>                     # After pre-round, before round 1:
+>                     # L0, R0 where R0 is the right value after pre-round
+>                     # Pre-round does: R = R XOR L
+>                     # So before pre-round: R_before = R0, L_before = R0 XOR L0
+>
+>                     # After whitening: L_before = plaintext_left XOR key[0]
+>                     #                  R_before = plaintext_right XOR key[1]
+>
+>                     # For p0 = 0:
+>                     # L_before_0 = key[0], R_before_0 = key[1]
+>                     # After pre-round: R0_0 = key[1] XOR key[0]
+>
+>                     # So: key[0] XOR key[1] = R0_0
+>                     # And: L0_0 = R0_0 (wait, that's not right)
+>
+>                     # Let me recalculate:
+>                     # After whitening: L_w = p_left XOR key[0], R_w = p_right XOR key[1]
+>                     # After pre-round: R_p = R_w XOR L_w, L_p = L_w
+>                     # After round 1: R1 = L_p XOR f(R_p XOR key[2]), L1 = R_p
+>                     # So: L1 = R_p = R_w XOR L_w
+>                     # And: R1 = L_w XOR f(R_p XOR key[2])
+>
+>                     # We decrypted to get L0, R0 which are actually L_p, R_p
+>                     # So: R0 = R_p = R_w XOR L_w = (p_right XOR key[1]) XOR (p_left XOR key[0])
+>                     # And: L0 = L_p = L_w = p_left XOR key[0]
+>
+>                     # For p0 = 0: R0_0 = key[1] XOR key[0], L0_0 = key[0]
+>                     # For p1 = 1: R0_1 = (1 XOR key[1]) XOR key[0] = 1 XOR key[1] XOR key[0]
+>                     #             L0_1 = key[0]
+>
+>                     # So: L0_0 should equal L0_1 (both are key[0])
+>                     if L0_0 == L0_1:
+>                         # Also check with p2
+>                         R1_2 = L2_2
+>                         L1_2 = R2_2 ^ f_function(R1_2 ^ key3)
+>                         R0_2 = L1_2
+>                         L0_2 = R1_2 ^ f_function(R0_2 ^ key2)
+>
+>                         # For p2 = 0x0000000100000000:
+>                         # p2_left = 1, p2_right = 0
+>                         # L0_2 = 1 XOR key[0]
+>                         # R0_2 = key[1] XOR (1 XOR key[0]) = key[1] XOR 1 XOR key[0]
+>
+>                         # Check: L0_0 XOR L0_2 should equal 1
+>                         if (L0_0 ^ L0_2) == 1:
+>                             # Found it!
+>                             return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

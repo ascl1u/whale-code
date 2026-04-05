@@ -1,0 +1,209 @@
+New Terminal Output:
+
+root@5bf583115212:/app# cat > /app/attack.py << 'EOF'
+ Decrypt backward from ciphertext
+            # Undo final swap
+            left_after_post = ct_right
+            right_after_post = ct_left
+
+            # Undo post-round mixing
+            left_after_r3 = left_after_post ^ right_after_post
+            right_after_r3 = right_after_post
+
+            # Undo round 3
+            right_before_r3 = left_after_r3
+            left_before_r3 = right_after_r3 ^ f_function(right_before_r3 ^ key5)
+
+            # Undo round 2
+            right_before_r2 = left_before_r3
+            left_before_r2 = right_before_r3 ^ f_function(right_before_r2 ^ key4)
+
+            # Now we have the state before round 2
+            # This should equal the state after round 1
+
+            # Try to find keys 0,1,2,3 that produce this state
+            for seed0 in range(0, 0x10000, 128):  # Coarse sampling
+                key0 = (seed0 * 1234567) & 0xFFFFFFFF
+
+                for seed1 in range(0, 0x10000, 128):  # Coarse sampling
+                    key1 = (seed1 * 1234567) & 0xFFFFFFFF
+
+                    # Apply initial processing
+                    left = pt_left
+                    right = pt_right
+                    left ^= key0
+                    right ^= key1
+                    right ^= left
+
+                    # Now try key[2] and key[3] to reach our target state
+                    for seed2 in range(0, 0x10000, 256):  # Very coarse sampling
+                        key2 = (seed2 * 1234567) & 0xFFFFFFFF
+
+                        # Round 0
+                        mixed = f_function(right ^ key2)
+                        left_after_r0 = right
+                        right_after_r0 = left ^ mixed
+
+                        # For round 1, we need to reach (left_before_r2, right_before_r2)
+                        # After round 1: left1 = right0, right1 = left0 ^ f(right0 ^ key3)
+                        # So: right_before_r2 = left0 ^ f(right0 ^ key3)
+     > #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+ >
+ > def getright(x):
+>     return x & 0xFFFFFFFF
+left_>
+> def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+ > def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+ > def attack(encrypt_fn):
+>     """
+>     Recover key[5] using a meet-in-the-middle attack.
+>
+>     Strategy:
+>     1. Collect plaintext-ciphertext pairs
+>     2. For each candidate (key[4], key[5]), decrypt backward 2 rounds
+>     3. For each candidate (key[0], key[1]), encrypt forward through initial processing
+>     4. Try to match them by testing candidate key[2] and key[3] values
+>     5. When we find a complete match, return key[5]
+>     """
+)>
+>     # Collect a plaintext-ciphertext pair
+>     pt = 0
+xt"">     ct = encrypt_fn(pt)
+a>
+intex>     # For validation
+>     pt2 = 1
+t>     ct2 = encrypt_fn(pt2)
+>
+>     # Extract plaintext halves
+l>     pt_left = getleft(pt)
+>     pt_right = getright(pt)
+>
+>     # Extract ciphertext halves
+>     ct_left = getleft(ct)
+>     ct_right = getright(ct)
+>
+>     # Try combinations of key seeds
+>     # We'll search more intelligently by fixing some keys and searching others
+>
+>     # Search strategy: Try all combinations of (seed4, seed5) first
+>     # For each, decrypt backward and see if we can find matching (seed0, seed1, seed2, seed3)
+>
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         for seed4 in range(0, 0x10000, 16):  # Sample every 16th value for speed
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # Decrypt backward from ciphertext
+>             # Undo final swap
+>             left_after_post = ct_right
+>             right_after_post = ct_left
+>
+>             # Undo post-round mixing
+>             left_after_r3 = left_after_post ^ right_after_post
+>             right_after_r3 = right_after_post
+>
+>             # Undo round 3
+>             right_before_r3 = left_after_r3
+>             left_before_r3 = right_after_r3 ^ f_function(right_before_r3 ^ key5)
+>
+>             # Undo round 2
+>             right_before_r2 = left_before_r3
+>             left_before_r2 = right_before_r3 ^ f_function(right_before_r2 ^ key4)
+>
+>             # Now we have the state before round 2
+>             # This should equal the state after round 1
+>
+>             # Try to find keys 0,1,2,3 that produce this state
+>             for seed0 in range(0, 0x10000, 128):  # Coarse sampling
+>                 key0 = (seed0 * 1234567) & 0xFFFFFFFF
+>
+>                 for seed1 in range(0, 0x10000, 128):  # Coarse sampling
+>                     key1 = (seed1 * 1234567) & 0xFFFFFFFF
+>
+>                     # Apply initial processing
+>                     left = pt_left
+>                     right = pt_right
+>                     left ^= key0
+>                     right ^= key1
+>                     right ^= left
+>
+>                     # Now try key[2] and key[3] to reach our target state
+>                     for seed2 in range(0, 0x10000, 256):  # Very coarse sampling
+>                         key2 = (seed2 * 1234567) & 0xFFFFFFFF
+>
+>                         # Round 0
+>                         mixed = f_function(right ^ key2)
+>                         left_after_r0 = right
+>                         right_after_r0 = left ^ mixed
+>
+>                         # For round 1, we need to reach (left_before_r2, right_before_r2)
+>                         # After round 1: left1 = right0, right1 = left0 ^ f(right0 ^ key3)
+>                         # So: right_before_r2 = left0 ^ f(right0 ^ key3)
+>                         # We can solve for key3:
+>
+>                         # right_before_r2 = left_after_r0 ^ f(right_after_r0 ^ key3)
+>                         # This means: key3 should satisfy:
+>                         # f(right_after_r0 ^ key3) = left_after_r0 ^ right_before_r2
+>
+>                         target = left_after_r0 ^ right_before_r2
+>
+>                         # Try to find key3
+>                         for seed3 in range(0, 0x10000, 256):
+>                             key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>
+>                             if f_function(right_after_r0 ^ key3) == target:
+>                                 # Check if left also matches
+>                                 if right_after_r0 == left_before_r2:
+>                                     # Validate with second plaintext
+>                                     keys = [key0, key1, key2, key3, key4, key5]
+>                                     if validate_keys(pt2, ct2, keys):
+>                                         return key5
+>
+>     return 0
+>
+> def validate_keys(plaintext, ciphertext, keys):
+>     """Validate if keys produce the correct ciphertext"""
+>     left = getleft(plaintext)
+>     right = getright(plaintext)
+>
+>     left ^= keys[0]
+>     right ^= keys[1]
+>     right ^= left
+>
+>     for round_num in range(4):
+>         mixed = f_function(right ^ keys[round_num + 2])
+>         temp = right
+>         right = left ^ mixed
+>         left = temp
+>
+>     left ^= right
+>     result = merge(right, left)
+>
+>     return result == ciphertext
+>
+> EOF
+root@5bf583115212:/app#

@@ -1,0 +1,35 @@
+New Terminal Output:
+
+root@b5686e945626:/app# python3 << 'EOF'
+> import struct
+> import os
+>
+> def read_iso_directory(iso_path):
+>     with open(iso_path, 'rb') as f:
+>         # Read primary volume descriptor at sector 16
+>         f.seek(16 * 2048)
+>         pvd = f.read(2048)
+>
+>         if pvd[0:6] != b'\x01CD001':
+>             return None
+>
+>         # Root directory record starts at offset 156
+>         root_dir_record = pvd[156:156+34]
+>         root_lba = struct.unpack('<I', root_dir_record[2:6])[0]
+>         root_size = struct.unpack('<I', root_dir_record[10:14])[0]
+>
+>         # Read root directory
+>         f.seek(root_lba * 2048)
+>         root_data = f.read(root_size)
+>
+>         return f, root_data, root_lba
+>
+> result = read_iso_directory('/app/alpine.iso')
+> if result:
+>     print("Successfully parsed ISO structure")
+> else:
+>     print("Failed to parse ISO")
+>
+> EOF
+Successfully parsed ISO structure
+root@b5686e945626:/app#

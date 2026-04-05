@@ -1,0 +1,41 @@
+Current Terminal Screen:
+> # This will significantly reduce model size
+> model = fasttext.train_supervised(
+>     input='/tmp/train.txt',
+>     dim=50,            # Smaller dimension
+>     epoch=15,          # More epochs for better accuracy
+>     lr=0.5,
+>     wordNgrams=2,
+>     minCount=5,        # Ignore words appearing less than 5 times
+>     loss='softmax',
+>     verbose=2
+> )
+>
+> print("\nTraining complete!")
+>
+> # Test on test set
+> print("\nEvaluating on test set...")
+> result = model.test('/tmp/test.txt')
+> print(f"Samples: {result[0]}")
+> print(f"Precision: {result[1]:.4f}")
+> print(f"Recall: {result[2]:.4f}")
+>
+> # Apply quantization with more aggressive settings
+> print("\nApplying quantization...")
+> model.quantize(input='/tmp/train.txt', retrain=True, qnorm=True, cutoff=100000)
+> model.save_model('/app/model.bin')
+>
+> size_mb = os.path.getsize('/app/model.bin') / (1024 * 1024)
+> print(f"\nQuantized model size: {size_mb:.2f} MB")
+>
+> # Test quantized model
+> result = model.test('/tmp/test.txt')
+> print(f"Quantized model accuracy: {result[1]:.4f}")
+>
+> print("\nDone!")
+> EOF
+Training fasttext model with optimized parameters...
+Read 88M words
+Number of words:  198505
+Number of labels: 5
+Progress:  35.8% words/sec/thread:  117963 lr:  0.320925 avg.loss:  0.815077 ETA:   0h 8m 1s

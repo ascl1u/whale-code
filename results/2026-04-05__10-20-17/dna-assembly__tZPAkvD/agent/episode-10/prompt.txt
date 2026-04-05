@@ -1,0 +1,61 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > find_junctions.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> print("Sequence lengths:")
+> for name in ['input', 'egfp', 'flag', 'snap', 'output']:
+>     print(f"  {name}: {len(seqs[name])} bp")
+>
+> # Search for egfp in output
+> for i in range(len(seqs['output']) - len(seqs['egfp']) + 1):
+>     if seqs['output'][i:i+len(seqs['egfp'])] == seqs['egfp']:
+>         print(f"\nFound egfp at position {i} in output")
+>         egfp_start = i
+>         egfp_end = i + len(seqs['egfp'])
+>         print(f"  Before egfp: ...{seqs['output'][max(0,i-20):i]}")
+>         print(f"  After egfp: {seqs['output'][egfp_end:egfp_end+20]}...")
+>         break
+> else:
+>     print("\negfp not found exactly in output")
+>     # Try finding partial match
+>     egfp_start = seqs['output'].find(seqs['egfp'][:100])
+>     if egfp_start >= 0:
+>         print(f"  Found first 100bp of egfp at position {egfp_start}")
+>
+> # Search for flag in output
+> for i in range(len(seqs['output']) - len(seqs['flag']) + 1):
+>     if seqs['output'][i:i+len(seqs['flag'])] == seqs['flag']:
+>         print(f"\nFound flag at position {i} in output")
+>         flag_start = i
+>         flag_end = i + len(seqs['flag'])
+>         print(f"  Before flag: ...{seqs['output'][max(0,i-20):i]}")
+>         print(f"  After flag: {seqs['output'][flag_end:flag_end+20]}...")
+>         break
+> else:
+>     print("\nflag not found exactly in output")
+>
+> # Search for snap in output
+> for i in range(len(seqs['output']) - len(seqs['snap']) + 1):
+>     if seqs['output'][i:i+len(seqs['snap'])] == seqs['snap']:
+>         print(f"\nFound snap at position {i} in output")
+>         snap_start = i
+>         snap_end = i + len(seqs['snap'])
+>         print(f"  Before snap: ...{seqs['output'][max(0,i-20):i]}")
+>         print(f"  After snap: {seqs['output'][snap_end:snap_end+20]}...")
+>         break
+> else:
+>     print("\nsnap not found exactly in output")
+>
+> EOF
+root@5727c976f434:/app#

@@ -1,0 +1,82 @@
+New Terminal Output:
+
+root@0a03ba5a9abd:/app# python3 << 'PYEOF'
+01U002B0010000000200')
+
+# Compile COBOL
+subprocess.run(['cobc', '-x', '-o', '/tmp/cobol_prog', 'src/program.cbl'], cwd='/app', capture_output=True)
+
+# Run COBOL
+os.chdir('/tmp/cobol_final')
+subprocess.run(['/tmp/cobol_prog'], capture_output=True)
+
+# Run Python
+os.chdir('/tmp/python_final')
+subprocess.run(['python3', '/app/program.py'], capture_output=True)
+
+# Compare results
+os.chdir('/app')
+import filecmp
+for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+    if filecmp.cmp(f'/tmp/cobol_final/data/{fname}', f'/tmp/python_final/data/{fname}', shallow=False):
+        print(f'{fname}: IDENTICAL ✓')
+    else:
+        print(f'{fname}: DIFFERENT ✗')
+
+print('\nFinal verification complete!')
+PYEOF
+> # Final verification test
+> import subprocess
+> import os
+> import shutil
+>
+> # Create test directories
+> for test_name in ['cobol_final', 'python_final']:
+>     test_dir = f'/tmp/{test_name}'
+>     os.makedirs(f'{test_dir}/data', exist_ok=True)
+>     os.makedirs(f'{test_dir}/src', exist_ok=True)
+>
+>     # Copy original data
+>     with open(f'{test_dir}/data/ACCOUNTS.DAT', 'wb') as f:
+>         f.write(b'U001John Doe            0000001180')
+>         f.write(b'U002Jane Smith          0000001800')
+>         f.write(b'U003Bob Wilson          0000001520')
+>     with open(f'{test_dir}/data/BOOKS.DAT', 'wb') as f:
+>         f.write(b'B001Python Basics       U002')
+>         f.write(b'B002COBOL Guide         U002')
+>         f.write(b'B003Java Tutorial       U002')
+>     with open(f'{test_dir}/data/TRANSACTIONS.DAT', 'wb') as f:
+>         f.write(b'B0030000000020U003U001')
+>         f.write(b'B0030000000050U001U002')
+>         f.write(b'B0010000000150U001U002')
+>     with open(f'{test_dir}/src/INPUT.DAT', 'wb') as f:
+>         f.write(b'U001U002B0010000000200')
+>
+> # Compile COBOL
+> subprocess.run(['cobc', '-x', '-o', '/tmp/cobol_prog', 'src/program.cbl'], cwd='/app', capture_output=True)
+>
+> # Run COBOL
+> os.chdir('/tmp/cobol_final')
+> subprocess.run(['/tmp/cobol_prog'], capture_output=True)
+>
+> # Run Python
+> os.chdir('/tmp/python_final')
+> subprocess.run(['python3', '/app/program.py'], capture_output=True)
+>
+> # Compare results
+> os.chdir('/app')
+> import filecmp
+> for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>     if filecmp.cmp(f'/tmp/cobol_final/data/{fname}', f'/tmp/python_final/data/{fname}', shallow=False):
+>         print(f'{fname}: IDENTICAL ✓')
+>     else:
+>         print(f'{fname}: DIFFERENT ✗')
+>
+> print('\nFinal verification complete!')
+> PYEOF
+ACCOUNTS.DAT: IDENTICAL ✓
+BOOKS.DAT: IDENTICAL ✓
+TRANSACTIONS.DAT: IDENTICAL ✓
+
+Final verification complete!
+root@0a03ba5a9abd:/app#

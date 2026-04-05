@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(2):
+>         pt = i
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # Try all 65536 seeds for key[5] with a few fixed combinations for others
+>     candidates = [0, 16384, 32768, 49152]
+>
+>     for c0 in candidates:
+>         for c1 in candidates:
+>             for c2 in candidates:
+>                 for c3 in candidates:
+>                     for c4 in candidates:
+>                         key0 = (c0 * 1234567) & 0xFFFFFFFF
+>                         key1 = (c1 * 1234567) & 0xFFFFFFFF
+>                         key2 = (c2 * 1234567) & 0xFFFFFFFF
+>                         key3 = (c3 * 1234567) & 0xFFFFFFFF
+>                         key4 = (c4 * 1234567) & 0xFFFFFFFF
+>
+>                         # Try all seeds for key[5]
+>                         for seed5 in range(0x10000):
+>                             key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>                             keys = [key0, key1, key2, key3, key4, key5]
+>
+>                             # Check all pairs
+>                             match = True
+>                             for pt, ct in pairs:
+>                                 if encrypt_with_keys(pt, keys) != ct:
+>                                     match = False
+>                                     break
+>
+>                             if match:
+>                                 return key5
+>
+>     return 0
+> EOF
+root@e46f4ec08a64:/app#

@@ -1,0 +1,134 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> def reverse_complement(seq):
+>     complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G',
+>                   'a': 't', 't': 'a', 'g': 'c', 'c': 'g', 'N': 'N', 'n': 'n'}
+>     return ''.join(complement.get(base, base) for base in reversed(seq))
+>
+> # Read primers
+> primers = read_fasta('primers.fasta')
+>
+> print("Analyzing primer overhangs after BsaI digestion...")
+> print("=" * 80)
+>
+> # For forward primers: GGTCTC N NNNN template
+> # After digestion: leaves NNNN as 5' overhang
+>
+> # For reverse primers: template-RC NNNN N GAGACC
+> # After digestion: leaves NNNN as 5' overhang on the other end
+>
+> def extract_overhang_fwd(primer):
+>     # Find GGTCTC
+>     if 'GGTCTC' in primer.upper():
+>         pos = primer.upper().find('GGTCTC')
+>         # Overhang is 2 positions after GGTCTC (skip GGTCTC + N)
+>         overhang_start = pos + 7  # 6 for GGTCTC + 1 for N
+>         overhang = primer[overhang_start:overhang_start+4]
+>         return overhang.upper()
+>     return None
+>
+> def extract_overhang_rev(primer):
+>     # Find GAGACC
+>     if 'GAGACC' in primer.upper():
+>         pos = primer.upper().find('GAGACC')
+>         # Overhang is 5 positions before GAGACC (4 bp + 1 N)
+>         overhang_end = pos - 1  # Skip N
+>         overhang = primer[overhang_end-4:overhang_end]
+>         return overhang.upper()
+>     return None
+>
+> for name, seq in primers.items():
+>     if 'fwd' in name:
+>         oh = extract_overhang_fwd(seq)
+>         print(f"{name}: 5' overhang = {oh}")
+>     else:
+>         oh = extract_overhang_rev(seq)
+>         print(f"{name}: 5' overhang = {oh}")
+>
+> print()
+> print("=" * 80)
+> print("Checking overhang compatibility for assembly...")
+> print("=" * 80)
+>
+> # Extract all overhangs
+> input_fwd_oh = extract_overhang_fwd(primers['input_fwd'])
+> input_rev_oh = extract_overhang_rev(primers['input_rev'])
+> egfp_fwd_oh = extract_overhang_fwd(primers['egfp_fwd'])
+> egfp_rev_oh = extract_overhang_rev(primers['egfp_rev'])
+> flag_fwd_oh = extract_overhang_fwd(primers['flag_fwd'])
+> flag_rev_oh = extract_overhang_rev(primers['flag_rev'])
+> snap_fwd_oh = extract_overhang_fwd(primers['snap_fwd'])
+> snap_rev_oh = extract_overhang_rev(primers['snap_rev'])
+>
+> print(f"\nBackbone left end (input_rev): {input_rev_oh}")
+> print(f"eGFP left end (egfp_fwd): {egfp_fwd_oh}")
+> print(f"Match: {input_rev_oh == egfp_fwd_oh}")
+> print()
+>
+> print(f"eGFP right end (egfp_rev): {egfp_rev_oh}")
+> print(f"FLAG left end (flag_fwd): {flag_fwd_oh}")
+> print(f"Match: {egfp_rev_oh == flag_fwd_oh}")
+> print()
+>
+> print(f"FLAG right end (flag_rev): {flag_rev_oh}")
+> print(f"SNAP left end (snap_fwd): {snap_fwd_oh}")
+> print(f"Match: {flag_rev_oh == snap_fwd_oh}")
+> print()
+>
+> print(f"SNAP right end (snap_rev): {snap_rev_oh}")
+> print(f"Backbone right end (input_fwd): {input_fwd_oh}")
+> print(f"Match: {snap_rev_oh == input_fwd_oh}")
+>
+> EOF
+Analyzing primer overhangs after BsaI digestion...
+================================================================================
+input_fwd: 5' overhang = TTAA
+input_rev: 5' overhang = AAAC
+egfp_fwd: 5' overhang = ACAT
+egfp_rev: 5' overhang = CCAT
+flag_fwd: 5' overhang = GGTA
+flag_rev: 5' overhang = AACC
+snap_fwd: 5' overhang = GACA
+snap_rev: 5' overhang = CAGG
+
+================================================================================
+Checking overhang compatibility for assembly...
+================================================================================
+
+Backbone left end (input_rev): AAAC
+eGFP left end (egfp_fwd): ACAT
+Match: False
+
+eGFP right end (egfp_rev): CCAT
+FLAG left end (flag_fwd): GGTA
+Match: False
+
+FLAG right end (flag_rev): AACC
+SNAP left end (snap_fwd): GACA
+Match: False
+
+SNAP right end (snap_rev): CAGG
+Backbone right end (input_fwd): TTAA
+Match: False
+root@a0b49dcae9e4:/app#

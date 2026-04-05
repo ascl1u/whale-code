@@ -1,0 +1,103 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+eft_values[j]).count('1')
+                xor_sum += bin(right_values[i] ^ right_values[j]).count('1')
+                count += 2
+
+        avg_hamming = xor_sum / count if count > 0 else 0
+
+        # Score: prefer high uniqueness and moderate average Hamming weight
+        score = unique_left + unique_right + abs(avg_hamming - 16) * (-10)
+        scores.append((score, candidate_key5))
+
+    # Return the key with the best score
+    scores.sort(reverse=True)
+    return scores[0][1]
+
+EOF
+> #!/usr/bin/env python3
+> import random
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using chosen plaintext attack"""
+>
+>     # Use a statistical approach with random sampling
+>     # Collect diverse plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(100):
+>         plaintext = random.randint(0, 2**64 - 1)
+>         ciphertext = encrypt_fn(plaintext)
+>         pairs.append((plaintext, ciphertext))
+>
+>     # For each candidate, compute a statistical score
+>     scores = []
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Partially decrypt and collect statistics
+>         left_values = []
+>         right_values = []
+>
+>         for pt, ct in pairs:
+>             fr = getleft(ct)
+>             fl = getright(ct)
+>             bxl = fl ^ fr
+>             bxr = fr
+>             rb = bxl
+>             lb = bxr ^ f_function(rb ^ candidate_key5)
+>             left_values.append(lb)
+>             right_values.append(rb)
+>
+>         # Compute statistics
+>         # For the correct key, we expect high entropy in the decrypted values
+>         unique_left = len(set(left_values))
+>         unique_right = len(set(right_values))
+>
+>         # Compute average XOR differences
+>         xor_sum = 0
+>         count = 0
+>         for i in range(min(20, len(pairs))):
+>             for j in range(i+1, min(20, len(pairs))):
+>                 xor_sum += bin(left_values[i] ^ left_values[j]).count('1')
+>                 xor_sum += bin(right_values[i] ^ right_values[j]).count('1')
+>                 count += 2
+>
+>         avg_hamming = xor_sum / count if count > 0 else 0
+>
+>         # Score: prefer high uniqueness and moderate average Hamming weight
+>         score = unique_left + unique_right + abs(avg_hamming - 16) * (-10)
+>         scores.append((score, candidate_key5))
+>
+>     # Return the key with the best score
+>     scores.sort(reverse=True)
+>     return scores[0][1]
+>
+> EOF
+root@486aac7a4fa6:/app#

@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>
+> print("\nTraining complete!")
+>
+> # Test on test set
+> print("\nEvaluating on test set...")
+> result = model.test('/tmp/test.txt')
+> print(f"Samples: {result[0]}")
+> print(f"Precision (before quantization): {result[1]:.4f}")
+> print(f"Recall: {result[2]:.4f}")
+>
+> # Save unquantized model first to check size
+> model.save_model('/tmp/model_unquantized.bin')
+> size_mb = os.path.getsize('/tmp/model_unquantized.bin') / (1024 * 1024)
+> print(f"\nUnquantized model size: {size_mb:.2f} MB")
+>
+> if size_mb > 150:
+>     print("\nApplying quantization...")
+>     model.quantize(input='/tmp/train.txt', retrain=True, qnorm=True, cutoff=50000)
+>     model.save_model('/app/model.bin')
+>
+>     size_mb = os.path.getsize('/app/model.bin') / (1024 * 1024)
+>     print(f"Quantized model size: {size_mb:.2f} MB")
+>
+>     # Test quantized model
+>     result = model.test('/tmp/test.txt')
+>     print(f"Quantized model accuracy: {result[1]:.4f}")
+> else:
+>     print("\nModel is already under 150MB, saving without quantization...")
+>     model.save_model('/app/model.bin')
+>     size_mb = os.path.getsize('/app/model.bin') / (1024 * 1024)
+>     print(f"Final model size: {size_mb:.2f} MB")
+>     print(f"Final model accuracy: {result[1]:.4f}")
+>
+> print("\nDone!")
+> EOF
+Training fasttext model with improved parameters...
+Read 88M words
+Number of words:  198505
+Number of labels: 5
+Progress:   9.4% words/sec/thread:   73871 lr:  0.453230 avg.loss:  0.930911 ETA:   0h30m 9s

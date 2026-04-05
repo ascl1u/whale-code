@@ -1,0 +1,180 @@
+New Terminal Output:
+
+root@273e10a6db89:/app# cat > /app/program.py << 'EOF'
+> #!/usr/bin/env python3
+>
+> def read_input_file(filename):
+>     """Read the input file and parse the transaction data."""
+>     with open(filename, 'rb') as f:
+d =>         data = f.read()
+>
+>     if len(data) == 0:
+>         print("Error: Input file is empty")
+>         return None
+b>
+>     # Parse input record
+>     buyer_id = data[0:4].decode('ascii')
+ se>     seller_id = data[4:8].decode('ascii')
+>     book_id = data[8:12].decode('ascii')
+>
+     >     # Handle the amount field - COBOL expects 10 bytes but file may have less
+>     # When COBOL reads beyond file end, it pads with spaces
+>     # PIC 9(10) field starting at position 12
+>     amount_bytes = data[12:] if len(data) > 12 else b''
+>     # Pad to 10 bytes with spaces (COBOL behavior)
+>     amount_str = (amount_bytes + b' ' * 10)[:10].decode('ascii')
+>     # Convert to numeric - spaces on right are treated as zeros in COBOL numeric context
+>     # "200       " becomes 2000000000 when interpreted left-to-right
+>     amount_str_stripped = amount_str.rstrip()
+ >     if amount_str_stripped:
+>         # Pad with zeros on the right to make 10 digits
+=>         amount = int(amount_str_stripped.ljust(10, '0'))
+>     else:
+>         amount = 0
+a/>
+>     return {
+>         'buyer_id': buyer_id,
+>         'seller_id': seller_id,
+>         'book_id': book_id,
+>         'amount': amount
+>     }
+>
+_> def read_accounts(filename):
+>     """Read all account records."""
+>     accounts = []
+>     with open(filename, 'rb') as f:
+>         data = f.read()
+>
+i>     # Each account record is 34 bytes: ID(4) + Name(20) + Balance(10)
+>     record_size = 34
+>     for i in range(0, len(data), record_size):
+>         if i + record_size <= len(data):
+>             record = data[i:i+record_size]
+>             account = {
+>                 'id': record[0:4].decode('ascii'),
+>                 'name': record[4:24].decode('ascii'),
+>                 'balance': int(record[24:34].decode('ascii'))
+>             }
+>             accounts.append(account)
+>
+>     return accounts
+>
+> def read_books(filename):
+>     """Read all book records."""
+>     books = []
+>     with open(filename, 'rb') as f:
+>         data = f.read()
+>
+>     # Each book record is 28 bytes: ID(4) + Title(20) + Owner(4)
+>     record_size = 28
+>     for i in range(0, len(data), record_size):
+>         if i + record_size <= len(data):
+>             record = data[i:i+record_size]
+>             book = {
+>                 'id': record[0:4].decode('ascii'),
+>                 'title': record[4:24].decode('ascii'),
+>                 'owner': record[24:28].decode('ascii')
+>             }
+>             books.append(book)
+>
+>     return books
+>
+> def write_accounts(filename, accounts):
+>     """Write all account records."""
+>     with open(filename, 'wb') as f:
+>         for account in accounts:
+>             # Format: ID(4) + Name(20) + Balance(10)
+>             record = (
+>                 account['id'].encode('ascii') +
+>                 account['name'].encode('ascii') +
+>                 f"{account['balance']:010d}".encode('ascii')
+>             )
+>             f.write(record)
+>
+> def write_books(filename, books):
+>     """Write all book records."""
+>     with open(filename, 'wb') as f:
+>         for book in books:
+>             # Format: ID(4) + Title(20) + Owner(4)
+>             record = (
+>                 book['id'].encode('ascii') +
+>                 book['title'].encode('ascii') +
+>                 book['owner'].encode('ascii')
+>             )
+>             f.write(record)
+>
+> def append_transaction(filename, book_id, amount, seller_id, buyer_id):
+>     """Append a transaction record."""
+>     with open(filename, 'ab') as f:
+>         # Format: Book(4) + Amount(10) + Seller(4) + Buyer(4)
+>         record = (
+>             book_id.encode('ascii') +
+>             f"{amount:010d}".encode('ascii') +
+>             seller_id.encode('ascii') +
+>             buyer_id.encode('ascii')
+>         )
+>         f.write(record)
+>
+> def main():
+>     # Read input
+>     input_data = read_input_file('src/INPUT.DAT')
+>     if input_data is None:
+>         return
+>
+>     buyer_id = input_data['buyer_id']
+>     seller_id = input_data['seller_id']
+>     book_id = input_data['book_id']
+>     amount = input_data['amount']
+>
+>     # Validate users and book
+>     accounts = read_accounts('data/ACCOUNTS.DAT')
+>     books = read_books('data/BOOKS.DAT')
+>
+>     buyer_found = False
+>     seller_found = False
+>     book_found = False
+>     valid_owner = False
+>
+>     for account in accounts:
+>         if account['id'] == buyer_id:
+>             buyer_found = True
+>         if account['id'] == seller_id:
+>             seller_found = True
+>
+>     for book in books:
+>         if book['id'] == book_id:
+>             book_found = True
+>             if book['owner'] == seller_id:
+>                 valid_owner = True
+>
+>     print(" ")
+>
+>     # Process transaction if all validations pass
+>     if buyer_found and seller_found and book_found and valid_owner:
+>         # Update account balances
+>         for account in accounts:
+>             if account['id'] == buyer_id:
+>                 account['balance'] -= amount
+>             if account['id'] == seller_id:
+>                 account['balance'] += amount
+>
+>         write_accounts('data/ACCOUNTS.DAT', accounts)
+>
+>         # Update book ownership
+>         for book in books:
+>             if book['id'] == book_id:
+>                 book['owner'] = buyer_id
+>
+>         write_books('data/BOOKS.DAT', books)
+>
+>         # Append transaction record
+>         append_transaction('data/TRANSACTIONS.DAT', book_id, amount, seller_id, buyer_id)
+>
+>         print("Transaction completed successfully")
+>     else:
+>         print("Transaction failed due to validation errors")
+>
+> if __name__ == '__main__':
+>     main()
+> EOF
+root@273e10a6db89:/app#

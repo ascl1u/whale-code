@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>             # For p1: R1 = key[0] ^ f((key[0]^key[1]^1) ^ key[2])
+>             # So: L2_0 ^ L2_1 = f((key[0]^key[1]) ^ key[2]) ^ f((key[0]^key[1]^1) ^ key[2])
+>             # This is f(x) ^ f(x^1) for some x
+>
+>             diff_L = L2_0 ^ L2_1
+>
+>             # Check if this diff can be produced by f with input diff 1
+>             # Instead of checking all inputs, use a probabilistic check:
+>             # For random wrong keys, diff_L is random
+>             # For correct keys, diff_L has structure
+>
+>             # Actually, let me just check if ANY of the 256 possible byte-wise
+>             # inputs produce this difference (much faster than 65536)
+>             found = False
+>             for i in range(256):
+>                 if (f_function(i) ^ f_function(i ^ 1)) == diff_L:
+>                     found = True
+>                     break
+>
+>             if found:
+>                 # Do additional validation with p2
+>                 diff_L2 = L2_0 ^ L2_2
+>                 # Check if this is also valid
+>                 found2 = False
+>                 for i in range(256):
+>                     # For p0 and p2, the input difference to f in round 1 is different
+>                     # After pre-round for p0: R=key[0]^key[1]
+>                     # After pre-round for p2: R=key[0]^key[1]^1 (because L diff is 1)
+>                     # So input diff to f is still 1
+>                     if (f_function(i) ^ f_function(i ^ 1)) == diff_L2:
+>                         found2 = True
+>                         break
+>
+>                 if found2:
+>                     return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

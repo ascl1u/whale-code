@@ -1,0 +1,162 @@
+New Terminal Output:
+
+root@506b644d66f7:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+>
+fter pre-round: L=key[0], R=key[0]^key[1]
+            # After round 1: L=key[0]^key[1], R=key[0]^f(key[0]^key[1]^key[2])
+            # After round 2: L=key[0]^f(key[0]^key[1]^key[2]), R=key[0]^key[1]^f(key[0]^f(key[0]^key[1]^key[2])^key[3])
+
+            # This is getting complex. Let me use a different check:
+            # Just check if we can find a key[3] value that works
+
+            # Try a few key[3] values (sample)
+            found_consistent = False
+            for seed3 in range(0, 0x10000, 1024):  # Very sparse sampling
+                key3 = (seed3 * 1234567) & 0xFFFFFFFF
+
+                # Decrypt round 2 for first two pairs
+                R1_0 = states_after_round2[0][0]
+                L1_0 = states_after_round2[0][1] ^ f_function(R1_0 ^ key3)
+
+                R1_1 = states_after_round2[1][0]
+                L1_1 = states_after_round2[1][1] ^ f_function(R1_1 ^ key3)
+
+                # Check a simple property: for plaintext 0 and 1, after decrypting to
+                # b> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+s> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+ > def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+   >         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def decrypt_last_round(ciphertext, key5):
+ >     """Decrypt only the last round"""
+>     c_left = getleft(ciphertext)
+>     c_right = getright(ciphertext)
+>     R4 = c_left
+>     L4 = c_right ^ R4
+>     R3 = L4
+  >     L3 = R4 ^ f_function(R3 ^ key5)
+>     return L3, R3
+>
+> def decrypt_two_rounds(ciphertext, key4, key5):
+>     """Decrypt the last two rounds"""
+>     L3, R3 = decrypt_last_round(ciphertext, key5)
+>     R2 = L3
+>     L2 = R3 ^ f_function(R2 ^ key4)
+>     return L2, R2
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using brute force with fast validation"""
+>
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(8):
+>         p = i
+>         c = encrypt_fn(p)
+>         pairs.append((p, c))
+>
+>     # Try all key[5] values
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         # Decrypt last round for all pairs
+>         states_after_round3 = []
+>         for p, c in pairs:
+>             L3, R3 = decrypt_last_round(c, key5)
+>             states_after_round3.append((L3, R3))
+>
+>         # Now try to find a key[4] that's consistent
+>         # Use a fast check: try all key[4] values and see if any produces
+>         # consistent results
+>
+>         for seed4 in range(0x10000):
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # Decrypt round 3 for all pairs
+>             states_after_round2 = []
+>             for L3, R3 in states_after_round3:
+>                 R2 = L3
+>                 L2 = R3 ^ f_function(R2 ^ key4)
+>                 states_after_round2.append((L2, R2))
+>
+>             # Check for consistency
+>             # For the correct keys, there should exist key[0-3] that produce these states
+>             # For wrong keys, it's unlikely
+>
+>             # Use a simple heuristic: check if the states have low entropy differences
+>             # For plaintexts 0, 1, 2, 3, ..., the differences in states should follow patterns
+>
+>             # Check specific algebraic property:
+>             # For plaintext 0 and 1 (differ by 1 in right half)
+>             L2_0, R2_0 = states_after_round2[0]
+>             L2_1, R2_1 = states_after_round2[1]
+>
+>             # After going back through rounds 1 and 2, and pre-round, and whitening:
+>             # The difference should be related to the plaintext difference
+>
+>             # For plaintext p=0: after whitening L=key[0], R=key[1]
+>             # After pre-round: L=key[0], R=key[0]^key[1]
+>             # After round 1: L=key[0]^key[1], R=key[0]^f(key[0]^key[1]^key[2])
+>             # After round 2: L=key[0]^f(key[0]^key[1]^key[2]), R=key[0]^key[1]^f(key[0]^f(key[0]^key[1]^key[2])^key[3])
+>
+>             # This is getting complex. Let me use a different check:
+>             # Just check if we can find a key[3] value that works
+>
+>             # Try a few key[3] values (sample)
+>             found_consistent = False
+>             for seed3 in range(0, 0x10000, 1024):  # Very sparse sampling
+>                 key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>
+>                 # Decrypt round 2 for first two pairs
+>                 R1_0 = states_after_round2[0][0]
+>                 L1_0 = states_after_round2[0][1] ^ f_function(R1_0 ^ key3)
+>
+>                 R1_1 = states_after_round2[1][0]
+>                 L1_1 = states_after_round2[1][1] ^ f_function(R1_1 ^ key3)
+>
+>                 # Check a simple property: for plaintext 0 and 1, after decrypting to
+>                 # before round 1, the left values should differ in a specific way
+>
+>                 # Actually, let me just check if L1_0 and L1_1 have reasonable difference
+>                 diff = L1_0 ^ L1_1
+>
+>                 # For correct keys, this difference should have some structure
+>                 # For wrong keys, it should be random
+>                 # This is a weak test, but let's see if it works
+>
+>                 # Count number of set bits
+>                 num_bits = bin(diff).count('1')
+>
+>                 # If difference has very low or very high hamming weight, might be correct
+>                 # This is a heuristic
+>                 if num_bits < 8 or num_bits > 24:
+>                     found_consistent = True
+>                     break
+>
+>             if found_consistent:
+>                 return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

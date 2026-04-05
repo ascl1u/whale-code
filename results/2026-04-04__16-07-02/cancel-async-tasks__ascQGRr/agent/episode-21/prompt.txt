@@ -1,0 +1,74 @@
+New Terminal Output:
+
+root@b1eff7d0257d:/app# python3 << 'PYEOF'
+> import asyncio
+> import sys
+> sys.path.insert(0, '/app')
+> from run import run_tasks
+>
+> print("Final Verification Test")
+> print("=" * 50)
+>
+> # Test 1: Import and basic functionality
+> print("\n1. Testing import and basic execution...")
+> executed = []
+>
+> async def simple_task(n):
+>     executed.append(n)
+>     await asyncio.sleep(0.05)
+>
+> async def test1():
+>     tasks = [lambda i=i: simple_task(i) for i in range(5)]
+>     await run_tasks(tasks, max_concurrent=2)
+>     assert len(executed) == 5
+>     print(f"   ✓ All {len(executed)} tasks executed")
+>
+> asyncio.run(test1())
+>
+> # Test 2: Cleanup on cancellation
+> print("\n2. Testing cleanup on cancellation...")
+> cleanup_count = 0
+>
+> async def task_with_cleanup():
+>     try:
+>         await asyncio.sleep(10)
+>     finally:
+>         global cleanup_count
+>         cleanup_count += 1
+>
+> async def test2():
+>     global cleanup_count
+>     cleanup_count = 0
+>     tasks = [task_with_cleanup for _ in range(3)]
+>     task = asyncio.create_task(run_tasks(tasks, max_concurrent=2))
+>     await asyncio.sleep(0.1)
+>     task.cancel()
+>     try:
+>         await task
+>     except asyncio.CancelledError:
+>         pass
+>     await asyncio.sleep(0.1)
+>     print(f"   ✓ Cleanup ran for {cleanup_count} tasks")
+>
+> asyncio.run(test2())
+>
+> print("\n" + "=" * 50)
+> print("✅ All verification tests passed!")
+> print("\nFunction is ready to use:")
+> print("  from run import run_tasks")
+> PYEOF
+Final Verification Test
+==================================================
+
+1. Testing import and basic execution...
+   ✓ All 5 tasks executed
+
+2. Testing cleanup on cancellation...
+   ✓ Cleanup ran for 2 tasks
+
+==================================================
+✅ All verification tests passed!
+
+Function is ready to use:
+  from run import run_tasks
+root@b1eff7d0257d:/app#

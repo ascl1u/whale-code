@@ -1,0 +1,75 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> seqs = read_fasta('sequences.fasta')
+> input_seq = seqs['input']
+> output_seq = seqs['output']
+> egfp = seqs['egfp']
+> flag = seqs['flag']
+> snap = seqs['snap']
+>
+> print("Checking sequences...")
+> print(f"eGFP ends with: {egfp[-20:]}")
+> print(f"FLAG starts with: {flag[:20]}")
+> print(f"SNAP ends with: {snap[-20:]}")
+>
+> # Check without stop codons
+> egfp_no_stop = egfp[:-3] if egfp[-3:] == 'taa' else egfp
+> flag_no_stop = flag[:-3] if flag[-3:] == 'taa' else flag
+> snap_no_stop = snap[:-3] if snap[-3:] == 'taa' else snap
+>
+> print(f"\neGFP without stop: ends with {egfp_no_stop[-10:]}")
+> print(f"FLAG without stop: ends with {flag_no_stop[-10:]}")
+> print(f"SNAP without stop: ends with {snap_no_stop[-10:]}")
+>
+> # Try to find the assembly
+> combined = egfp_no_stop + flag_no_stop + snap_no_stop + 'taa'
+> print(f"\nCombined length (no internal stops + final stop): {len(combined)}")
+>
+> pos = output_seq.find(combined)
+> if pos >= 0:
+>     print(f"Found combined sequence at position {pos}!")
+> else:
+>     # Try other combinations
+>     combined2 = egfp_no_stop + flag + snap
+>     pos2 = output_seq.find(combined2)
+>     if pos2 >= 0:
+>         print(f"Found egfp(no stop) + flag + snap at position {pos2}")
+>     else:
+>         combined3 = egfp_no_stop + flag_no_stop + snap
+>         pos3 = output_seq.find(combined3)
+>         if pos3 >= 0:
+>             print(f"Found egfp(no stop) + flag(no stop) + snap at position {pos3}")
+>
+> EOF
+Checking sequences...
+eGFP ends with: tggacgagctgtacaaataa
+FLAG starts with: atgggtagtggctccggtag
+SNAP ends with: gtaagcctgggctgggttaa
+
+eGFP without stop: ends with gctgtacaaa
+FLAG without stop: ends with tagtggttca
+SNAP without stop: ends with tgggctgggt
+
+Combined length (no internal stops + final stop): 1350
+root@a0b49dcae9e4:/app#

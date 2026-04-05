@@ -1,0 +1,185 @@
+New Terminal Output:
+
+root@d8b25c2a55ca:/app# cat > /app/test_run.py << 'EOF'
+  Cleanup ran {len(cleanup_log)} times")
+    assert max_concurrent_observed <= 3, "Should not exceed max_concurrent limit"
+    assert len(cleanup_log) == 10, "All tasks should have cleanup run"
+    print("  ✓ Test passed")
+
+async def test_cancellation_cleanup():
+    """Test that cleanup runs even when tasks are cancelled."""
+    print("\nTest 3: Cancellation cleanup")
+    execution_log.clear()
+    cleanup_log.clear()
+
+    async def long_task(task_id: int):
+        execution_log.append(f"Task {task_id} started")
+        try:
+            await asyncio.sleep(10)  # Long sleep
+            execution_log.append(f"Task {task_id} completed")
+        finally:
+            cleanup_log.append(f"Task {task_id} cleanup")
+
+    tasks = [lambda tid=i: long_task(tid) for i in range(5)]
+
+    # Run tasks but cancel after a short time
+    async def run_and_cancel():
+        task = asyncio.create_task(run_tasks(tasks, max_concurrent=3))
+        await asyncio.sleep(0.2)  # Let some tasks start
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+    await run_and_cancel()
+
+    print(f"  Started tasks: {len([e for e in execution_log if 'started' in e])}")
+    print(f"  Completed tasks: {len([e for e in execution_log if 'completed' in e])}")
+    print(f"  Cleanup ran {len(cleanup_log)} times")
+    # Cleanup should run for all started tasks
+    assert len(cleanup_log) > 0, "Cleanup should run for started tasks"
+    print("  ✓ Test passed")
+
+async def test_empty_tasks():
+    """Test with empty task list."""
+    print("\nTest 4: Empty task list")
+    await run_tasks([], max_concurrent=5)
+    print("  ✓ Test passed")
+
+async def main():
+    print("Running tests for run_tasks function\n")
+    print("="*50)
+
+    await test_basic_execution()
+    await test_concurrency_limit()
+    await test_cancellation_cleanup()
+    await test_empty_tasks()
+
+    print("\n" + "="*50)
+    print("All tests passed! ✓")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+EOF
+> import asyncio
+> import time
+> from run import run_tasks
+>
+> # Track execution for testing
+> execution_log = []
+> cleanup_log = []
+>
+> async def create_task(task_id: int, duration: float):
+>     """Create a test task that logs execution and cleanup."""
+>     async def task():
+>         execution_log.append(f"Task {task_id} started")
+>         try:
+>             await asyncio.sleep(duration)
+>             execution_log.append(f"Task {task_id} completed")
+>         finally:
+>             # This cleanup code should run even on cancellation
+>             cleanup_log.append(f"Task {task_id} cleanup")
+>     return task
+>
+> async def test_basic_execution():
+>     """Test basic task execution."""
+>     print("Test 1: Basic execution")
+>     execution_log.clear()
+>     cleanup_log.clear()
+>
+>     tasks = [await create_task(i, 0.1) for i in range(5)]
+>     await run_tasks(tasks, max_concurrent=2)
+>
+>     print(f"  Executed {len(execution_log)} log entries")
+>     print(f"  Cleanup ran {len(cleanup_log)} times")
+>     assert len(cleanup_log) == 5, "All tasks should have cleanup run"
+>     print("  ✓ Test passed")
+>
+> async def test_concurrency_limit():
+>     """Test that concurrency limit is respected."""
+>     print("\nTest 2: Concurrency limit")
+>     execution_log.clear()
+>     cleanup_log.clear()
+>
+>     start_times = {}
+>     max_concurrent_observed = 0
+>     current_concurrent = 0
+>
+>     async def tracked_task(task_id: int):
+>         nonlocal current_concurrent, max_concurrent_observed
+>         current_concurrent += 1
+>         max_concurrent_observed = max(max_concurrent_observed, current_concurrent)
+>         execution_log.append(f"Task {task_id} running (concurrent: {current_concurrent})")
+>         try:
+>             await asyncio.sleep(0.1)
+>         finally:
+>             current_concurrent -= 1
+>             cleanup_log.append(f"Task {task_id} cleanup")
+>
+>     tasks = [lambda tid=i: tracked_task(tid) for i in range(10)]
+>     await run_tasks(tasks, max_concurrent=3)
+>
+>     print(f"  Max concurrent tasks observed: {max_concurrent_observed}")
+>     print(f"  Cleanup ran {len(cleanup_log)} times")
+>     assert max_concurrent_observed <= 3, "Should not exceed max_concurrent limit"
+>     assert len(cleanup_log) == 10, "All tasks should have cleanup run"
+>     print("  ✓ Test passed")
+>
+> async def test_cancellation_cleanup():
+>     """Test that cleanup runs even when tasks are cancelled."""
+>     print("\nTest 3: Cancellation cleanup")
+>     execution_log.clear()
+>     cleanup_log.clear()
+>
+>     async def long_task(task_id: int):
+>         execution_log.append(f"Task {task_id} started")
+>         try:
+>             await asyncio.sleep(10)  # Long sleep
+>             execution_log.append(f"Task {task_id} completed")
+>         finally:
+>             cleanup_log.append(f"Task {task_id} cleanup")
+>
+>     tasks = [lambda tid=i: long_task(tid) for i in range(5)]
+>
+>     # Run tasks but cancel after a short time
+>     async def run_and_cancel():
+>         task = asyncio.create_task(run_tasks(tasks, max_concurrent=3))
+>         await asyncio.sleep(0.2)  # Let some tasks start
+>         task.cancel()
+>         try:
+>             await task
+>         except asyncio.CancelledError:
+>             pass
+>
+>     await run_and_cancel()
+>
+>     print(f"  Started tasks: {len([e for e in execution_log if 'started' in e])}")
+>     print(f"  Completed tasks: {len([e for e in execution_log if 'completed' in e])}")
+>     print(f"  Cleanup ran {len(cleanup_log)} times")
+>     # Cleanup should run for all started tasks
+>     assert len(cleanup_log) > 0, "Cleanup should run for started tasks"
+>     print("  ✓ Test passed")
+>
+> async def test_empty_tasks():
+>     """Test with empty task list."""
+>     print("\nTest 4: Empty task list")
+>     await run_tasks([], max_concurrent=5)
+>     print("  ✓ Test passed")
+>
+> async def main():
+>     print("Running tests for run_tasks function\n")
+>     print("="*50)
+>
+>     await test_basic_execution()
+>     await test_concurrency_limit()
+>     await test_cancellation_cleanup()
+>     await test_empty_tasks()
+>
+>     print("\n" + "="*50)
+>     print("All tests passed! ✓")
+>
+> if __name__ == "__main__":
+>     asyncio.run(main())
+> EOF
+root@d8b25c2a55ca:/app#

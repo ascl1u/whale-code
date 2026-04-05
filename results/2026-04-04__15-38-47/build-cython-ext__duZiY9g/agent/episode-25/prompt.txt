@@ -1,0 +1,28 @@
+New Terminal Output:
+
+root@220f272de718:/app/pyknotid# sed -i 's/dtype = n.complex if isinstance(variable, n.complex) else n.float/dtype = np.complex128 if isinstance(variable, (comp
+lex, np.complexfloating)) else np.float64/' /app/pyknotid/pyknotid/invariants.py
+root@220f272de718:/app/pyknotid# sed -i 's/if not isinstance(poly_val, n.complex):/if not isinstance(poly_val, (complex, np.complexfloating)):/' /app/pyknotid/p
+yknotid/invariants.py
+root@220f272de718:/app/pyknotid# grep -A2 -B2 'complex' /app/pyknotid/pyknotid/invariants.py | head -20
+        can automatically be converted into a GaussCode (i.e. by writing
+        :code:`GaussCode(your_object)`).
+    variable : float or complex or sympy variable
+        The value to caltulate the Alexander polynomial at. Defaults to -1,
+        but may be switched to the sympy variable ``t`` in the future.
+        Supports int/float/complex types (fast, works for thousands of
+        crossings) or sympy
+        expressions (much slower, works mostly only for <100 crossings).
+--
+
+
+    if isinstance(variable, (int, float, complex)):
+        return _alexander_numpy(crossings, variable, quadrant)
+    else:
+--
+    import numpy as n
+    num_crossings = int(len(crossings)/2)
+    dtype = np.complex128 if isinstance(variable, (complex, np.complexfloating)) else np.float64
+    matrix = n.zeros((num_crossings, num_crossings), dtype=dtype)
+    line_num = 0
+root@220f272de718:/app/pyknotid#

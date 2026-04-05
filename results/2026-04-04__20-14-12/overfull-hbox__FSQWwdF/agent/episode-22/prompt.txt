@@ -1,0 +1,83 @@
+New Terminal Output:
+
+empt from my reactioroot@b419d4b4dbd9:/app# cat > fix_all.py << 'EOF'
+> import re
+> import subprocess
+>
+> def parse_synonyms(filename):
+>     synonym_map = {}
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if not line:
+>                 continue
+>             words = [w.strip() for w in line.split(',')]
+>             for word in words:
+>                 synonym_map[word] = words
+>     return synonym_map
+>
+> def replace_word(text, old_word, new_word):
+>     pattern = r'\b' + re.escape(old_word) + r'\b'
+>     return re.sub(pattern, new_word, text)
+>
+> def check_overfull():
+>     result = subprocess.run(['pdflatex', '-interaction=nonstopmode', 'main.tex'],
+>                           capture_output=True, text=True)
+>     output = result.stdout + result.stderr
+>     overfull_lines = [line for line in output.split('\n') if 'Overfull' in line]
+>     return overfull_lines
+>
+> synonym_map = parse_synonyms('synonyms.txt')
+>
+> with open('input.tex', 'r') as f:
+>     text = f.read()
+>
+> # Apply all beneficial replacements
+> replacements = [
+>     ('veteran', 'old'),
+>     ('natures', 'traits'),
+>     ('quality', 'trait'),
+>     ('infinite', 'endless'),
+>     ('original', 'initial'),
+>     ('victim', 'prey'),
+>     ('romantic', 'dreamy'),
+>     ('intimate', 'close'),
+>     ('plagiaristic', 'copied'),
+>     ('extraordinary', 'amazing'),
+>     ('practical', 'useful'),
+>     ('wisdom', 'insight'),
+> ]
+>
+> print("Applying all replacements...")
+> for old, new in replacements:
+>     if old in synonym_map and new in synonym_map[old]:
+>         if len(new) <= len(old):  # Only if same or shorter
+>             old_text = text
+>             text = replace_word(text, old, new)
+>             if text != old_text:
+>                 print(f"  {old} -> {new}")
+>
+> with open('input.tex', 'w') as f:
+>     f.write(text)
+>
+> print("\nChecking compilation...")
+> overfull = check_overfull()
+> if overfull:
+>     print(f"\nStill have {len(overfull)} overfull warnings:")
+>     for line in overfull:
+>         print(line)
+> else:
+>     print("\n✓ SUCCESS! No overfull hbox warnings!")
+> EOF
+root@b419d4b4dbd9:/app# python3 fix_all.py
+Applying all replacements...
+
+Checking compilation...
+
+Still have 5 overfull warnings:
+Overfull \hbox (25.24203pt too wide) in paragraph at lines 7--8
+Overfull \hbox (4.65869pt too wide) in paragraph at lines 7--8
+Overfull \hbox (1.41222pt too wide) in paragraph at lines 7--8
+Overfull \hbox (1.242pt too wide) in paragraph at lines 7--8
+Overfull \hbox (6.07536pt too wide) in paragraph at lines 13--14
+root@b419d4b4dbd9:/app#

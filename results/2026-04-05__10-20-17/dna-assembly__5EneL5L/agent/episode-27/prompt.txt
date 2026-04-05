@@ -1,0 +1,119 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# cat >> redesign_primers.py << 'EOFMAIN'
+> # Design primers for each fragment
+>
+r> # 1. INPUT BACKBONE
+> print("1. INPUT BACKBONE")
+> print("-" * 80)
+>
+> # The backbone is from position 690 onwards, wrapping to position 210
+> # Forward primer: starts at position 690, needs to create OH4 (TTAA) on left side
+> # Reverse primer: ends at position 210, needs to create OH1 (ACAT) on right side
+>
+o> input_fwd_template = input_seq[690:790]
+> input_rev_template = input_seq[110:210]
+>
+> result = find_primer_pair(input_fwd_template, input_rev_template)
+> if result:
+>     input_fwd_anneal, input_fwd_tm, input_rev_anneal, input_rev_tm = result
+>     print(f"Forward annealing region: {input_fwd_anneal} (Tm: {input_fwd_tm:.2f}°C)")
+>     print(f"Reverse annealing region: {input_rev_anneal} (Tm: {input_rev_tm:.2f}°C)")
+>     print(f"Tm difference: {abs(input_fwd_tm - input_rev_tm):.2f}°C")
+>
+>     # Forward primer creates OH4 (TTAA) overhang
+>     input_fwd_primer = f"GGTCTCN{oh4}{input_fwd_anneal}"
+>
+>     # Reverse primer creates OH1 (ACAT) overhang
+>     # Need to add RC of OH1 to the primer
+>     input_rev_primer = f"{reverse_complement(input_rev_anneal)}{reverse_complement(oh1)}NGAGACC"
+>
+>     print(f"Forward primer: {input_fwd_primer}")
+>     print(f"Reverse primer: {input_rev_primer}")
+>     primers.append(('>input_fwd', input_fwd_primer.upper()))
+>     primers.append(('>input_rev', input_rev_primer.upper()))
+> print()
+>
+> # 2. EGFP INSERT
+> print("2. EGFP INSERT (without stop codon)")
+> print("-" * 80)
+>
+> # eGFP needs OH1 (ACAT) on left, OH2 (GGTA) on right
+> egfp_fwd_template = egfp_insert[:100]
+> egfp_rev_template = egfp_insert[-100:]
+>
+> result = find_primer_pair(egfp_fwd_template, egfp_rev_template)
+> if result:
+>     egfp_fwd_anneal, egfp_fwd_tm, egfp_rev_anneal, egfp_rev_tm = result
+>     print(f"Forward annealing region: {egfp_fwd_anneal} (Tm: {egfp_fwd_tm:.2f}°C)")
+>     print(f"Reverse annealing region: {egfp_rev_anneal} (Tm: {egfp_rev_tm:.2f}°C)")
+>     print(f"Tm difference: {abs(egfp_fwd_tm - egfp_rev_tm):.2f}°C")
+>
+>     egfp_fwd_primer = f"GGTCTCN{oh1}{egfp_fwd_anneal}"
+>     egfp_rev_primer = f"{reverse_complement(egfp_rev_anneal)}{reverse_complement(oh2)}NGAGACC"
+>
+>     print(f"Forward primer: {egfp_fwd_primer}")
+>     print(f"Reverse primer: {egfp_rev_primer}")
+>     primers.append(('>egfp_fwd', egfp_fwd_primer.upper()))
+>     primers.append(('>egfp_rev', egfp_rev_primer.upper()))
+> print()
+>
+> # 3. FLAG INSERT
+> print("3. FLAG INSERT (without start and stop codons)")
+> print("-" * 80)
+>
+> # FLAG needs OH2 (GGTA) on left, OH3 (GACA) on right
+> flag_fwd_template = flag_insert[:100]
+> flag_rev_template = flag_insert[-100:]
+>
+> result = find_primer_pair(flag_fwd_template, flag_rev_template)
+> if result:
+>     flag_fwd_anneal, flag_fwd_tm, flag_rev_anneal, flag_rev_tm = result
+>     print(f"Forward annealing region: {flag_fwd_anneal} (Tm: {flag_fwd_tm:.2f}°C)")
+>     print(f"Reverse annealing region: {flag_rev_anneal} (Tm: {flag_rev_tm:.2f}°C)")
+>     print(f"Tm difference: {abs(flag_fwd_tm - flag_rev_tm):.2f}°C")
+>
+>     flag_fwd_primer = f"GGTCTCN{oh2}{flag_fwd_anneal}"
+>     flag_rev_primer = f"{reverse_complement(flag_rev_anneal)}{reverse_complement(oh3)}NGAGACC"
+>
+>     print(f"Forward primer: {flag_fwd_primer}")
+>     print(f"Reverse primer: {flag_rev_primer}")
+>     primers.append(('>flag_fwd', flag_fwd_primer.upper()))
+>     primers.append(('>flag_rev', flag_rev_primer.upper()))
+> print()
+>
+> # 4. SNAP INSERT
+> print("4. SNAP INSERT (without start codon)")
+> print("-" * 80)
+>
+> # SNAP needs OH3 (GACA) on left, OH4 (TTAA) on right
+> snap_fwd_template = snap_insert[:100]
+> snap_rev_template = snap_insert[-100:]
+>
+> result = find_primer_pair(snap_fwd_template, snap_rev_template)
+> if result:
+>     snap_fwd_anneal, snap_fwd_tm, snap_rev_anneal, snap_rev_tm = result
+>     print(f"Forward annealing region: {snap_fwd_anneal} (Tm: {snap_fwd_tm:.2f}°C)")
+>     print(f"Reverse annealing region: {snap_rev_anneal} (Tm: {snap_rev_tm:.2f}°C)")
+>     print(f"Tm difference: {abs(snap_fwd_tm - snap_rev_tm):.2f}°C")
+>
+>     snap_fwd_primer = f"GGTCTCN{oh3}{snap_fwd_anneal}"
+>     snap_rev_primer = f"{reverse_complement(snap_rev_anneal)}{reverse_complement(oh4)}NGAGACC"
+>
+>     print(f"Forward primer: {snap_fwd_primer}")
+>     print(f"Reverse primer: {snap_rev_primer}")
+>     primers.append(('>snap_fwd', snap_fwd_primer.upper()))
+>     primers.append(('>snap_rev', snap_rev_primer.upper()))
+> print()
+>
+> # Write primers to file
+> print("=" * 80)
+> print("Writing primers to primers.fasta...")
+> with open('primers.fasta', 'w') as f:
+>     for header, seq in primers:
+>         f.write(f"{header}\n{seq}\n")
+>
+> print(f"Done! {len(primers)} primers written.")
+>
+> EOFMAIN
+root@a0b49dcae9e4:/app#

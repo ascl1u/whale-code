@@ -1,0 +1,54 @@
+New Terminal Output:
+
+root@6859852352d9:/app# cat > final_test.sh << 'TESTEOF'
+> #!/bin/bash
+> set -e
+>
+> # Backup original files
+> cp src/INPUT.DAT /tmp/INPUT.DAT.orig
+> cp data/ACCOUNTS.DAT /tmp/ACCOUNTS.DAT.orig
+> cp data/BOOKS.DAT /tmp/BOOKS.DAT.orig
+> cp data/TRANSACTIONS.DAT /tmp/TRANSACTIONS.DAT.orig
+>
+> # Test with valid transaction
+> printf 'U001U002B0010000000200' > src/INPUT.DAT
+>
+> # Run COBOL
+> cobc -x -o /tmp/program src/program.cbl 2>/dev/null
+> /tmp/program > /dev/null 2>&1
+> cp data/ACCOUNTS.DAT /tmp/ACCOUNTS.DAT.cobol
+> cp data/BOOKS.DAT /tmp/BOOKS.DAT.cobol
+> cp data/TRANSACTIONS.DAT /tmp/TRANSACTIONS.DAT.cobol
+>
+> # Restore and run Python
+> cp /tmp/ACCOUNTS.DAT.orig data/ACCOUNTS.DAT
+> cp /tmp/BOOKS.DAT.orig data/BOOKS.DAT
+> cp /tmp/TRANSACTIONS.DAT.orig data/TRANSACTIONS.DAT
+> python3 /app/program.py > /dev/null 2>&1
+>
+> # Compare byte-by-byte
+> if cmp -s data/ACCOUNTS.DAT /tmp/ACCOUNTS.DAT.cobol && \
+>    cmp -s data/BOOKS.DAT /tmp/BOOKS.DAT.cobol && \
+>    cmp -s data/TRANSACTIONS.DAT /tmp/TRANSACTIONS.DAT.cobol; then
+>     echo "SUCCESS: Python implementation is byte-for-byte identical to COBOL"
+>     RESULT=0
+> else
+>     echo "FAILURE: Outputs differ"
+>     RESULT=1
+> fi
+>
+> # Restore original files
+> cp /tmp/INPUT.DAT.orig src/INPUT.DAT
+> cp /tmp/ACCOUNTS.DAT.orig data/ACCOUNTS.DAT
+> cp /tmp/BOOKS.DAT.orig data/BOOKS.DAT
+> cp /tmp/TRANSACTIONS.DAT.orig data/TRANSACTIONS.DAT
+>
+> # Cleanup
+> rm -f /tmp/program /tmp/*.orig /tmp/*.cobol
+>
+> exit $RESULT
+> TESTEOF
+root@6859852352d9:/app# chmod +x final_test.sh
+root@6859852352d9:/app# ./final_test.sh
+SUCCESS: Python implementation is byte-for-byte identical to COBOL
+root@6859852352d9:/app#

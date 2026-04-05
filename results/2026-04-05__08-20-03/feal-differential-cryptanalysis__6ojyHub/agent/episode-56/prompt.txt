@@ -1,0 +1,68 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > analyze_scores2.py << 'EOF'
+> #!/usr/bin/env python3
+> import feal
+> import attack
+>
+> feal.create_random_keys()
+> print("Actual key[5]:", feal.key[5])
+>
+> # Find correct seed
+> correct_seed = None
+> for seed in range(0x10000):
+>     if (seed * 1234567) & 0xFFFFFFFF == feal.key[5]:
+>         correct_seed = seed
+>         break
+>
+> print(f"Correct seed: {correct_seed}\n")
+>
+> # Collect data with different differences
+> data1 = []
+> for i in range(4):
+>     pt1 = i
+>     pt2 = i ^ 1  # Difference of 1
+>     ct1 = feal.encrypt(pt1)
+>     ct2 = feal.encrypt(pt2)
+>     data1.append((ct1, ct2))
+>
+> # Test all seeds and find where correct one ranks
+> scores = []
+> for seed in range(0x10000):
+>     candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>     score = 0
+>
+>     for ct1, ct2 in data1:
+>         fr1 = attack.getleft(ct1)
+>         fl1 = attack.getright(ct1)
+>         fr2 = attack.getleft(ct2)
+>         fl2 = attack.getright(ct2)
+>
+>         rb1 = fl1 ^ fr1
+>         rb2 = fl2 ^ fr2
+>
+>         lb1 = fr1 ^ attack.f_function(rb1 ^ candidate_key5)
+>         lb2 = fr2 ^ attack.f_function(rb2 ^ candidate_key5)
+>
+>         # Try different scoring: XOR of right halves
+>         score += bin(rb1 ^ rb2).count('1')
+>
+>     scores.append((score, seed))
+>
+> scores.sort()
+>
+> # Find rank of correct seed
+> for rank, (score, seed) in enumerate(scores):
+>     if seed == correct_seed:
+>         print(f"Correct seed rank: {rank} out of 65536")
+>         print(f"Correct seed score: {score}")
+>         print(f"\nNearby scores:")
+>         for i in range(max(0, rank-5), min(len(scores), rank+6)):
+>             s, sd = scores[i]
+>             marker = " <-- CORRECT" if sd == correct_seed else ""
+>             print(f"  Rank {i:5d}: seed {sd:5d}, score {s:3d}{marker}")
+>         break
+>
+> print(f"\nMin score: {scores[0][0]}, Max score: {scores[-1][0]}")
+> EOF
+root@486aac7a4fa6:/app#

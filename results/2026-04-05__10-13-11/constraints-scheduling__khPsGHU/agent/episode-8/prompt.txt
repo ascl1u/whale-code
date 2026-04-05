@@ -1,0 +1,59 @@
+New Terminal Output:
+
+root@64f9508e74b2:/app# cat > verify.py << 'EOF'
+> from datetime import datetime, timedelta
+>
+> # Meeting slot selected
+> meeting_start = datetime(2024, 1, 17, 11, 0)
+> meeting_end = datetime(2024, 1, 17, 12, 0)
+>
+> print("=== VERIFICATION ===")
+> print(f"Meeting scheduled: {meeting_start.strftime('%A, %B %d, %Y %I:%M %p')} - {meeting_end.strftime('%I:%M %p')}")
+> print()
+>
+> # Alice's constraints
+> print("Alice's constraints:")
+> print(f"  - Time: {meeting_start.strftime('%I:%M %p')} - {meeting_end.strftime('%I:%M %p')}")
+> print(f"  - Within 9 AM - 2 PM window: {9 <= meeting_start.hour and meeting_end.hour <= 14 and meeting_end.minute == 0}")
+> print(f"  - In preferred morning slot (9 AM-12 PM): {meeting_start.hour < 12}")
+>
+> alice_meetings = [
+>     (datetime(2024, 1, 17, 10, 0), datetime(2024, 1, 17, 11, 0)),
+>     (datetime(2024, 1, 17, 13, 0), datetime(2024, 1, 17, 14, 0)),
+> ]
+> conflicts = [m for m in alice_meetings if meeting_start < m[1] and meeting_end > m[0]]
+> print(f"  - No calendar conflicts: {len(conflicts) == 0}")
+> print()
+>
+> # Bob's constraints
+> print("Bob's constraints:")
+> print(f"  - After 10 AM: {meeting_start.hour >= 10}")
+> print(f"  - Day: {meeting_start.strftime('%A')}")
+> if meeting_start.weekday() in [1, 3]:  # Tue/Thu
+>     print(f"  - Ends by 4:30 PM (Tue/Thu): {meeting_end.hour < 16 or (meeting_end.hour == 16 and meeting_end.minute <= 30)}")
+>
+> bob_meetings = [
+>     (datetime(2024, 1, 17, 12, 0), datetime(2024, 1, 17, 13, 0)),
+> ]
+> conflicts = [m for m in bob_meetings if meeting_start < m[1] and meeting_end > m[0]]
+> print(f"  - No calendar conflicts: {len(conflicts) == 0}")
+> print()
+>
+> # Carol's constraints
+> print("Carol's constraints:")
+> print(f"  - Within 9 AM - 5 PM: {9 <= meeting_start.hour and meeting_end.hour <= 17}")
+> lunch_start = meeting_start.replace(hour=12, minute=0)
+> lunch_end = meeting_start.replace(hour=12, minute=30)
+> print(f"  - Doesn't overlap lunch (12:00-12:30 PM): {not (meeting_start < lunch_end and meeting_end > lunch_start)}")
+> print(f"  - Not on Monday (preference): {meeting_start.weekday() != 0}")
+>
+> carol_meetings = [
+>     (datetime(2024, 1, 17, 12, 0), datetime(2024, 1, 17, 13, 0)),
+> ]
+> conflicts = [m for m in carol_meetings if meeting_start < m[1] and meeting_end > m[0]]
+> print(f"  - No calendar conflicts: {len(conflicts) == 0}")
+> print()
+>
+> print("=== ALL CONSTRAINTS SATISFIED ===")
+> EOF
+root@64f9508e74b2:/app#

@@ -1,0 +1,74 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> seqs = read_fasta('sequences.fasta')
+> output_seq = seqs['output']
+> egfp = seqs['egfp']
+> flag = seqs['flag']
+> snap = seqs['snap']
+>
+> print("Testing fusion protein hypothesis...")
+> print(f"eGFP: {egfp[-15:]}")
+> print(f"FLAG: {flag[:15]} ... {flag[-15:]}")
+> print(f"SNAP: {snap[:15]} ... {snap[-15:]}")
+> print()
+>
+> # Remove stop from egfp and start from flag
+> egfp_no_stop = egfp[:-3]  # Remove 'taa'
+> flag_no_start_no_stop = flag[3:-3]  # Remove 'atg' and 'taa'
+> snap_no_start = snap[3:]  # Remove 'atg', keep 'taa'
+>
+> fusion = egfp_no_stop + flag_no_start_no_stop + snap_no_start
+> print(f"Fusion length: {len(fusion)}")
+>
+> if fusion in output_seq:
+>     pos = output_seq.find(fusion)
+>     print(f"\nFOUND FUSION at position {pos}!")
+>     print(f"Fusion: eGFP(no stop) + FLAG(no start, no stop) + SNAP(no start, with stop)")
+>     print(f"\nBefore fusion in output: {output_seq[pos-20:pos]}")
+>     print(f"After fusion in output: {output_seq[pos+len(fusion):pos+len(fusion)+20]}")
+> else:
+>     print("Fusion not found, trying other combinations...")
+>
+>     # Maybe snap also has no stop?
+>     snap_no_start_no_stop = snap[3:-3]
+>     fusion2 = egfp_no_stop + flag_no_start_no_stop + snap_no_start_no_stop + 'taa'
+>     if fusion2 in output_seq:
+>         pos = output_seq.find(fusion2)
+>         print(f"\nFOUND FUSION at position {pos}!")
+>         print(f"Fusion: eGFP(no stop) + FLAG(no start, no stop) + SNAP(no start, no stop) + TAA")
+>
+> EOF
+Testing fusion protein hypothesis...
+eGFP: gagctgtacaaataa
+FLAG: atgggtagtggctcc ... ggtagtggttcataa
+SNAP: atggacaaagactgc ... cctgggctgggttaa
+
+Fusion length: 1344
+
+FOUND FUSION at position 210!
+Fusion: eGFP(no stop) + FLAG(no start, no stop) + SNAP(no start, with stop)
+
+Before fusion in output: tttaagaaggagatatacat
+After fusion in output: tgaggatcccgggaattctc
+root@a0b49dcae9e4:/app#

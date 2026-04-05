@@ -1,0 +1,69 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat > analyze_assembly.py << 'EOF'
+> import subprocess
+>
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> # Find junctions in output
+> egfp_start = seqs['output'].find(seqs['egfp'][:50])
+> flag_start = seqs['output'].find(seqs['flag'][:30])
+> snap_start = seqs['output'].find(seqs['snap'][:50])
+>
+> print(f"EGFP starts at: {egfp_start}")
+> print(f"FLAG starts at: {flag_start}")
+> print(f"SNAP starts at: {snap_start}")
+>
+> # Get junction sequences (4bp overhangs)
+> print(f"\nJunction before EGFP: {seqs['output'][egfp_start-4:egfp_start]} | {seqs['output'][egfp_start:egfp_start+4]}")
+> print(f"Junction after EGFP: {seqs['output'][egfp_start+len(seqs['egfp'])-4:egfp_start+len(seqs['egfp'])]} | {seqs['output'][egfp_start+len(seqs['egfp']):egfp
+_start+len(seqs['egfp'])+4]}")
+> print(f"Junction after FLAG: {seqs['output'][flag_start+len(seqs['flag'])-4:flag_start+len(seqs['flag'])]} | {seqs['output'][flag_start+len(seqs['flag']):flag
+_start+len(seqs['flag'])+4]}")
+> print(f"Junction after SNAP: {seqs['output'][snap_start+len(seqs['snap'])-4:snap_start+len(seqs['snap'])]} | {seqs['output'][snap_start+len(seqs['snap']):snap
+_start+len(seqs['snap'])+4]}")
+>
+> # Find what was replaced in input
+> input_before_insert = seqs['output'][:egfp_start]
+> snap_end = snap_start + len(seqs['snap'])
+> input_after_insert = seqs['output'][snap_end:]
+>
+> print(f"\nInput plasmid part before insert: {len(input_before_insert)} bp")
+> print(f"Input plasmid part after insert: {len(input_after_insert)} bp")
+>
+> # Find where these match in input
+> if input_before_insert in seqs['input']:
+>     cut_start = len(input_before_insert)
+>     print(f"Cut starts at position {cut_start} in input")
+>
+> if input_after_insert in seqs['input']:
+>     cut_end = seqs['input'].find(input_after_insert)
+>     print(f"Cut ends at position {cut_end} in input")
+>     print(f"Removed sequence length: {cut_end - cut_start}")
+>     print(f"Removed sequence: {seqs['input'][cut_start:cut_end][:50]}...")
+>
+> EOF
+root@b088ecd58d39:/app# python3 analyze_assembly.py
+EGFP starts at: 210
+FLAG starts at: -1
+SNAP starts at: -1
+
+Junction before EGFP: ACAT | ATGA
+Junction after EGFP: AGGT | AGTG
+Junction after FLAG: AAAC | AAAT
+Junction after SNAP: TGAA | GTTC
+
+Input plasmid part before insert: 210 bp
+Input plasmid part after insert: 3043 bp
+Cut starts at position 210 in input
+root@b088ecd58d39:/app#

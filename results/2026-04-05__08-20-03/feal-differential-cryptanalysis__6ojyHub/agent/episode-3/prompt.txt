@@ -1,0 +1,237 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+ """Recover key[5] using chosen plaintext attack"""
+
+    # Collect plaintext-ciphertext pairs
+    # Use diverse plaintexts to get good coverage
+    pairs = []
+    for i in range(256):
+        plaintext = (i << 56) | (i << 48) | (i << 40) | (i << 32) | (i << 24) | (i << 16) | (i << 8) | i
+        ciphertext = encrypt_fn(plaintext)
+        pairs.append((plaintext, ciphertext))
+
+    # Also add some other patterns
+    for i in range(256):
+        plaintext = i * 0x0101010101010101
+        ciphertext = encrypt_fn(plaintext)
+        pairs.append((plaintext, ciphertext))
+
+    # Try all possible 16-bit seeds for key[5]
+    best_candidate = None
+    best_score = -1
+
+    for seed in range(0x10000):
+        candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+
+        # For each candidate, partially decrypt and check consistency
+        # We'll use a heuristic: check if partially decrypted values form patterns
+
+        decrypted_states = []
+
+        for plaintext, ciphertext in pairs:
+            # Reverse the final operations:
+            # Output is merge(right, left) after: left ^= right
+
+            final_right = getleft(ciphertext)  # This was 'right' before merge
+            final_left = getright(ciphertext)   # This was 'left' before merge
+
+            # Undo: left ^= right
+            before_xor_left = final_left ^ final_right
+            before_xor_right = final_right
+
+            # Now undo the last Feistel round (round 3, using key[5])
+            # In Feistel: mixed = f_function(right ^ key[5])
+            #             new_right = left ^ mixed
+            #             new_left = right
+            # So: before_xor_right = new_right, before_xor_left = new_left
+            # Therefore: new_left = right_before_round3
+            # And: new_right = left_before_round3 ^ f_function(right_before_round3 ^ key[5])
+
+            right_before_round3 = before_xor_left
+            left_before_round3 = before_xor_right ^ f_function(right_before_round3 ^ candidate_key5)
+
+            decrypted_states.append((left_before_round3, right_before_round3))
+
+        # Score this candidate based on some heuristic
+        # We expect that correct decryption leads to more structured intermediate states
+        # One heuristic: check for low entropy or patterns
+
+        # Simple scoring: count how many unique values we get
+        # A correct key might lead to more diverse or more clustered values
+        # This is tricky without knowing the other keys
+
+        # Alternative: use differential properties
+        # Check if pairs with related plaintexts have related decrypted states
+
+        score = 0
+        for i in range(0, len(pairs) - 1, 2):
+            pt1, ct1 = pairs[i]
+            pt2, ct2 = pairs[i + 1]
+
+            # If plaintexts are related, check if decrypted states are related
+            left1, right1 = decrypted_states[i]
+            left2, right2 = decrypted_states[i + 1]
+
+            # Use some differen> #!/usr/bin/env python3
+>
+ > def g_function(a, b, x):
+>     """FEAL G function (same as in feal.py)"""
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+>
+th> def f_function(input_val):
+>     """FEAL F function (same as in feal.py)"""
+>     x = [0] * 4
+>     y = [0] * 4
+ >
+ >     # Extract bytes from input (big-endian)
+#>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>
+>     # Apply G function operations
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>
+>     # Combine bytes into output (big-endian)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+e>
+y>     return output & 0xFFFFFFFF
+>
+>
+F> def getleft(x):
+>     """Get the left (upper) 32 bits of a 64-bit value"""
+>     return (x >> 32) & 0xFFFFFFFF
+o>
+>
+> def getright(x):
+>     """Get the right (lower) 32 bits of a 64-bit value"""
+>     return x & 0xFFFFFFFF
+>
+>
+> def attack(encrypt_fn):
+eft(>     """Recover key[5] using chosen plaintext attack"""
+>
+  >     # Collect plaintext-ciphertext pairs
+>     # Use diverse plaintexts to get good coverage
+r>     pairs = []
+>     for i in range(256):
+o>         plaintext = (i << 56) | (i << 48) | (i << 40) | (i << 32) | (i << 24) | (i << 16) | (i << 8) | i
+>         ciphertext = encrypt_fn(plaintext)
+>         pairs.append((plaintext, ciphertext))
+t>
+>     # Also add some other patterns
+>     for i in range(256):
+>         plaintext = i * 0x0101010101010101
+ >         ciphertext = encrypt_fn(plaintext)
+>         pairs.append((plaintext, ciphertext))
+>
+>     # Try all possible 16-bit seeds for key[5]
+>     best_candidate = None
+>     best_score = -1
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # For each candidate, partially decrypt and check consistency
+>         # We'll use a heuristic: check if partially decrypted values form patterns
+>
+>         decrypted_states = []
+>
+>         for plaintext, ciphertext in pairs:
+>             # Reverse the final operations:
+>             # Output is merge(right, left) after: left ^= right
+>
+>             final_right = getleft(ciphertext)  # This was 'right' before merge
+>             final_left = getright(ciphertext)   # This was 'left' before merge
+>
+>             # Undo: left ^= right
+>             before_xor_left = final_left ^ final_right
+>             before_xor_right = final_right
+>
+>             # Now undo the last Feistel round (round 3, using key[5])
+>             # In Feistel: mixed = f_function(right ^ key[5])
+>             #             new_right = left ^ mixed
+>             #             new_left = right
+>             # So: before_xor_right = new_right, before_xor_left = new_left
+>             # Therefore: new_left = right_before_round3
+>             # And: new_right = left_before_round3 ^ f_function(right_before_round3 ^ key[5])
+>
+>             right_before_round3 = before_xor_left
+>             left_before_round3 = before_xor_right ^ f_function(right_before_round3 ^ candidate_key5)
+>
+>             decrypted_states.append((left_before_round3, right_before_round3))
+>
+>         # Score this candidate based on some heuristic
+>         # We expect that correct decryption leads to more structured intermediate states
+>         # One heuristic: check for low entropy or patterns
+>
+>         # Simple scoring: count how many unique values we get
+>         # A correct key might lead to more diverse or more clustered values
+>         # This is tricky without knowing the other keys
+>
+>         # Alternative: use differential properties
+>         # Check if pairs with related plaintexts have related decrypted states
+>
+>         score = 0
+>         for i in range(0, len(pairs) - 1, 2):
+>             pt1, ct1 = pairs[i]
+>             pt2, ct2 = pairs[i + 1]
+>
+>             # If plaintexts are related, check if decrypted states are related
+>             left1, right1 = decrypted_states[i]
+>             left2, right2 = decrypted_states[i + 1]
+>
+>             # Use some differential property
+>             # This is still not precise without more structure
+>
+>         # Let's use a different approach: algebraic consistency
+>         # We know the encryption structure, so let's use it
+>
+>     # Actually, let me think about this more carefully
+>     # We need a better distinguisher
+>
+>     # New approach: use the fact that we can test consistency
+>     # by checking if the partially decrypted values satisfy certain properties
+>
+>     # For a correct key, when we partially decrypt, we should get values
+>     # that could plausibly come from the earlier rounds
+>
+>     # Let's use a simpler test: collect statistics and find outliers
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Test with a few pairs
+>         test_pairs = pairs[:100]
+>
+>         # Compute a score based on some property
+>         values = []
+>         for plaintext, ciphertext in test_pairs:
+>             final_right = getleft(ciphertext)
+>             final_left = getright(ciphertext)
+>             before_xor_left = final_left ^ final_right
+>             before_xor_right = final_right
+>
+>             right_before_round3 = before_xor_left
+>             left_before_round3 = before_xor_right ^ f_function(right_before_round3 ^ candidate_key5)
+>
+>             values.append((left_before_round3, right_before_round3))
+>
+>         # Score based on uniqueness
+>         unique_values = len(set(values))
+>
+>         if unique_values > best_score:
+>             best_score = unique_values
+>             best_candidate = candidate_key5
+>
+>     return best_candidate
+>
+> EOF
+root@486aac7a4fa6:/app#

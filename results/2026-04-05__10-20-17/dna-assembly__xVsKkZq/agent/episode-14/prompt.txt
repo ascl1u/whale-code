@@ -1,0 +1,222 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > final_primer_design.py << 'ENDOFSCRIPT'
+> import subprocess
+> import sys
+>
+> # Read sequences
+> seqs = {}
+
+if fwd_p:> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+(> def reverse_complement(seq):
+>     complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'a': 't', 't': 'a', 'g': 'c', 'c': 'g'}
+>     return ''.join(complement[base] for base in reversed(seq))
+>
+a> def calc_tm(seq):
+ >     """Calculate Tm using oligotm"""
+>     cmd = ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq.upper()]
+>     result = subprocess.run(cmd, capture_output=True, text=True)
+>     return float(result.stdout.strip())
+>
+ > def find_primer_length(template, start_pos, direction='forward', target_tm_min=58, target_tm_max=72, min_len=15, max_len=45):
+>     """Find optimal primer length for target Tm range"""
+>     for length in range(min_len, max_len + 1):
+a>         if direction == 'forward':
+>             primer_seq = template[start_pos:start_pos + length]
+a>         else:  # reverse
+>             primer_seq = template[start_pos - length + 1:start_pos + 1]
+>
+FR>         if len(primer_seq) < length:
+>             continue
+>
+>         tm = calc_tm(primer_seq)
+T>         if target_tm_min <= tm <= target_tm_max:
+>             return primer_seq, tm, length
+>
+wd_p,>     # If no perfect match, return the closest
+>     if direction == 'forward':
+>         primer_seq = template[start_pos:start_pos + max_len]
+>     else:
+>         primer_seq = template[start_pos - max_len + 1:start_pos + 1]
+>     tm = calc_tm(primer_seq)
+>     return primer_seq, tm, len(primer_seq)
+>
+> def design_primer_pair(template, fwd_start, rev_end, fwd_overhang, rev_overhang, name):
+>     """Design a primer pair with BsaI sites and overhangs"""
+>     print(f"\nDesigning primers for {name}...")
+n>
+>     # Find optimal forward primer
+>     best_fwd = None
+>     best_rev = None
+>     best_tm_diff = 100
+>
+>     for fwd_len in range(15, 46):
+>         fwd_binding = template[fwd_start:fwd_start + fwd_len]
+>         if len(fwd_binding) < fwd_len:
+>             continue
+>         fwd_tm = calc_tm(fwd_binding)
+>
+>         if not (58 <= fwd_tm <= 72):
+>             continue
+>
+>         for rev_len in range(15, 46):
+>             rev_binding = template[rev_end - rev_len + 1:rev_end + 1]
+>             if len(rev_binding) < rev_len:
+>                 continue
+>             rev_tm = calc_tm(rev_binding)
+>
+>             if not (58 <= rev_tm <= 72):
+>                 continue
+>
+>             tm_diff = abs(fwd_tm - rev_tm)
+>             if tm_diff <= 5 and tm_diff < best_tm_diff:
+>                 best_tm_diff = tm_diff
+>                 best_fwd = (fwd_binding, fwd_tm, fwd_len)
+>                 best_rev = (rev_binding, rev_tm, rev_len)
+>
+>     if best_fwd and best_rev:
+>         # Build full primers with BsaI sites
+>         fwd_primer = "GGTCTCN" + fwd_overhang + best_fwd[0]
+>         rev_primer_binding_rc = reverse_complement(best_rev[0])
+>         rev_overhang_rc = reverse_complement(rev_overhang)
+>         rev_primer = "GAGACCN" + rev_overhang_rc + rev_primer_binding_rc
+>
+>         print(f"  Forward: {best_fwd[1]:.2f}°C (binding: {best_fwd[2]}bp)")
+>         print(f"  Reverse: {best_rev[1]:.2f}°C (binding: {best_rev[2]}bp)")
+>         print(f"  ΔTm: {best_tm_diff:.2f}°C")
+>
+>         return fwd_primer, rev_primer, best_fwd[1], best_rev[1]
+>     else:
+>         print(f"  WARNING: Could not find optimal pair within constraints")
+>         return None, None, None, None
+>
+> output = seqs['output']
+> input_seq = seqs['input']
+>
+> print("="*70)
+> print("DESIGNING PRIMERS FOR GOLDEN GATE ASSEMBLY")
+> print("="*70)
+>
+> primers = []
+>
+> # Fragment 1: INPUT VECTOR (linearized backbone)
+> print("\n" + "="*70)
+> print("FRAGMENT 1: INPUT VECTOR BACKBONE")
+> print("="*70)
+> # Amplify from position 690 (after insert) to position 210 (before insert)
+> # Forward at 690, creates TGAG overhang
+> # Reverse at 210, creates ATGA overhang (so vector -> egfp)
+> fwd_p, rev_p, fwd_tm, rev_tm = design_primer_pair(
+>     input_seq, 690, 209, "TGAG", "ATGA", "input"
+> )
+> if fwd_p:
+>     primers.append(("input_fwd", fwd_p))
+>     primers.append(("input_rev", rev_p))
+>
+> # Fragment 2: EGFP
+> print("\n" + "="*70)
+> print("FRAGMENT 2: EGFP")
+> print("="*70)
+> # Amplify egfp, but modify the stop codon
+> # Forward at start, creates ATGA overhang
+> # Reverse at end (before stop), creates AGTG overhang
+> # Need to handle the TAA->GGT conversion
+> egfp_seq = seqs['egfp']
+> egfp_no_stop = egfp_seq[:-3]  # Remove TAA
+> fwd_p, rev_p, fwd_tm, rev_tm = design_primer_pair(
+>     egfp_seq, 0, len(egfp_no_stop) - 1, "ATGA", "AGTG", "egfp"
+> )
+> if fwd_p:
+>     primers.append(("egfp_fwd", fwd_p))
+>     primers.append(("egfp_rev", rev_p))
+>
+> # Fragment 3: FLAG
+> print("\n" + "="*70)
+> print("FRAGMENT 3: FLAG")
+> print("="*70)
+> # Amplify flag without ATG and without stop
+> # Forward at position 3 (skip ATG), creates AGTG overhang
+> # Reverse at end-3 (skip stop), creates GACA overhang
+> flag_seq = seqs['flag']
+> flag_no_atg_stop = flag_seq[3:-3]
+> fwd_p, rev_p, fwd_tm, rev_tm = design_primer_pair(
+>     flag_seq, 3, len(flag_seq) - 4, "AGTG", "GACA", "flag"
+> )
+> if fwd_p:
+>     primers.append(("flag_fwd", fwd_p))
+>     primers.append(("flag_rev", rev_p))
+>
+> # Fragment 4: SNAP
+> print("\n" + "="*70)
+> print("FRAGMENT 4: SNAP")
+> print("="*70)
+> # Amplify snap without ATG but keep stop
+> # Forward at position 3 (skip ATG), creates GACA overhang
+> # Reverse at end, creates TGAG overhang
+> snap_seq = seqs['snap']
+> fwd_p, rev_p, fwd_tm, rev_tm = design_primer_pair(
+>     snap_seq, 3, len(snap_seq) - 1, "GACA", "TGAG", "snap"
+> )
+> if fwd_p:
+>     primers.append(("snap_fwd", fwd_p))
+>     primers.append(("snap_rev", rev_p))
+>
+> # Write to file
+> print("\n" + "="*70)
+> print("WRITING PRIMERS TO primers.fasta")
+> print("="*70)
+>
+> with open('primers.fasta', 'w') as f:
+>     for name, seq in primers:
+>         f.write(f">{name}\n{seq.upper()}\n")
+>
+> print(f"\nWrote {len(primers)} primers to primers.fasta")
+>
+> ENDOFSCRIPT
+root@11eec39dc770:/app# python3 final_primer_design.py
+======================================================================
+DESIGNING PRIMERS FOR GOLDEN GATE ASSEMBLY
+======================================================================
+
+======================================================================
+FRAGMENT 1: INPUT VECTOR BACKBONE
+======================================================================
+
+Designing primers for input...
+  Forward: 59.81°C (binding: 18bp)
+  Reverse: 59.83°C (binding: 32bp)
+  ΔTm: 0.03°C
+
+======================================================================
+FRAGMENT 2: EGFP
+======================================================================
+
+Designing primers for egfp...
+  Forward: 68.53°C (binding: 21bp)
+  Reverse: 68.48°C (binding: 24bp)
+  ΔTm: 0.05°C
+
+======================================================================
+FRAGMENT 3: FLAG
+======================================================================
+
+Designing primers for flag...
+  Forward: 69.51°C (binding: 23bp)
+  Reverse: 69.35°C (binding: 26bp)
+  ΔTm: 0.16°C
+
+======================================================================
+FRAGMENT 4: SNAP
+======================================================================
+
+Designing primers for snap...
+

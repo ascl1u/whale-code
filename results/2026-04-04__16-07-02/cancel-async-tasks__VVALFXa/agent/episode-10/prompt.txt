@@ -1,0 +1,61 @@
+New Terminal Output:
+
+root@e3c1bf174cb4:/app# cat > /tmp/test_keyboard_interrupt.py << 'EOF'
+> import asyncio
+> import signal
+> import sys
+> sys.path.insert(0, '/app')
+> from run import run_tasks
+>
+> print("Test: KeyboardInterrupt handling with cleanup")
+>
+> cleanup_log = []
+>
+> async def task_with_cleanup(task_id):
+>     try:
+>         cleanup_log.append(f"task{task_id}_start")
+>         await asyncio.sleep(10)  # Long running task
+>         cleanup_log.append(f"task{task_id}_complete")
+>     except asyncio.CancelledError:
+>         cleanup_log.append(f"task{task_id}_cleanup")
+>         await asyncio.sleep(0.01)  # Simulate cleanup work
+>         raise
+>     finally:
+>         cleanup_log.append(f"task{task_id}_finally")
+>
+> async def main():
+>     tasks = [lambda tid=i: task_with_cleanup(tid) for i in range(5)]
+>     try:
+>         await run_tasks(tasks, max_concurrent=3)
+>     except KeyboardInterrupt:
+>         print("KeyboardInterrupt caught in main")
+>         raise
+>
+> async def test_with_interrupt():
+>     main_task = asyncio.create_task(main())
+>     await asyncio.sleep(0.3)  # Let tasks start
+>
+>     # Simulate KeyboardInterrupt by cancelling
+>     main_task.cancel()
+>
+>     try:
+>         await main_task
+>     except asyncio.CancelledError:
+>         print("Task was cancelled")
+>
+>     print(f"\nCleanup log: {cleanup_log}")
+>
+>     # Verify cleanup ran for all started tasks
+>     started_tasks = [i for i in range(5) if f"task{i}_start" in cleanup_log]
+>     print(f"Started tasks: {started_tasks}")
+>
+>     for task_id in started_tasks:
+>         assert f"task{task_id}_cleanup" in cleanup_log, f"Cleanup didn't run for task{task_id}"
+>         assert f"task{task_id}_finally" in cleanup_log, f"Finally block didn't run for task{task_id}"
+>
+>     print(f"✓ Cleanup ran for all {len(started_tasks)} started tasks")
+>     print("✓ KeyboardInterrupt handling test passed")
+>
+> asyncio.run(test_with_interrupt())
+> EOF
+root@e3c1bf174cb4:/app#

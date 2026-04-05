@@ -1,0 +1,90 @@
+New Terminal Output:
+
+root@b419d4b4dbd9:/app# cat > final_fix.py << 'EOF'
+> import re
+> import subprocess
+>
+> def parse_synonyms(filename):
+>     synonym_map = {}
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if not line:
+>                 continue
+>             words = [w.strip() for w in line.split(',')]
+>             for word in words:
+>                 synonym_map[word] = words
+>     return synonym_map
+>
+> def replace_word(text, old_word, new_word):
+>     pattern = r'\b' + re.escape(old_word) + r'\b'
+>     return re.sub(pattern, new_word, text)
+>
+> def check_overfull():
+>     result = subprocess.run(['pdflatex', '-interaction=nonstopmode', 'main.tex'],
+>                           capture_output=True, text=True)
+>     output = result.stdout + result.stderr
+>     overfull_lines = [line for line in output.split('\n') if 'Overfull' in line]
+>     return overfull_lines
+>
+> synonym_map = parse_synonyms('synonyms.txt')
+>
+> with open('input.tex', 'r') as f:
+>     text = f.read()
+>
+> # Key replacements to fix overfull warnings
+> replacements = [
+>     # Fix the biggest issue: "creative temperament" (54.68pt overfull)
+>     ('temperament', 'mood'),  # temperament (11) -> mood (4), saves 7 chars
+>
+>     # Fix other issues
+>     ('curious', 'odd'),  # curious (7) -> odd (3), saves 4
+>     ('riotous', 'wild'),  # riotous (7) -> wild (4), saves 3
+>     ('excursions', 'trips'),  # excursions (10) -> trips (5), saves 5
+>     ('responsiveness', 'awareness'),  # responsiveness (14) -> awareness (9), saves 5
+>     ('pathfinder', 'pioneer'),  # pathfinder (10) -> pioneer (7), saves 3
+>     ('wisdom', 'insight'),  # wisdom (6) -> insight (7), +1 but might help with hyphenation
+>
+>     # Additional replacements to help
+>     ('talent', 'gift'),  # Reverse my earlier change: talent (6) -> gift (4), saves 2
+>     ('dreamy', 'loving'),  # dreamy (6) -> loving (6), same but different hyphenation
+> ]
+>
+> print("Applying targeted fixes...")
+> for old, new in replacements:
+>     if old in synonym_map and new in synonym_map[old]:
+>         old_text = text
+>         text = replace_word(text, old, new)
+>         if text != old_text:
+>             print(f"  {old} -> {new}")
+>
+> with open('input.tex', 'w') as f:
+>     f.write(text)
+>
+> print("\nChecking compilation...")
+> overfull = check_overfull()
+> if overfull:
+>     print(f"\nStill have {len(overfull)} overfull warnings:")
+>     for line in overfull:
+>         print(line)
+> else:
+>     print("\n✓ SUCCESS! No overfull hbox warnings!")
+> EOF
+root@b419d4b4dbd9:/app# python3 final_fix.py
+Applying targeted fixes...
+  temperament -> mood
+  curious -> odd
+  riotous -> wild
+  excursions -> trips
+  responsiveness -> awareness
+  pathfinder -> pioneer
+  wisdom -> insight
+  talent -> gift
+  dreamy -> loving
+
+Checking compilation...
+
+Still have 2 overfull warnings:
+Overfull \hbox (21.3254pt too wide) in paragraph at lines 7--8
+Overfull \hbox (0.46426pt too wide) in paragraph at lines 13--14
+root@b419d4b4dbd9:/app#

@@ -1,0 +1,22 @@
+New Terminal Output:
+
+root@4ff76c48fd89:/app# cat > /tmp/wait_for_boot.sh << 'EOF'
+> #!/bin/bash
+> echo "Waiting for Alpine to boot and show login prompt..."
+> for i in {1..60}; do
+>   output=$(timeout 2 telnet 127.0.0.1 6665 2>&1 <<< "" | head -20)
+>   if echo "$output" | grep -qi "login"; then
+>     echo "Login prompt detected! System is ready."
+>     exit 0
+>   fi
+>   echo "Attempt $i: Not ready yet, waiting..."
+>   sleep 2
+> done
+> echo "Timeout waiting for boot"
+> exit 1
+> EOF
+root@4ff76c48fd89:/app#
+
+
+
+

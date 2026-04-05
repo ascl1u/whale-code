@@ -1,0 +1,110 @@
+New Terminal Output:
+
+root@c7d49774f253:/app# cat > /tmp/test_run.py << 'EOF'
+> import asyncio
+> import time
+> from run import run_tasks
+>
+> print("Test 1: Basic import test")
+> print(f"run_tasks function imported: {run_tasks}")
+> print("✓ Import successful\n")
+>
+> print("Test 2: Concurrent execution with max_concurrent limit")
+> execution_log = []
+>
+> async def task_factory(task_id: int, duration: float):
+>     async def task():
+>         start = time.time()
+>         execution_log.append(f"Task {task_id} started at {start:.2f}")
+>         await asyncio.sleep(duration)
+>         end = time.time()
+>         execution_log.append(f"Task {task_id} finished at {end:.2f}")
+>     return task
+>
+> async def test_concurrency():
+>     tasks = [await task_factory(i, 0.1) for i in range(5)]
+>     start_time = time.time()
+>     await run_tasks(tasks, max_concurrent=2)
+>     end_time = time.time()
+>     print(f"Total time: {end_time - start_time:.2f}s")
+>     print(f"Expected: ~0.3s (5 tasks / 2 concurrent = 3 batches * 0.1s)")
+>     for log in execution_log:
+>         print(f"  {log}")
+>     print("✓ Concurrency test passed\n")
+>
+> asyncio.run(test_concurrency())
+>
+> print("Test 3: Cleanup code execution")
+> cleanup_log = []
+>
+> async def task_with_cleanup(task_id: int):
+>     async def task():
+>         try:
+>             cleanup_log.append(f"Task {task_id} started")
+>             await asyncio.sleep(0.1)
+>             cleanup_log.append(f"Task {task_id} completed")
+>         finally:
+>             cleanup_log.append(f"Task {task_id} cleanup executed")
+>     return task
+>
+> async def test_cleanup():
+>     tasks = [await task_with_cleanup(i) for i in range(3)]
+>     await run_tasks(tasks, max_concurrent=2)
+>     for log in cleanup_log:
+>         print(f"  {log}")
+>     assert all(f"Task {i} cleanup executed" in cleanup_log for i in range(3))
+>     print("✓ Cleanup test passed\n")
+>
+> asyncio.run(test_cleanup())
+>
+> print("Test 4: Cancellation handling (simulating keyboard interrupt)")
+> cancellation_log = []
+>
+> async def long_task_with_cleanup(task_id: int):
+>     async def task():
+>         try:
+>             cancellation_log.append(f"Task {task_id} started")
+>             await asyncio.sleep(10)  # Long sleep
+>             cancellation_log.append(f"Task {task_id} completed normally")
+>         except asyncio.CancelledError:
+>             cancellation_log.append(f"Task {task_id} was cancelled")
+>             raise  # Re-raise to propagate cancellation
+>         finally:
+>             cancellation_log.append(f"Task {task_id} cleanup executed")
+>     return task
+>
+> async def test_cancellation():
+>     tasks = [await long_task_with_cleanup(i) for i in range(3)]
+>
+>     # Create a task that will be cancelled
+>     main_task = asyncio.create_task(run_tasks(tasks, max_concurrent=2))
+>
+>     # Let tasks start
+>     await asyncio.sleep(0.1)
+>
+>     # Cancel the main task (simulating keyboard interrupt)
+>     main_task.cancel()
+>
+>     try:
+>         await main_task
+>     except asyncio.CancelledError:
+>         cancellation_log.append("Main task cancelled")
+>
+>     # Give cleanup time to complete
+>     await asyncio.sleep(0.1)
+>
+>     for log in cancellation_log:
+>         print(f"  {log}")
+>
+>     # Verify cleanup ran for all started tasks
+>     started_tasks = [i for i in range(3) if f"Task {i} started" in cancellation_log]
+>     for task_id in started_tasks:
+>         assert f"Task {task_id} cleanup executed" in cancellation_log, f"Task {task_id} cleanup did not execute!"
+>
+>     print("✓ Cancellation test passed\n")
+>
+> asyncio.run(test_cancellation())
+>
+> print("All tests passed! ✓")
+> EOF
+root@c7d49774f253:/app#

@@ -1,0 +1,74 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > check_junctions.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> # Find egfp in output
+> egfp_start = seqs['output'].find(seqs['egfp'][:30])
+> print(f"egfp starts at: {egfp_start}")
+>
+> # Check what comes after egfp
+> egfp_end = egfp_start + len(seqs['egfp'])
+> print(f"egfp ends at: {egfp_end}")
+> print(f"\nLast 30bp of egfp in file:")
+> print(seqs['egfp'][-30:])
+> print(f"\nLast 30bp of egfp in output:")
+> print(seqs['output'][egfp_end-30:egfp_end])
+> print(f"\nNext 90bp after egfp in output:")
+> print(seqs['output'][egfp_end:egfp_end+90])
+>
+> print(f"\nflag sequence:")
+> print(seqs['flag'])
+>
+> # Check if flag without stop codon
+> flag_no_stop = seqs['flag'][:-3]  # Remove TAA stop
+> print(f"\nflag without stop codon:")
+> print(flag_no_stop)
+> print(f"Is it in output? {flag_no_stop in seqs['output']}")
+>
+> # Check snap
+> print(f"\nsnap sequence ends with:")
+> print(seqs['snap'][-30:])
+> snap_no_stop = seqs['snap'][:-3]  # Remove TAA stop
+> print(f"\nsnap without stop codon ends with:")
+> print(snap_no_stop[-30:])
+> print(f"Is it in output? {snap_no_stop in seqs['output']}")
+>
+> EOF
+root@11eec39dc770:/app# python3 check_junctions.py
+egfp starts at: 210
+egfp ends at: 927
+
+Last 30bp of egfp in file:
+actctcggcatggacgagctgtacaaataa
+
+Last 30bp of egfp in output:
+actctcggcatggacgagctgtacaaaggt
+
+Next 90bp after egfp in output:
+agtggctccggtagcggtagcggcagcgactacaaggacgacgacgacaagggttccggttctggttcaggtagtggttcagacaaagac
+
+flag sequence:
+atgggtagtggctccggtagcggtagcggcagcgactacaaggacgacgacgacaagggttccggttctggttcaggtagtggttcataa
+
+flag without stop codon:
+atgggtagtggctccggtagcggtagcggcagcgactacaaggacgacgacgacaagggttccggttctggttcaggtagtggttca
+Is it in output? False
+
+snap sequence ends with:
+cacagactgggtaagcctgggctgggttaa
+
+snap without stop codon ends with:
+ggccacagactgggtaagcctgggctgggt
+Is it in output? False
+root@11eec39dc770:/app#

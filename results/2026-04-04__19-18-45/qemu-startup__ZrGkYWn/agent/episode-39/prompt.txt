@@ -1,0 +1,32 @@
+New Terminal Output:
+
+root@18c89a079d59:/app# python3 << 'EOFPY'
+> import struct
+> import sys
+>
+> # Try to find and list files in the ISO
+> with open('/app/alpine.iso', 'rb') as f:
+>     # Skip to primary volume descriptor (sector 16)
+>     f.seek(16 * 2048)
+>     pvd = f.read(2048)
+>
+>     # Check if it's a valid ISO
+>     if pvd[1:6] != b'CD001':
+>         print('Not a valid ISO')
+>         sys.exit(1)
+>
+>     print('Valid ISO 9660 filesystem')
+>     print('Looking for boot directory...')
+>
+>     # Try to find boot files by searching for common patterns
+>     f.seek(0)
+>     data = f.read(100000)  # Read first 100KB
+>
+>     if b'vmlinuz' in data:
+>         print('Found vmlinuz reference')
+>     if b'initramfs' in data or b'initrd' in data:
+>         print('Found initramfs/initrd reference')
+> EOFPY
+Valid ISO 9660 filesystem
+Looking for boot directory...
+root@18c89a079d59:/app#

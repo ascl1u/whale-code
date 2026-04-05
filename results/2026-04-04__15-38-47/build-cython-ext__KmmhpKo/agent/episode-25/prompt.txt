@@ -1,0 +1,48 @@
+New Terminal Output:
+
+root@ba50e4e2407e:/app/pyknotid# cat > /tmp/fix_numpy_types.py << 'EOF'
+> import os
+> import re
+>
+> # Define replacements
+> replacements = [
+>     (r'\bn\.float\b(?!64|32|16)', 'n.float64'),
+>     (r'\bnp\.float\b(?!64|32|16)', 'np.float64'),
+>     (r'\bn\.complex\b(?!128|64)', 'n.complex128'),
+>     (r'\bn\.int\b(?!64|32|16|8|_)', 'n.int_'),
+> ]
+>
+> def fix_file(filepath):
+>     with open(filepath, 'r') as f:
+>         content = f.read()
+>
+>     original_content = content
+>     for pattern, replacement in replacements:
+>         content = re.sub(pattern, replacement, content)
+>
+>     if content != original_content:
+>         with open(filepath, 'w') as f:
+>             f.write(content)
+>         print(f"Fixed: {filepath}")
+>         return True
+>     return False
+>
+> # Find and fix all Python files
+> for root, dirs, files in os.walk('/app/pyknotid/pyknotid'):
+>     for file in files:
+>         if file.endswith('.py'):
+>             filepath = os.path.join(root, file)
+>             fix_file(filepath)
+>
+> print("\nAll numpy type deprecations fixed!")
+> EOF
+Fixed: /app/pyknotid/pyknotid/invariants.py
+Fixed: /app/pyknotid/pyknotid/representations/dtnotation.py
+Fixed: /app/pyknotid/pyknotid/representations/representation.py
+Fixed: /app/pyknotid/pyknotid/make/periodic_knot.py
+Fixed: /app/pyknotid/pyknotid/spacecurves/knot.py
+Fixed: /app/pyknotid/pyknotid/spacecurves/spacecurve.py
+Fixed: /app/pyknotid/pyknotid/spacecurves/openknot.py
+
+All numpy type deprecations fixed!
+root@ba50e4e2407e:/app/pyknotid#

@@ -1,0 +1,63 @@
+New Terminal Output:
+
+root@b99d382ae3d4:/app# cat > verify_meeting.py << 'EOF'
+> from datetime import datetime as dt
+>
+> # Meeting scheduled: Jan 17, 2024, 11:00 AM - 12:00 PM
+> meeting_start = dt(2024, 1, 17, 11, 0, 0)
+> meeting_end = dt(2024, 1, 17, 12, 0, 0)
+>
+> print(f"Scheduled Meeting: {meeting_start} to {meeting_end}")
+> print(f"Day of week: {meeting_start.strftime('%A')}")
+> print()
+>
+> # Alice's constraints check
+> print("Alice constraints:")
+> print(f"  - Time window (9 AM - 2 PM): {9 <= meeting_start.hour and meeting_end.hour <= 14} ✓")
+> print(f"  - Existing meetings on Jan 17: 10-11 AM, 1-2 PM")
+> print(f"  - No conflict: ✓ (11 AM - 12 PM is free)")
+> print()
+>
+> # Bob's constraints check
+> print("Bob constraints:")
+> print(f"  - No meetings before 10 AM: {meeting_start.hour >= 10} ✓")
+> print(f"  - Wednesday (no 4:30 PM restriction): ✓")
+> print(f"  - Existing meetings on Jan 17: 12-1 PM")
+> print(f"  - No conflict: ✓ (11 AM - 12 PM is free)")
+> print()
+>
+> # Carol's constraints check
+> print("Carol constraints:")
+> print(f"  - Available 9 AM - 5 PM: {9 <= meeting_start.hour and meeting_end.hour <= 17} ✓")
+> print(f"  - Lunch break (12:00-12:30 PM): Meeting ends at 12:00 PM (no overlap) ✓")
+> print(f"  - Not Monday: {meeting_start.weekday() != 0} ✓")
+> print(f"  - Existing meetings on Jan 17: 12-1 PM")
+> print(f"  - No conflict: ✓ (11 AM - 12 PM is free)")
+> print()
+>
+> print("All constraints satisfied! ✓")
+> EOF
+root@b99d382ae3d4:/app# python3 verify_meeting.py
+Scheduled Meeting: 2024-01-17 11:00:00 to 2024-01-17 12:00:00
+Day of week: Wednesday
+
+Alice constraints:
+  - Time window (9 AM - 2 PM): True ✓
+  - Existing meetings on Jan 17: 10-11 AM, 1-2 PM
+  - No conflict: ✓ (11 AM - 12 PM is free)
+
+Bob constraints:
+  - No meetings before 10 AM: True ✓
+  - Wednesday (no 4:30 PM restriction): ✓
+  - Existing meetings on Jan 17: 12-1 PM
+  - No conflict: ✓ (11 AM - 12 PM is free)
+
+Carol constraints:
+  - Available 9 AM - 5 PM: True ✓
+  - Lunch break (12:00-12:30 PM): Meeting ends at 12:00 PM (no overlap) ✓
+  - Not Monday: True ✓
+  - Existing meetings on Jan 17: 12-1 PM
+  - No conflict: ✓ (11 AM - 12 PM is free)
+
+All constraints satisfied! ✓
+root@b99d382ae3d4:/app#

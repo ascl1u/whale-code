@@ -1,0 +1,90 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# cat > analyze_sequences.py << 'EOF'
+> import subprocess
+>
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> seqs = read_fasta('sequences.fasta')
+> input_seq = seqs['input']
+> output_seq = seqs['output']
+> egfp = seqs['egfp']
+> flag = seqs['flag']
+> snap = seqs['snap']
+>
+> print("First 100 bp of input:")
+> print(input_seq[:100])
+> print("\nFirst 100 bp of output:")
+> print(output_seq[:100])
+>
+> print("\n" + "="*80)
+>
+> # Find where they start to differ
+> for i in range(min(len(input_seq), len(output_seq))):
+>     if input_seq[i] != output_seq[i]:
+>         print(f"\nFirst difference at position {i}")
+>         print(f"Input context: ...{input_seq[max(0,i-20):i+20]}...")
+>         print(f"Output context: ...{output_seq[max(0,i-20):i+20]}...")
+>         break
+>
+> # Check if egfp appears in output
+> egfp_pos = output_seq.find(egfp)
+> if egfp_pos >= 0:
+>     print(f"\neGFP found in output at position {egfp_pos}")
+>     print(f"Context before eGFP: ...{output_seq[max(0,egfp_pos-30):egfp_pos]}")
+>     print(f"eGFP starts with: {egfp[:30]}")
+>
+>     # Check what comes after egfp
+>     after_egfp = egfp_pos + len(egfp)
+>     print(f"\nAfter eGFP (position {after_egfp}):")
+>     print(f"Output: {output_seq[after_egfp:after_egfp+30]}")
+>     print(f"FLAG starts: {flag[:30]}")
+>
+>     # Check if flag follows egfp
+>     if output_seq[after_egfp:after_egfp+len(flag)] == flag:
+>         print("\nFLAG follows eGFP!")
+>         after_flag = after_egfp + len(flag)
+>         print(f"After FLAG (position {after_flag}):")
+>         print(f"Output: {output_seq[after_flag:after_flag+30]}")
+>         print(f"SNAP starts: {snap[:30]}")
+>
+>         # Check if snap follows flag
+>         if output_seq[after_flag:after_flag+len(snap)] == snap:
+>             print("\nSNAP follows FLAG!")
+>             after_snap = after_flag + len(snap)
+>             print(f"\nAfter all inserts (position {after_snap}):")
+>             print(f"Output: {output_seq[after_snap:after_snap+50]}")
+>
+>             # Now find where this sequence appears in input
+>             search_seq = output_seq[after_snap:after_snap+30]
+>             input_pos = input_seq.find(search_seq)
+>             if input_pos >= 0:
+>                 print(f"\nThis sequence found in input at position {input_pos}")
+>                 print(f"So input position 0-{egfp_pos} stays")
+>                 print(f"Input position {input_pos} onwards stays")
+>                 print(f"Input position {egfp_pos}-{input_pos} is replaced by egfp+flag+snap")
+>
+>                 removed = input_seq[egfp_pos:input_pos]
+>                 print(f"\nRemoved sequence length: {len(removed)}")
+>                 print(f"Removed sequence: {removed[:50]}...{removed[-50:]}")
+>
+> EOF
+root@a0b49dcae9e4:/app#

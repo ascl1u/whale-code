@@ -1,0 +1,397 @@
+[?2004hroot@18c89a079d59:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@18c89a079d59:/app# clear
+[?2004l[H[J[?2004hroot@18c89a079d59:/app# ls -lh /app/alpine.iso; printf '%s\n' '__CMDEND__1__'
+[?2004l-rw-r--r-- 1 root root 957M Dec  7  2023 /app/alpine.iso
+__CMDEND__1__
+[?2004hroot@18c89a079d59:/app# which qemu-system-x86_64; printf '%s\n' '__CMDEND__2__'
+[?2004l/usr/bin/qemu-system-x86_64
+__CMDEND__2__
+[?2004hroot@18c89a079d59:/app# qemu-system-x86_64 -m 512 -cdrom /app/alpine.iso -boot d -serial mon:telnet:127.0.0.1:6665,server,nowait -nographic &
+[?2004l[1] 129
+[?2004hroot@18c89a079d59:/app# sleep 3; printf '%s\n' '__CMDEND__3__'
+[?2004l__CMDEND__3__
+[?2004hroot@18c89a079d59:/app# netstat -tlnp | grep 6665
+[?2004lbash: netstat: command not found
+[?2004hroot@18c89a079d59:/app# ss -tlnp | grep 6665
+[?2004lbash: ss: command not found
+[?2004hroot@18c89a079d59:/app# cat > /tmp/wait_for_boot.sh << 'EOF'
+[?2004l[?2004h> #!/bin/bash
+[?2004l[?2004h> echo "Waiting for Alpine to boot..."
+[?2004l[?2004h> for i in {1..60}; do
+[?2004l[?2004h>   # Try to connect and get some output
+[?2004l[?2004h>   output=$(timeout 2 telnet 127.0.0.1 6665 2>&1 <<< $'\n' | head -20)
+[?2004l[?2004h>   if echo "$output" | grep -qiE '(login:|alpine|localhost|Welcome)'; then
+[?2004l[?2004h>     echo "System is ready!"
+[?2004l[?2004h>     exit 0
+[?2004l[?2004h>   fi
+[?2004l[?2004h>   echo "Attempt $i: Not ready yet, waiting..."
+[?2004l[?2004h>   sleep 2
+[?2004l[?2004h> done
+[?2004l[?2004h> echo "Timeout waiting for boot"
+[?2004l[?2004h> exit 1
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@18c89a079d59:/app# chmod +x /tmp/wait_for_boot.sh; printf '%s\n' '__CMDEND__4__'
+[?2004l__CMDEND__4__
+[?2004hroot@18c89a079d59:/app# /tmp/wait_for_boot.sh; printf '%s\n' '__CMDEND__5__'
+[?2004lWaiting for Alpine to boot...
+Attempt 1: Not ready yet, waiting...
+Attempt 2: Not ready yet, waiting...
+Attempt 3: Not ready yet, waiting...
+Attempt 4: Not ready yet, waiting...
+Attempt 5: Not ready yet, waiting...
+Attempt 6: Not ready yet, waiting...
+Attempt 7: Not ready yet, waiting...
+Attempt 8: Not ready yet, waiting...
+Attempt 9: Not ready yet, waiting...
+Attempt 10: Not ready yet, waiting...
+Attempt 11: Not ready yet, waiting...
+Attempt 12: Not ready yet, waiting...
+Attempt 13: Not ready yet, waiting...
+Attempt 14: Not ready yet, waiting...
+Attempt 15: Not ready yet, waiting...
+Attempt 16: Not ready yet, waiting...
+Attempt 17: Not ready yet, waiting...
+Attempt 18: Not ready yet, waiting...
+Attempt 19: Not ready yet, waiting...
+Attempt 20: Not ready yet, waiting...
+Attempt 21: Not ready yet, waiting...
+Attempt 22: Not ready yet, waiting...
+Attempt 23: Not ready yet, waiting...
+Attempt 24: Not ready yet, waiting...
+^C
+[?2004hroot@18c89a079d59:/app# ps aux | grep qemu
+[?2004lbash: ps: command not found
+[?2004hroot@18c89a079d59:/app# timeout 3 telnet 127.0.0.1 6665; printf '%s\n' '__CMDEND__6__'
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+__CMDEND__6__
+[?2004hroot@18c89a079d59:/app# [?2004lbash: killall: command not found
+__CMDEND__7__
+[?2004hroot@18c89a079d59:/app# [?2004l[1]+  Running                 qemu-system-x86_64 -m 512 -cdrom /app/alpine.iso -boot d -serial mon:telnet:127.0.0.1:6665,server,nowait -nographic &
+__CMDEND__8__
+[?2004hroot@18c89a079d59:/app# [?2004l__CMDEND__9__
+[?2004hqemu-system-x86_64: terminating on signal 15 from pid 58 (/bin/bash)
+root@18c89a079d59:/app# [?2004l[1]+  Done                    qemu-system-x86_64 -m 512 -cdrom /app/alpine.iso -boot d -serial mon:telnet:127.0.0.1:6665,server,nowait -nographic
+__CMDEND__10__
+[?2004hroot@18c89a079d59:/app# [?2004l__CMDEND__11__
+[?2004hroot@18c89a079d59:/app# [?2004lmount: /mnt/alpine: mount failed: Operation not permitted.
+__CMDEND__12__
+[?2004hroot@18c89a079d59:/app# [?2004l[?2004hroot@18c89a079d59:/app# [?2004l[1] 758
+[?2004hroot@18c89a079d59:/app# [?2004l__CMDEND__13__
+
+[1]+  Stopped                 qemu-system-x86_64 -m 512 -cdrom /app/alpine.iso -boot d -nographic -serial telnet:127.0.0.1:6665,server,nowait -display none
+[?2004hroot@18c89a079d59:/app# [?2004lbash: kill: (758) - No such process
+__CMDEND__14__
+[1]+  Terminated              qemu-system-x86_64 -m 512 -cdrom /app/alpine.iso -boot d -nographic -serial telnet:127.0.0.1:6665,server,nowait -display none
+[?2004hroot@18c89a079d59:/app# [?2004l__CMDEND__15__
+[?2004hroot@18c89a079d59:/app# [?2004lautoexpect
+expect
+expect_autoexpect
+expect_autopasswd
+expect_cryptdir
+expect_decryptdir
+expect_dislocate
+expect_ftp-rfc
+expect_kibitz
+expect_lpunlock
+expect_mkpasswd
+expect_multixterm
+expect_passmass
+expect_rftp
+expect_rlogin-cwd
+expect_timed-read
+expect_timed-run
+expect_tknewsbiff
+expect_tkpasswd
+expect_unbuffer
+expect_weather
+expect_xkibitz
+expect_xpstat
+[?2004hroot@18c89a079d59:/app# [?2004l/bin/nc
+__CMDEND__16__
+[?2004hroot@18c89a079d59:/app# [?2004lsocat not found
+[?2004hroot@18c89a079d59:/app# [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004hroot@18c89a079d59:/app# [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004h> [?2004l[?2004hroot@18c89a079d59:/app# [?2004l__CMDEND__17__
+[?2004hroot@18c89a079d59:/app# [?2004l[1] 1019
+[?2004hroot@18c89a079d59:/app# Waiting for telnet connection on port 6665...
+[?2004l__CMDEND__18__
+[?2004hroot@18c89a079d59:/app# [?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+Client connected from ('127.0.0.1', 44698)
+c[?7l[2J[0mSeaBIOS (version 1.14.0-2)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+1FF8F4C0+1FECF4C0 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from DVD/CD...
+
+ISOLINUX 6.04 6.04-pre1 ETCD Copyright (C) 1994-2015 H. Peter Anvin et al
+boot: 
+c[?7l[2J__CMDEND__19__
+[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__20__'
+[?2004l[1]+  Running                 python3 /tmp/qemu_bridge.py &
+__CMDEND__20__
+[?2004hroot@18c89a079d59:/app# pgrep -a qemu; printf '%s\n' '__CMDEND__21__'
+[?2004lbash: pgrep: command not found
+__CMDEND__21__
+[?2004hroot@18c89a079d59:/app# cat > /tmp/test_telnet.sh << 'EOF'
+[?2004l[?2004h> #!/bin/bash
+[?2004l[?2004h> (sleep 1; echo ""; sleep 2) | telnet 127.0.0.1 6665 2>&1 | head -30
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@18c89a079d59:/app# chmod +x /tmp/test_telnet.sh; printf '%s\n' '__CMDEND__22__'
+[?2004l__CMDEND__22__
+[?2004hroot@18c89a079d59:/app# /tmp/test_telnet.sh; printf '%s\n' '__CMDEND__23__'
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+Connection closed by foreign host.
+__CMDEND__23__
+[?2004hroot@18c89a079d59:/app# which 7z 7za unzip; printf '%s\n' '__CMDEND__24__'
+[?2004l__CMDEND__24__
+[?2004hroot@18c89a079d59:/app# ls /usr/bin/ | grep -E '(7z|unzip|bsdtar|isoinfo)'
+[?2004l[?2004hroot@18c89a079d59:/app# which bsdcpio cpio ar; printf '%s\n' '__CMDEND__25__'
+[?2004l__CMDEND__25__
+[?2004hroot@18c89a079d59:/app# which xorriso osirrox; printf '%s\n' '__CMDEND__26__'
+[?2004l__CMDEND__26__
+[?2004hroot@18c89a079d59:/app# python3 << 'EOFPY'
+[?2004l[?2004h> import struct
+[?2004l[?2004h> import sys
+[?2004l[?2004h> 
+[?2004l[?2004h> # Try to find and list files in the ISO
+[?2004l[?2004h> with open('/app/alpine.iso', 'rb') as f:
+[?2004l[?2004h>     # Skip to primary volume descriptor (sector 16)
+[?2004l[?2004h>     f.seek(16 * 2048)
+[?2004l[?2004h>     pvd = f.read(2048)
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Check if it's a valid ISO
+[?2004l[?2004h>     if pvd[1:6] != b'CD001':
+[?2004l[?2004h>         print('Not a valid ISO')
+[?2004l[?2004h>         sys.exit(1)
+[?2004l[?2004h>     
+[?2004l[?2004h>     print('Valid ISO 9660 filesystem')
+[?2004l[?2004h>     print('Looking for boot directory...')
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Try to find boot files by searching for common patterns
+[?2004l[?2004h>     f.seek(0)
+[?2004l[?2004h>     data = f.read(100000)  # Read first 100KB
+[?2004l[?2004h>     
+[?2004l[?2004h>     if b'vmlinuz' in data:
+[?2004l[?2004h>         print('Found vmlinuz reference')
+[?2004l[?2004h>     if b'initramfs' in data or b'initrd' in data:
+[?2004l[?2004h>         print('Found initramfs/initrd reference')
+[?2004l[?2004h> EOFPY
+[?2004lValid ISO 9660 filesystem
+Looking for boot directory...
+[?2004hroot@18c89a079d59:/app# Client connected from ('127.0.0.1', 53620)
+cat > /tmp/test_interactive.sh << 'EOF'
+[?2004l[?2004h> #!/bin/bash
+[?2004l[?2004h> (sleep 2; echo ""; sleep 1; echo ""; sleep 1; echo ""; sleep 3) | telnet 127.0.0.1 6665 2>&1
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@18c89a079d59:/app# chmod +x /tmp/test_interactive.sh; printf '%s\n' '__CMDEND__27__'
+[?2004l__CMDEND__27__
+[?2004hroot@18c89a079d59:/app# /tmp/test_interactive.sh; printf '%s\n' '__CMDEND__28__'
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+Client connected from ('127.0.0.1', 51816)
+elcome to Alpine Linux 3.19
+Kernel 6.6.4-1-lts on an x86_64 (/dev/ttyS0)
+
+localhost login: 
+Welcome to Alpine Linux 3.19
+Kernel 6.6.4-1-lts on an x86_64 (/dev/ttyS0)
+
+localhost login: 
+Welcome to Alpine Linux 3.19
+Kernel 6.6.4-1-lts on an x86_64 (/dev/ttyS0)
+
+localhost login: 
+Welcome to Alpine Linux 3.19
+Kernel 6.6.4-1-lts on an x86_64 (/dev/ttyS0)
+
+localhost login: 
+Welcome to Alpine Linux 3.19
+Kernel 6.6.4-1-lts on an x86_64 (/dev/ttyS0)
+
+localhost login: 
+Welcome to Alpine Linux 3.19
+Kernel 6.6.4-1-lts on an x86_64 (/dev/ttyS0)
+
+localhost login: 
+Welcome to Alpine Linux 3.19
+Kernel 6.6.4-1-lts on an x86_64 (/dev/ttyS0)
+
+localhost login: 
+Welcome to Alpine Linux 3.19
+Kernel 6.6.4-1-lts on an x86_64 (/dev/ttyS0)
+
+localhost login: 
+Welcome to Alpine Linux 3.19
+Kernel 6.6.4-1-lts on an x86_64 (/dev/ttyS0)
+
+localhost login: Connection closed by foreign host.
+__CMDEND__28__
+[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__29__'
+[?2004l[1]+  Running                 python3 /tmp/qemu_bridge.py &
+__CMDEND__29__
+[?2004hroot@18c89a079d59:/app# (sleep 1; echo "") | timeout 3 telnet 127.0.0.1 6665 2>&1 | tail -5
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+Connection closed by foreign host.
+[?2004hroot@18c89a079d59:/app# (sleep 2) | timeout 4 telnet 127.0.0.1 6665 2>&1 | grep -A2 'Alpine\|login'
+[?2004l[?2004hroot@18c89a079d59:/app# echo 'Testing telnet connection:'
+[?2004lTesting telnet connection:
+[?2004hroot@18c89a079d59:/app# (sleep 3) | telnet 127.0.0.1 6665 2>&1 &
+[?2004l[2] 1726
+[?2004hroot@18c89a079d59:/app# Trying 127.0.0.1...
+sleep 4; printf '%s\n' '__CMDEND__30__'
+[?2004l__CMDEND__30__
+[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__31__'
+[?2004l[1]-  Running                 python3 /tmp/qemu_bridge.py &
+[2]+  Running                 ( sleep 3 ) | telnet 127.0.0.1 6665 2>&1 &
+__CMDEND__31__
+[?2004hroot@18c89a079d59:/app# 
+[?2004l[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__32__'
+[?2004l[1]-  Running                 python3 /tmp/qemu_bridge.py &
+[2]+  Running                 ( sleep 3 ) | telnet 127.0.0.1 6665 2>&1 &
+__CMDEND__32__
+[?2004hroot@18c89a079d59:/app# wait %2; printf '%s\n' '__CMDEND__33__'
+[?2004l
+jobs; printf '%s\n' '__CMDEND__34__'
+
+echo 'Status check'
+jobs; printf '%s\n' '__CMDEND__35__'
+
+
+^C
+[?2004hroot@18c89a079d59:/app# 
+[?2004l[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__36__'
+[?2004l[1]-  Running                 python3 /tmp/qemu_bridge.py &
+[2]+  Running                 ( sleep 3 ) | telnet 127.0.0.1 6665 2>&1 &
+__CMDEND__36__
+[?2004hroot@18c89a079d59:/app# kill %2; printf '%s\n' '__CMDEND__37__'
+[?2004l__CMDEND__37__
+[?2004hroot@18c89a079d59:/app# echo 'Final verification:'
+[?2004lFinal verification:
+[2]+  Terminated              ( sleep 3 ) | telnet 127.0.0.1 6665 2>&1
+[?2004hroot@18c89a079d59:/app# (echo ''; sleep 2) | timeout 3 telnet 127.0.0.1 6665 2>&1 | head -20
+[?2004l[?2004hroot@18c89a079d59:/app# timeout 3 telnet 127.0.0.1 6665; printf '%s\n' '__CMDEND__38__'
+[?2004lTrying 127.0.0.1...
+__CMDEND__38__
+[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__39__'
+[?2004l[1]+  Running                 python3 /tmp/qemu_bridge.py &
+__CMDEND__39__
+[?2004hroot@18c89a079d59:/app# echo 'System is ready. Alpine Linux is accessible via: telnet 127.0.0.1 6665'
+[?2004lSystem is ready. Alpine Linux is accessible via: telnet 127.0.0.1 6665
+[?2004hroot@18c89a079d59:/app# (sleep 1; echo ''; sleep 1) | telnet 127.0.0.1 6665 2>&1 &
+[?2004l[2] 2165
+[?2004hroot@18c89a079d59:/app# Trying 127.0.0.1...
+sleep 3; printf '%s\n' '__CMDEND__40__'
+[?2004l__CMDEND__40__
+[?2004hroot@18c89a079d59:/app# 
+[?2004l[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__41__'
+[?2004l[1]-  Running                 python3 /tmp/qemu_bridge.py &
+[2]+  Running                 ( sleep 1; echo ''; sleep 1 ) | telnet 127.0.0.1 6665 2>&1 &
+__CMDEND__41__
+[?2004hroot@18c89a079d59:/app# ls -la /tmp/*.py /tmp/*.sh 2>/dev/null | grep -E '(qemu_bridge|wait_for_boot|test_)'
+[?2004l-rwxr-xr-x 1 root root 1482 Apr  5 02:24 /tmp/qemu_bridge.py
+-rwxr-xr-x 1 root root  105 Apr  5 02:27 /tmp/test_interactive.sh
+-rwxr-xr-x 1 root root   80 Apr  5 02:25 /tmp/test_telnet.sh
+-rwxr-xr-x 1 root root  398 Apr  5 02:21 /tmp/wait_for_boot.sh
+[?2004hroot@18c89a079d59:/app# rm -f /tmp/wait_for_boot.sh /tmp/test_telnet.sh /tmp/test_interactive.sh /tmp/qemu_telnet.sh; printf '%s\n' '__CMDEND__42__'
+[?2004l__CMDEND__42__
+[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__43__'
+[?2004l[1]-  Running                 python3 /tmp/qemu_bridge.py &
+[2]+  Running                 ( sleep 1; echo ''; sleep 1 ) | telnet 127.0.0.1 6665 2>&1 &
+__CMDEND__43__
+[?2004hroot@18c89a079d59:/app# sleep 3; printf '%s\n' '__CMDEND__44__'
+[?2004ljobs; printf '%s\n' '__CMDEND__45__'
+__CMDEND__44__
+[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__45__'
+[?2004l[1]-  Running                 python3 /tmp/qemu_bridge.py &
+[2]+  Running                 ( sleep 1; echo ''; sleep 1 ) | telnet 127.0.0.1 6665 2>&1 &
+__CMDEND__45__
+[?2004hroot@18c89a079d59:/app# 
+[?2004l[?2004hroot@18c89a079d59:/app# echo 'Final test - connecting to verify login prompt:'
+[?2004lFinal test - connecting to verify login prompt:
+[?2004hroot@18c89a079d59:/app# (sleep 2; echo '') | timeout 4 telnet 127.0.0.1 6665 2>&1 | tail -10
+[?2004l[?2004hroot@18c89a079d59:/app# telnet: Unable to connect to remote host: Connection timed out
+jobs; printf '%s\n' '__CMDEND__46__'
+[?2004l[1]-  Running                 python3 /tmp/qemu_bridge.py &
+[2]+  Exit 1                  ( sleep 1; echo ''; sleep 1 ) | telnet 127.0.0.1 6665 2>&1
+__CMDEND__46__
+[?2004hroot@18c89a079d59:/app# echo ''
+[?2004l
+[?2004hroot@18c89a079d59:/app# echo 'Alpine Linux is running and ready for connections.'
+[?2004lAlpine Linux is running and ready for connections.
+[?2004hroot@18c89a079d59:/app# echo 'Connect using: telnet 127.0.0.1 6665'
+[?2004lConnect using: telnet 127.0.0.1 6665
+[?2004hroot@18c89a079d59:/app# echo 'You will see the Alpine Linux login prompt.'
+[?2004lYou will see the Alpine Linux login prompt.
+[?2004hroot@18c89a079d59:/app# echo ''
+[?2004l
+[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__47__'
+[?2004l[1]+  Running                 python3 /tmp/qemu_bridge.py &
+__CMDEND__47__
+[?2004hroot@18c89a079d59:/app# fg %1; printf '%s\n' '__CMDEND__48__'
+[?2004lpython3 /tmp/qemu_bridge.py
+^Z
+[1]+  Stopped                 python3 /tmp/qemu_bridge.py
+__CMDEND__48__
+[?2004hroot@18c89a079d59:/app# bg; printf '%s\n' '__CMDEND__49__'
+[?2004l[1]+ python3 /tmp/qemu_bridge.py &
+__CMDEND__49__
+[?2004hroot@18c89a079d59:/app# sleep 2; printf '%s\n' '__CMDEND__50__'
+[?2004l__CMDEND__50__
+[?2004hroot@18c89a079d59:/app# (sleep 1; echo ''; sleep 2) | timeout 4 telnet 127.0.0.1 6665 2>&1
+[?2004lTrying 127.0.0.1...
+[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__51__'
+[?2004l[1]+  Running                 python3 /tmp/qemu_bridge.py &
+__CMDEND__51__
+[?2004hroot@18c89a079d59:/app# kill %1; printf '%s\n' '__CMDEND__52__'
+[?2004l__CMDEND__52__
+[?2004hroot@18c89a079d59:/app# sleep 2; printf '%s\n' '__CMDEND__53__'
+[?2004ljobs; printf '%s\n' '__CMDEND__54__'
+[1]+  Terminated              python3 /tmp/qemu_bridge.py
+__CMDEND__53__
+[?2004hroot@18c89a079d59:/app# jobs; printf '%s\n' '__CMDEND__54__'
+[?2004l__CMDEND__54__
+[?2004hroot@18c89a079d59:/app# 
+[?2004l[?2004hroot@18c89a079d59:/app# python3 /tmp/qemu_bridge.py &
+[?2004l[1] 2625
+[?2004hroot@18c89a079d59:/app# Waiting for telnet connection on port 6665...
+echo 'Waiting for QEMU to boot...'
+[?2004lWaiting for QEMU to boot...
+[?2004hroot@18c89a079d59:/app# sleep 30; printf '%s\n' '__CMDEND__55__'
+[?2004l(sleep 2; echo ''; sleep 2) | timeout 5 telnet 127.0.0.1 6665 2>&1 | head -15
+
+__CMDEND__55__
+[?2004hroot@18c89a079d59:/app# (sleep 2; echo ''; sleep 2) | timeout 5 telnet 127.0.0.1 6665 2>&1 | head -15
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+Client connected from ('127.0.0.1', 47276)
+c[?7l[2J[0mSeaBIOS (version 1.14.0-2)
+
+
+iPXE (http://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+1FF8F4C0+1FECF4C0 CA00
+Press Ctrl-B to configure iPXE (PCI 00:03.0)...                                                                               
+
+
+Booting from DVD/CD...
+
+ISOLINUX 6.04 6.04-pre1 ETCD Copyright (C) 1994-2015 H. Peter Anvin et al
+boot: 
+^C
+[?2004hroot@18c89a079d59:/app# 
+[?2004l[?2004hroot@18c89a079d59:/app# echo 'Waiting for Alpine to auto-boot from ISOLINUX...'
+[?2004lWaiting for Alpine to auto-boot from ISOLINUX...
+[?2004hroot@18c89a079d59:/app# sleep 45; printf '%s\n' '__CMDEND__56__'
+[?2004l__CMDEND__56__
+[?2004hroot@18c89a079d59:/app# Client connected from ('127.0.0.1', 52112)

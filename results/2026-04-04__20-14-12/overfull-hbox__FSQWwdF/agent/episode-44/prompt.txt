@@ -1,0 +1,72 @@
+New Terminal Output:
+
+root@b419d4b4dbd9:/app# cat > more_fixes.py << 'EOF'
+> import re
+> import subprocess
+>
+> def parse_synonyms(filename):
+>     synonym_map = {}
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if not line:
+>                 continue
+>             words = [w.strip() for w in line.split(',')]
+>             for word in words:
+>                 synonym_map[word] = words
+>     return synonym_map
+>
+> def replace_word(text, old_word, new_word):
+>     pattern = r'\b' + re.escape(old_word) + r'\b'
+>     return re.sub(pattern, new_word, text)
+>
+> def check_overfull():
+>     result = subprocess.run(['pdflatex', '-interaction=nonstopmode', 'main.tex'],
+>                           capture_output=True, text=True)
+>     output = result.stdout + result.stderr
+>     overfull_lines = [line for line in output.split('\n') if 'Overfull' in line]
+>     return overfull_lines
+>
+> synonym_map = parse_synonyms('synonyms.txt')
+>
+> with open('input.tex', 'r') as f:
+>     text = f.read()
+>
+> replacements = [
+>     ('personality', 'nature'),  # 11 -> 6, saves 5
+>     ('attention', 'focus'),  # 9 -> 5, saves 4
+>     ('series', 'set'),  # 6 -> 3, saves 3
+> ]
+>
+> print("Applying more fixes...")
+> for old, new in replacements:
+>     if old in synonym_map and new in synonym_map[old]:
+>         if len(new) < len(old):
+>             old_text = text
+>             text = replace_word(text, old, new)
+>             if text != old_text:
+>                 print(f"  {old} ({len(old)}) -> {new} ({len(new)}), saves {len(old)-len(new)}")
+>
+> with open('input.tex', 'w') as f:
+>     f.write(text)
+>
+> print("\nChecking compilation...")
+> overfull = check_overfull()
+> if overfull:
+>     print(f"\nStill have {len(overfull)} overfull warnings:")
+>     for line in overfull:
+>         print(line)
+> else:
+>     print("\n✓ SUCCESS! No overfull hbox warnings!")
+> EOF
+root@b419d4b4dbd9:/app# python3 more_fixes.py
+Applying more fixes...
+  personality (11) -> nature (6), saves 5
+  attention (9) -> focus (5), saves 4
+  series (6) -> set (3), saves 3
+
+Checking compilation...
+
+Still have 1 overfull warnings:
+Overfull \hbox (2.31601pt too wide) in paragraph at lines 7--8
+root@b419d4b4dbd9:/app#

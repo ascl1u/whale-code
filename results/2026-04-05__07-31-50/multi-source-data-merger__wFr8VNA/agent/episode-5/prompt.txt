@@ -1,0 +1,185 @@
+New Terminal Output:
+
+root@8feaba7d8e54:/app# cat > merge_users.py << 'EOF'
+> import pandas as pd
+> import json
+> from datetime import datetime
+>
+> # Read source files
+nique_values = s> print("Reading source files...")
+>
+> # Source A - JSON (highest priority)
+> with open('/data/source_a/users.json', 'r') as f:
+>     source_a_data = json.load(f)
+> source_a = pd.DataFrame(source_a_data)
+>
+ > # Source B - CSV
+e> source_b = pd.read_csv('/data/source_b/users.csv')
+>
+e> # Source C - Parquet (lowest priority)
+> source_c = pd.read_parquet('/data/source_c/users.parquet')
+>
+> print(f"Source A: {len(source_a)} records")
+> print(f"Source B: {len(source_b)} records")
+
+m> print(f"Source C: {len(source_c)} records")
+>
+n> # Normalize field names for each source
+> def normalize_source_a(df):
+>     normalized = pd.DataFrame()
+>     normalized['user_id'] = df['id'].astype(int)
+>     normalized['name'] = df['full_name']
+>     normalized['email'] = df['email']
+>     normalized['created_date'] = df['registration_date']
+>     normalized['status'] = df.get('status', None)
+>     normalized['source'] = 'source_a'
+>     return normalized
+>
+> def normalize_source_b(df):
+>     normalized = pd.DataFrame()
+>     normalized['user_id'] = df['user_id'].astype(int)
+>     normalized['name'] = df['name']
+r>     normalized['email'] = df['email_address']
+>     normalized['created_date'] = df['created_at']
+>     # Map is_active to status if present
+>     if 'is_active' in df.columns:
+>         normalized['status'] = df['is_active'].apply(lambda x: 'active' if x else 'inactive')
+>     else:
+r>         normalized['status'] = None
+e >     normalized['source'] = 'source_b'
+>     return normalized
+nt(f">
+> def normalize_source_c(df):
+>     normalized = pd.DataFrame()
+>     normalized['user_id'] = df['userId'].astype(int)
+>     normalized['name'] = df['userName']
+>     normalized['email'] = df['email']
+>     normalized['created_date'] = df['joined']
+>     # Map active to status if present
+>     if 'active' in df.columns:
+>         normalized['status'] = df['active'].apply(lambda x: 'active' if x else 'inactive')
+>     else:
+>         normalized['status'] = None
+>     normalized['source'] = 'source_c'
+>     return normalized
+>
+> # Normalize all sources
+> print("\nNormalizing sources...")
+> norm_a = normalize_source_a(source_a)
+> norm_b = normalize_source_b(source_b)
+> norm_c = normalize_source_c(source_c)
+>
+> # Ensure dates are in YYYY-MM-DD format
+> def normalize_date(date_str):
+>     if pd.isna(date_str):
+>         return None
+>     # Try to parse and format
+>     try:
+>         # Handle various date formats
+>         date_str = str(date_str)
+>         if 'T' in date_str:
+>             date_str = date_str.split('T')[0]
+>         return date_str[:10]  # YYYY-MM-DD
+>     except:
+>         return date_str
+>
+> for df in [norm_a, norm_b, norm_c]:
+>     df['created_date'] = df['created_date'].apply(normalize_date)
+>
+> # Combine all sources
+> all_data = pd.concat([norm_a, norm_b, norm_c], ignore_index=True)
+>
+> # Get all unique user_ids
+> unique_users = all_data['user_id'].unique()
+>
+> print(f"\nTotal unique users: {len(unique_users)}")
+>
+> # Merge with priority and track conflicts
+> merged_records = []
+> conflicts = []
+>
+> for user_id in sorted(unique_users):
+>     user_records = all_data[all_data['user_id'] == user_id]
+>
+>     # Get records from each source
+>     records_by_source = {}
+>     for _, record in user_records.iterrows():
+>         source = record['source']
+>         records_by_source[source] = record
+>
+>     # Priority order
+>     priority = ['source_a', 'source_b', 'source_c']
+>
+>     # Build merged record
+>     merged = {'user_id': int(user_id)}
+>
+>     # For each field, check for conflicts and apply priority
+>     fields = ['name', 'email', 'created_date', 'status']
+>
+>     for field in fields:
+>         values_by_source = {}
+>         for source in ['source_a', 'source_b', 'source_c']:
+>             if source in records_by_source:
+>                 val = records_by_source[source][field]
+>                 if pd.notna(val):
+>                     values_by_source[source] = val
+>
+>         # Select value by priority
+>         selected_value = None
+>         for source in priority:
+>             if source in values_by_source:
+>                 selected_value = values_by_source[source]
+>                 break
+>
+>         merged[field] = selected_value
+>
+>         # Check for conflicts (different non-null values)
+>         unique_values = set(v for v in values_by_source.values() if pd.notna(v))
+>         if len(unique_values) > 1:
+>             conflict = {
+>                 'user_id': int(user_id),
+>                 'field': field,
+>                 'values': values_by_source,
+>                 'selected': selected_value
+>             }
+>             conflicts.append(conflict)
+>
+>     merged_records.append(merged)
+>
+> print(f"Total conflicts detected: {len(conflicts)}")
+>
+> # Create merged dataframe
+> merged_df = pd.DataFrame(merged_records)
+>
+> # Ensure correct data types
+> merged_df['user_id'] = merged_df['user_id'].astype(int)
+> merged_df['name'] = merged_df['name'].astype(str)
+> merged_df['email'] = merged_df['email'].astype(str)
+> merged_df['created_date'] = merged_df['created_date'].astype(str)
+> # status can be None/null
+>
+> # Sort by user_id
+> merged_df = merged_df.sort_values('user_id').reset_index(drop=True)
+>
+> print("\nMerged data preview:")
+> print(merged_df.to_string())
+>
+> # Save merged data to parquet
+> print("\nSaving merged data to /app/merged_users.parquet...")
+> merged_df.to_parquet('/app/merged_users.parquet', index=False)
+>
+> # Create conflict report
+> conflict_report = {
+>     'total_conflicts': len(conflicts),
+>     'conflicts': conflicts
+> }
+>
+> print(f"Saving conflict report to /app/conflicts.json...")
+> with open('/app/conflicts.json', 'w') as f:
+>     json.dump(conflict_report, f, indent=2)
+>
+> print("\nMerge complete!")
+> print(f"Total users: {len(merged_df)}")
+> print(f"Total conflicts: {len(conflicts)}")
+> EOF
+root@8feaba7d8e54:/app#

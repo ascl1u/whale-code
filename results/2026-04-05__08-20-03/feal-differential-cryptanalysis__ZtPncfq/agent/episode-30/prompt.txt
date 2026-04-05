@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(100):
+>         pt = i * 0x0101010101010101
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # For each candidate key[5], compute left3 values
+>     # The correct key should produce left3 values with lowest variance
+>     # (because they should follow the Feistel structure from earlier rounds)
+>
+>     best_seed = 0
+>     best_variance = float('inf')
+>
+>     for seed in range(0x10000):
+>         key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Compute left3 for all pairs
+>         left3_values = []
+>         for pt, ct in pairs:
+>             CT_L, CT_R = getleft(ct), getright(ct)
+>             r3 = CT_R ^ CT_L
+>             l3 = CT_L ^ f_function(r3 ^ key5)
+>             left3_values.append(l3)
+>
+>         # Compute variance
+>         if len(left3_values) > 1:
+>             mean = sum(left3_values) / len(left3_values)
+>             variance = sum((x - mean) ** 2 for x in left3_values) / len(left3_values)
+>
+>             if variance < best_variance:
+>                 best_variance = variance
+>                 best_seed = seed
+>
+>     return (best_seed * 1234567) & 0xFFFFFFFF
+> EOF
+root@e46f4ec08a64:/app#

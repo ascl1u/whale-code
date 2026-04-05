@@ -1,0 +1,88 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat > check_sequences4.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> egfp_start = 210
+> egfp_no_stop = seqs['egfp'][:-3]  # Remove TAA
+> egfp_end = egfp_start + len(egfp_no_stop)
+>
+> flag_no_start_stop = seqs['flag'][3:-3]  # Remove ATG and TAA
+> flag_end = egfp_end + len(flag_no_start_stop)
+>
+> print(f"EGFP (no stop) ends at: {egfp_end}")
+> print(f"FLAG (no ATG, no stop) ends at: {flag_end}")
+> print(f"\nAfter FLAG: {seqs['output'][flag_end:flag_end+30]}")
+> print(f"SNAP without ATG: {seqs['snap'][3:33]}")
+>
+> snap_no_start = seqs['snap'][3:]
+> if seqs['output'][flag_end:flag_end+len(snap_no_start)] == snap_no_start:
+>     print("\n*** SNAP (no ATG) follows FLAG! ***")
+>     snap_end = flag_end + len(snap_no_start)
+>     print(f"SNAP ends at: {snap_end}")
+>     print(f"\nAfter SNAP: {seqs['output'][snap_end:snap_end+20]}")
+>
+>     # Now print the junctions for Golden Gate
+>     print("\n=== ASSEMBLY STRUCTURE ===")
+>     print(f"Input backbone: 0 to {egfp_start}")
+>     print(f"EGFP (no stop): {egfp_start} to {egfp_end}")
+>     print(f"FLAG (no ATG, no stop): {egfp_end} to {flag_end}")
+>     print(f"SNAP (no ATG): {flag_end} to {snap_end}")
+>     print(f"Input backbone: {snap_end} to end")
+>
+>     print("\n=== 4BP OVERHANGS FOR GOLDEN GATE ===")
+>     oh1 = seqs['output'][egfp_start:egfp_start+4]
+>     oh2 = seqs['output'][egfp_end:egfp_end+4]
+>     oh3 = seqs['output'][flag_end:flag_end+4]
+>     oh4 = seqs['output'][snap_end:snap_end+4]
+>
+>     print(f"Input -> EGFP: {oh1}")
+>     print(f"EGFP -> FLAG: {oh2}")
+>     print(f"FLAG -> SNAP: {oh3}")
+>     print(f"SNAP -> Input: {oh4}")
+>
+>     # Also need the overhang that closes the vector
+>     print(f"\nVector cut site in input at position {egfp_start}")
+>     print(f"4bp before cut: {seqs['input'][egfp_start-4:egfp_start]}")
+>     print(f"4bp after cut: {seqs['input'][egfp_start:egfp_start+4]}")
+>
+> EOF
+root@b088ecd58d39:/app# python3 check_sequences4.py
+EGFP (no stop) ends at: 924
+FLAG (no ATG, no stop) ends at: 1008
+
+After FLAG: GACAAAGACTGCGAAATGAAGCGCACCACC
+SNAP without ATG: GACAAAGACTGCGAAATGAAGCGCACCACC
+
+*** SNAP (no ATG) follows FLAG! ***
+SNAP ends at: 1554
+
+After SNAP: TGAGGATCCCGGGAATTCTC
+
+=== ASSEMBLY STRUCTURE ===
+Input backbone: 0 to 210
+EGFP (no stop): 210 to 924
+FLAG (no ATG, no stop): 924 to 1008
+SNAP (no ATG): 1008 to 1554
+Input backbone: 1554 to end
+
+=== 4BP OVERHANGS FOR GOLDEN GATE ===
+Input -> EGFP: ATGA
+EGFP -> FLAG: GGTA
+FLAG -> SNAP: GACA
+SNAP -> Input: TGAG
+
+Vector cut site in input at position 210
+4bp before cut: ACAT
+4bp after cut: ATGA
+root@b088ecd58d39:/app#

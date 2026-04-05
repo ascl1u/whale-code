@@ -1,0 +1,28 @@
+New Terminal Output:
+
+root@18c89a079d59:/app# cat > /tmp/wait_for_boot.sh << 'EOF'
+> #!/bin/bash
+> echo "Waiting for Alpine to boot..."
+> for i in {1..60}; do
+>   # Try to connect and get some output
+>   output=$(timeout 2 telnet 127.0.0.1 6665 2>&1 <<< $'\n' | head -20)
+>   if echo "$output" | grep -qiE '(login:|alpine|localhost|Welcome)'; then
+>     echo "System is ready!"
+>     exit 0
+>   fi
+>   echo "Attempt $i: Not ready yet, waiting..."
+>   sleep 2
+> done
+> echo "Timeout waiting for boot"
+> exit 1
+> EOF
+root@18c89a079d59:/app#
+
+
+
+
+
+
+
+
+

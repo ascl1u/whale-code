@@ -1,0 +1,60 @@
+New Terminal Output:
+
+root@b755f36fa77f:/app# python3 << 'EOF'
+> import pandas as pd
+> import pyarrow.parquet as pq
+>
+> # Read the merged parquet file
+> df = pd.read_parquet('/app/merged_users.parquet')
+>
+> print("Merged Users Parquet File:")
+> print("="*50)
+> print("\nColumns:", df.columns.tolist())
+> print("\nData types:")
+> print(df.dtypes)
+> print("\nNumber of records:", len(df))
+> print("\nData:")
+> print(df.to_string())
+>
+> # Verify data types
+> print("\n" + "="*50)
+> print("Verification:")
+> print(f"user_id is integer: {df['user_id'].dtype == 'int64'}")
+> print(f"All user_ids unique: {df['user_id'].nunique() == len(df)}")
+> print(f"Date format check:")
+> for idx, date in df['created_date'].items():
+>     print(f"  User {df.loc[idx, 'user_id']}: {date} (length: {len(str(date))})")
+>
+> EOF
+Merged Users Parquet File:
+==================================================
+
+Columns: ['user_id', 'name', 'email', 'created_date', 'status']
+
+Data types:
+user_id          int64
+name            object
+email           object
+created_date    object
+status          object
+dtype: object
+
+Number of records: 4
+
+Data:
+   user_id         name        email created_date    status
+0      101     John Doe   john@a.com   2024-01-15    active
+1      102   Jane Smith   jane@a.com   2024-02-20  inactive
+2      103   Bob Wilson    bob@b.com   2024-03-01    active
+3      104  Alice Brown  alice@c.com   2024-04-01    active
+
+==================================================
+Verification:
+user_id is integer: True
+All user_ids unique: True
+Date format check:
+  User 101: 2024-01-15 (length: 10)
+  User 102: 2024-02-20 (length: 10)
+  User 103: 2024-03-01 (length: 10)
+  User 104: 2024-04-01 (length: 10)
+root@b755f36fa77f:/app#

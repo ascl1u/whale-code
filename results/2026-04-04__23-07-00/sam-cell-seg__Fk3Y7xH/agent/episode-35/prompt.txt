@@ -1,0 +1,107 @@
+New Terminal Output:
+
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "f400486b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# The code refers from segment anything project https://github.com/facebookresearch/segment-anything"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "id": "a1ae39ff",
+   "metadata": {},
+   "source": [
+    "# Object masks from prompts with MobileSAM"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "id": "b4a4b25c",
+   "metadata": {},
+   "source": [
+    "The Mobile Segment Anything Model (MobileSAM) predicts object masks given prompts that indicate the desired object. The model first converts the image into
+ an image embedding that allows high quality masks to be efficiently produced from a prompt. \n",
+    "\n",
+    "The `SamPredictor` class provides an easy interface to the model for prompting the model. It allows the user to first set an image using the `set_image` me
+thod, which calculates the necessary image embeddings. Then, prompts can be provided via the `predict` method to efficiently predict masks from those prompts. T
+he model can take as input both point and box prompts, as well as masks from the previous iteration of prediction."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "e11e353f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from IPython.display import display, HTML\n",
+    "display(HTML(\n",
+    "\"\"\"\n",
+    "<a target=\"_blank\" href=\"https://colab.research.google.com/github/opengeos/segment-anything/blob/pypi/notebooks/predictor_example.ipynb\">\n",
+    "  <img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/>\n",
+    "</a>\n",
+    "\"\"\"\n",
+    "))"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "id": "644532a8",
+   "metadata": {},
+   "source": [
+    "## Environment Set-up"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "67b04c91",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import sys"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "70315790",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "if 'google.colab' in sys.modules:\n",
+    "    import torch\n",
+    "    import torchvision\n",
+    "    print(\"PyTorch version:\", torch.__version__)\n",
+    "    print(\"Torchvision version:\", torchvision.__version__)\n",
+    "    print(\"CUDA is available:\", torch.cuda.is_available())\n",
+    "    \n",
+    "    !{sys.executable} -m pip install opencv-python matplotlib\n",
+    "    !{sys.executable} -m pip install git+https://github.com/ChaoningZhang/MobileSAM.git\n",
+    "    \n",
+    "    !mkdir images\n",
+    "    !wget -P images https://raw.githubusercontent.com/ChaoningZhang/MobileSAM/master/notebooks/images/picture1.jpg\n",
+    "    !wget -P images https://raw.githubusercontent.com/ChaoningZhang/MobileSAM/master/notebooks/images/picture2.jpg\n",
+    "        \n",
+    "    !wget https://raw.githubusercontent.com/ChaoningZhang/MobileSAM/master/weights/mobile_sam.pt\n"
+   ]
+  },
+  {
+   "attachments": {},
+   "cell_type": "markdown",
+   "id": "07fabfee",
+   "metadata": {},
+   "source": [
+    "If running locally using jupyter, first install `segment_anything` in your environment using the [installation instructions](https://github.com/facebookres
+earch/segment-anything#installation) in the repository. "
+   ]
+root@e0e94b7854fe:/tmp/MobileSAM#

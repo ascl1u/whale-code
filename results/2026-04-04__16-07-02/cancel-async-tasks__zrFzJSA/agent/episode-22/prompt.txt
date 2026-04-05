@@ -1,0 +1,42 @@
+New Terminal Output:
+
+root@d8b25c2a55ca:/app# python3 << 'EOF'
+> import asyncio
+> from run import run_tasks
+>
+> cleanup_ran = []
+>
+> async def long_task(task_id):
+>     try:
+>         print(f"Task {task_id} started")
+>         await asyncio.sleep(10)
+>         print(f"Task {task_id} completed")
+>     finally:
+>         cleanup_ran.append(task_id)
+>         print(f"Task {task_id} cleanup executed")
+>
+> async def test_cancellation():
+>     tasks = [lambda tid=i: long_task(tid) for i in range(5)]
+>     task = asyncio.create_task(run_tasks(tasks, max_concurrent=3))
+>     await asyncio.sleep(0.2)  # Let tasks start
+>     task.cancel()
+>     try:
+>         await task
+>     except asyncio.CancelledError:
+>         print("\nCancellation handled correctly")
+>     print(f"Cleanup ran for {len(cleanup_ran)} tasks that started")
+>     print("✓ Cancellation test passed!")
+>
+> asyncio.run(test_cancellation())
+> EOF
+Task 0 started
+Task 1 started
+Task 2 started
+Task 0 cleanup executed
+Task 1 cleanup executed
+Task 2 cleanup executed
+
+Cancellation handled correctly
+Cleanup ran for 3 tasks that started
+✓ Cancellation test passed!
+root@d8b25c2a55ca:/app#

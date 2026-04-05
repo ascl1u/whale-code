@@ -1,0 +1,26 @@
+New Terminal Output:
+
+root@4ff76c48fd89:/app# python3 << 'PYEOF'
+> import os
+> import struct
+>
+> # Try to find and extract kernel and initrd from ISO
+> iso_path = '/app/alpine.iso'
+>
+> # ISO 9660 format - let's try to read it
+> with open(iso_path, 'rb') as f:
+>     # Skip to primary volume descriptor at sector 16
+>     f.seek(16 * 2048)
+>     pvd = f.read(2048)
+>
+>     # Check if it's a valid ISO
+>     if pvd[1:6] == b'CD001':
+>         print("Valid ISO 9660 format detected")
+>         print("Attempting to extract boot files...")
+>     else:
+>         print("Not a standard ISO format")
+>
+> PYEOF
+Valid ISO 9660 format detected
+Attempting to extract boot files...
+root@4ff76c48fd89:/app#

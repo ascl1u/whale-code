@@ -1,0 +1,520 @@
+[?2004hroot@4ff76c48fd89:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@4ff76c48fd89:/app# clear
+[?2004l[H[J[?2004hroot@4ff76c48fd89:/app# ls -lh /app/alpine.iso; printf '%s\n' '__CMDEND__1__'
+[?2004l-rw-r--r-- 1 root root 957M Dec  7  2023 /app/alpine.iso
+__CMDEND__1__
+[?2004hroot@4ff76c48fd89:/app# which qemu-system-x86_64; printf '%s\n' '__CMDEND__2__'
+[?2004l/usr/bin/qemu-system-x86_64
+__CMDEND__2__
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -cdrom /app/alpine.iso -nographic -serial mon:telnet:127.0.0.1:6665,server,nowait -m 512 &
+[?2004l[1] 132
+[?2004hroot@4ff76c48fd89:/app# sleep 3; printf '%s\n' '__CMDEND__3__'
+[?2004l__CMDEND__3__
+[?2004hroot@4ff76c48fd89:/app# netstat -tuln | grep 6665
+[?2004lbash: netstat: command not found
+[?2004hroot@4ff76c48fd89:/app# ss -tuln | grep 6665
+[?2004lbash: ss: command not found
+[?2004hroot@4ff76c48fd89:/app# which telnet; printf '%s\n' '__CMDEND__4__'
+[?2004l/usr/bin/telnet
+__CMDEND__4__
+[?2004hroot@4ff76c48fd89:/app# which timeout; printf '%s\n' '__CMDEND__5__'
+[?2004l/usr/bin/timeout
+__CMDEND__5__
+[?2004hroot@4ff76c48fd89:/app# cat > /tmp/wait_for_boot.sh << 'EOF'
+[?2004l[?2004h> #!/bin/bash
+[?2004l[?2004h> echo "Waiting for Alpine to boot and show login prompt..."
+[?2004l[?2004h> for i in {1..60}; do
+[?2004l[?2004h>   output=$(timeout 2 telnet 127.0.0.1 6665 2>&1 <<< "" | head -20)
+[?2004l[?2004h>   if echo "$output" | grep -qi "login"; then
+[?2004l[?2004h>     echo "Login prompt detected! System is ready."
+[?2004l[?2004h>     exit 0
+[?2004l[?2004h>   fi
+[?2004l[?2004h>   echo "Attempt $i: Not ready yet, waiting..."
+[?2004l[?2004h>   sleep 2
+[?2004l[?2004h> done
+[?2004l[?2004h> echo "Timeout waiting for boot"
+[?2004l[?2004h> exit 1
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@4ff76c48fd89:/app# chmod +x /tmp/wait_for_boot.sh; printf '%s\n' '__CMDEND__6__'
+[?2004l__CMDEND__6__
+[?2004hroot@4ff76c48fd89:/app# /tmp/wait_for_boot.sh; printf '%s\n' '__CMDEND__7__'
+[?2004lWaiting for Alpine to boot and show login prompt...
+Attempt 1: Not ready yet, waiting...
+Attempt 2: Not ready yet, waiting...
+Attempt 3: Not ready yet, waiting...
+Attempt 4: Not ready yet, waiting...
+Attempt 5: Not ready yet, waiting...
+Attempt 6: Not ready yet, waiting...
+Attempt 7: Not ready yet, waiting...
+Attempt 8: Not ready yet, waiting...
+Attempt 9: Not ready yet, waiting...
+Attempt 10: Not ready yet, waiting...
+Attempt 11: Not ready yet, waiting...
+Attempt 12: Not ready yet, waiting...
+Attempt 13: Not ready yet, waiting...
+Attempt 14: Not ready yet, waiting...
+Attempt 15: Not ready yet, waiting...
+Attempt 16: Not ready yet, waiting...
+Attempt 17: Not ready yet, waiting...
+Attempt 18: Not ready yet, waiting...
+Attempt 19: Not ready yet, waiting...
+Attempt 20: Not ready yet, waiting...
+Attempt 21: Not ready yet, waiting...
+Attempt 22: Not ready yet, waiting...
+Attempt 23: Not ready yet, waiting...
+Attempt 24: Not ready yet, waiting...
+Attempt 25: Not ready yet, waiting...
+Attempt 26: Not ready yet, waiting...
+Attempt 27: Not ready yet, waiting...
+Attempt 28: Not ready yet, waiting...
+Attempt 29: Not ready yet, waiting...
+Attempt 30: Not ready yet, waiting...
+Attempt 31: Not ready yet, waiting...
+Attempt 32: Not ready yet, waiting...
+Attempt 33: Not ready yet, waiting...
+^C
+[?2004hroot@4ff76c48fd89:/app# ps aux | grep qemu
+[?2004lbash: ps: command not found
+[?2004hroot@4ff76c48fd89:/app# kill 132; printf '%s\n' '__CMDEND__8__'
+[?2004l__CMDEND__8__
+[?2004hqemu-system-x86_64: terminating on signal 15 from pid 59 (/bin/bash)
+root@4ff76c48fd89:/app# qemu-system-x86_64 -cdrom /app/alpine.iso -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 &
+[?2004l[2] 684
+[1]   Done                    qemu-system-x86_64 -cdrom /app/alpine.iso -nographic -serial mon:telnet:127.0.0.1:6665,server,nowait -m 512
+[?2004hroot@4ff76c48fd89:/app# sleep 5; printf '%s\n' '__CMDEND__9__'
+[?2004l__CMDEND__9__
+[?2004hroot@4ff76c48fd89:/app# (timeout 3 telnet 127.0.0.1 6665 2>&1 || true) | head -30
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+[?2004hroot@4ff76c48fd89:/app# kill 684; printf '%s\n' '__CMDEND__10__'
+[?2004l__CMDEND__10__
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64: terminating on signal 15 from pid 59 (/bin/bash)
+mkdir -p /tmp/iso; printf '%s\n' '__CMDEND__11__'
+[?2004l[2]+  Done                    qemu-system-x86_64 -cdrom /app/alpine.iso -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512
+__CMDEND__11__
+[?2004hroot@4ff76c48fd89:/app# mount -o loop /app/alpine.iso /tmp/iso; printf '%s\n' '__CMDEND__12__'
+[?2004lmount: /tmp/iso: mount failed: Operation not permitted.
+__CMDEND__12__
+[?2004hroot@4ff76c48fd89:/app# which 7z; printf '%s\n' '__CMDEND__13__'
+[?2004l__CMDEND__13__
+[?2004hroot@4ff76c48fd89:/app# which isoinfo; printf '%s\n' '__CMDEND__14__'
+[?2004l__CMDEND__14__
+[?2004hroot@4ff76c48fd89:/app# which bsdtar; printf '%s\n' '__CMDEND__15__'
+[?2004l__CMDEND__15__
+[?2004hroot@4ff76c48fd89:/app# file /app/alpine.iso; printf '%s\n' '__CMDEND__16__'
+[?2004lbash: file: command not found
+__CMDEND__16__
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -cdrom /app/alpine.iso -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 &
+[?2004l[1] 892
+[?2004hroot@4ff76c48fd89:/app# sleep 5; printf '%s\n' '__CMDEND__17__'
+[?2004l(timeout 3 telnet 127.0.0.1 6665 2>&1 || true) | head -30
+__CMDEND__17__
+[?2004hroot@4ff76c48fd89:/app# (timeout 3 telnet 127.0.0.1 6665 2>&1 || true) | head -30
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+[?2004hroot@4ff76c48fd89:/app# python3 << 'PYEOF'
+[?2004l[?2004h> import os
+[?2004l[?2004h> import struct
+[?2004l[?2004h> 
+[?2004l[?2004h> # Try to find and extract kernel and initrd from ISO
+[?2004l[?2004h> iso_path = '/app/alpine.iso'
+[?2004l[?2004h> 
+[?2004l[?2004h> # ISO 9660 format - let's try to read it
+[?2004l[?2004h> with open(iso_path, 'rb') as f:
+[?2004l[?2004h>     # Skip to primary volume descriptor at sector 16
+[?2004l[?2004h>     f.seek(16 * 2048)
+[?2004l[?2004h>     pvd = f.read(2048)
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Check if it's a valid ISO
+[?2004l[?2004h>     if pvd[1:6] == b'CD001':
+[?2004l[?2004h>         print("Valid ISO 9660 format detected")
+[?2004l[?2004h>         print("Attempting to extract boot files...")
+[?2004l[?2004h>     else:
+[?2004l[?2004h>         print("Not a standard ISO format")
+[?2004l[?2004h> 
+[?2004l[?2004h> PYEOF
+[?2004lValid ISO 9660 format detected
+Attempting to extract boot files...
+[?2004hroot@4ff76c48fd89:/app# python3 -c "import pycdlib; print('pycdlib available')"
+[?2004lTraceback (most recent call last):
+  File "<string>", line 1, in <module>
+ModuleNotFoundError: No module named 'pycdlib'
+[?2004hroot@4ff76c48fd89:/app# which xorriso; printf '%s\n' '__CMDEND__18__'
+[?2004l__CMDEND__18__
+[?2004hroot@4ff76c48fd89:/app# which osirrox; printf '%s\n' '__CMDEND__19__'
+[?2004l__CMDEND__19__
+[?2004hroot@4ff76c48fd89:/app# kill 892; printf '%s\n' '__CMDEND__20__'
+[?2004l__CMDEND__20__
+[?2004hqemu-system-x86_64: terminating on signal 15 from pid 59 (/bin/bash)
+root@4ff76c48fd89:/app# dd if=/app/alpine.iso bs=2048 skip=0 count=500 2>/dev/null | strings | grep -i "console\|serial\|ttyS" | head -20
+[?2004lbash: strings: command not found
+[1]+  Done                    qemu-system-x86_64 -cdrom /app/alpine.iso -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512
+[?2004hroot@4ff76c48fd89:/app# cat > /tmp/extract_iso.py << 'PYEOF'
+[?2004lel and initrd
+            for name, extent, size in boot_entries:
+                for target in target_names:
+                    if target.upper() in name.upper():
+                        # Extract file
+                        f.seek(extent * 2048)
+                        file_data = f.read(size)
+                        out_file = f"{output_path}/{target}"
+                        with open(out_file, 'wb') as out:
+                            out.write(file_data)
+                        print(f"Extracted {name} ({size} bytes) to {out_file}")
+                        return out_file
+    return None
+
+# Extract kernel
+kernel = find_and_extract_file('/app/alpine.iso', ['vmlinuz', 'VMLINUZ'], '/tmp')
+if kernel:
+    print(f"Kernel found: {kernel}")
+else:
+    print("Kernel not found")
+
+# Extract initrd
+initrd = find_and_extract_file('/app/alpine.iso', ['initramfs', 'INITRAMFS', 'initrd'], '/tmp')
+if initrd:
+    print(f"Initrd found: {initrd}")
+else:
+    print("Initrd not found")
+PYEOF
+[?2004h> import struct
+[?2004l[?2004h> import sys
+[?2004l[?2004h> 
+[?2004l[?2004h> def read_iso_directory(iso_file, extent, size):
+[?2004l[?2004h>     """Read directory records from ISO"""
+[?2004l[?2004h>     iso_file.seek(extent * 2048)
+[?2004l[?2004h>     data = iso_file.read(size)
+[?2004l[?2004h>     
+[?2004l[?2004h>     entries = []
+[?2004l[?2004h>     offset = 0
+[?2004l[?2004h>     while offset < len(data):
+[?2004l[?2004h>         record_len = data[offset]
+[?2004l[?2004h>         if record_len == 0:
+[?2004l[?2004h>             offset = ((offset // 2048) + 1) * 2048
+[?2004l[?2004h>             if offset >= len(data):
+[?2004l[?2004h>                 break
+[?2004l[?2004h>             continue
+[?2004l[?2004h>         
+[?2004l[?2004h>         if offset + record_len > len(data):
+[?2004l[?2004h>             break
+[?2004l[?2004h>             
+[?2004l[?2004h>         record = data[offset:offset + record_len]
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Parse directory record
+[?2004l[?2004h>         if len(record) >= 33:
+[?2004l[?2004h>             extent_loc = struct.unpack('<I', record[2:6])[0]
+[?2004l[?2004h>             data_len = struct.unpack('<I', record[10:14])[0]
+[?2004l[?2004h>             name_len = record[32]
+[?2004l[?2004h>             
+[?2004l[?2004h>             if name_len > 0 and offset + 33 + name_len <= len(data):
+[?2004l[?2004h>                 name = record[33:33 + name_len].decode('ascii', errors='ignore')
+[?2004l[?2004h>                 entries.append((name, extent_loc, data_len))
+[?2004l[?2004h>         
+[?2004l[?2004h>         offset += record_len
+[?2004l[?2004h>     
+[?2004l[?2004h>     return entries
+[?2004l[?2004h> 
+[?2004l[?2004h> def find_and_extract_file(iso_path, target_names, output_path):
+[?2004l[?2004h>     """Find and extract files from ISO"""
+[?2004l[?2004h>     with open(iso_path, 'rb') as f:
+[?2004l[?2004h>         # Read primary volume descriptor
+[?2004l[?2004h>         f.seek(16 * 2048)
+[?2004l[?2004h>         pvd = f.read(2048)
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Get root directory location
+[?2004l[?2004h>         root_extent = struct.unpack('<I', pvd[158:162])[0]
+[?2004l[?2004h>         root_size = struct.unpack('<I', pvd[166:170])[0]
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Read root directory
+[?2004l[?2004h>         root_entries = read_iso_directory(f, root_extent, root_size)
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Look for boot directory
+[?2004l[?2004h>         boot_extent = None
+[?2004l[?2004h>         boot_size = None
+[?2004l[?2004h>         for name, extent, size in root_entries:
+[?2004l[?2004h>             if 'BOOT' in name.upper():
+[?2004l[?2004h>                 boot_extent = extent
+[?2004l[?2004h>                 boot_size = size
+[?2004l[?2004h>                 break
+[?2004l[?2004h>         
+[?2004l[?2004h>         if boot_extent:
+[?2004l[?2004h>             boot_entries = read_iso_directory(f, boot_extent, boot_size)
+[?2004l[?2004h>             
+[?2004l[?2004h>             # Find kernel and initrd
+[?2004l[?2004h>             for name, extent, size in boot_entries:
+[?2004l[?2004h>                 for target in target_names:
+[?2004l[?2004h>                     if target.upper() in name.upper():
+[?2004l[?2004h>                         # Extract file
+[?2004l[?2004h>                         f.seek(extent * 2048)
+[?2004l[?2004h>                         file_data = f.read(size)
+[?2004l[?2004h>                         out_file = f"{output_path}/{target}"
+[?2004l[?2004h>                         with open(out_file, 'wb') as out:
+[?2004l[?2004h>                             out.write(file_data)
+[?2004l[?2004h>                         print(f"Extracted {name} ({size} bytes) to {out_file}")
+[?2004l[?2004h>                         return out_file
+[?2004l[?2004h>     return None
+[?2004l[?2004h> 
+[?2004l[?2004h> # Extract kernel
+[?2004l[?2004h> kernel = find_and_extract_file('/app/alpine.iso', ['vmlinuz', 'VMLINUZ'], '/tmp')
+[?2004l[?2004h> if kernel:
+[?2004l[?2004h>     print(f"Kernel found: {kernel}")
+[?2004l[?2004h> else:
+[?2004l[?2004h>     print("Kernel not found")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Extract initrd
+[?2004l[?2004h> initrd = find_and_extract_file('/app/alpine.iso', ['initramfs', 'INITRAMFS', 'initrd'], '/tmp')
+[?2004l[?2004h> if initrd:
+[?2004l[?2004h>     print(f"Initrd found: {initrd}")
+[?2004l[?2004h> else:
+[?2004l[?2004h>     print("Initrd not found")
+[?2004l[?2004h> PYEOF
+[?2004l[?2004hroot@4ff76c48fd89:/app# python3 /tmp/extract_iso.py; printf '%s\n' '__CMDEND__21__'
+[?2004lExtracted VMLINUZ_LTS.;1 (11879168 bytes) to /tmp/vmlinuz
+Kernel found: /tmp/vmlinuz
+Extracted INITRAMFS_LTS.;1 (20486092 bytes) to /tmp/initramfs
+Initrd found: /tmp/initramfs
+__CMDEND__21__
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -m 512 &
+[?2004l[1] 1134
+[?2004hroot@4ff76c48fd89:/app# sleep 3; printf '%s\n' '__CMDEND__22__'
+[?2004l
+[1]+  Stopped                 qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -m 512
+__CMDEND__22__
+[?2004hroot@4ff76c48fd89:/app# (timeout 3 telnet 127.0.0.1 6665 2>&1 || true) | head -40
+[?2004ltelnet: Unable to connect to remote host: Connection refused
+Trying 127.0.0.1...
+[?2004hroot@4ff76c48fd89:/app# kill %1; printf '%s\n' '__CMDEND__23__'
+[?2004l__CMDEND__23__
+
+[1]+  Stopped                 qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -m 512
+[?2004hroot@4ff76c48fd89:/app# kill -9 1134; printf '%s\n' '__CMDEND__24__'
+[?2004lbash: kill: (1134) - No such process
+__CMDEND__24__
+[1]+  Terminated              qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -m 512
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 </dev/null >/dev/null 2>&1 &
+[?2004l[1] 1250
+[?2004hroot@4ff76c48fd89:/app# sleep 5; printf '%s\n' '__CMDEND__25__'
+[?2004l__CMDEND__25__
+[?2004hroot@4ff76c48fd89:/app# (timeout 3 telnet 127.0.0.1 6665 2>&1 || true) | head -40
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+[?2004hroot@4ff76c48fd89:/app# kill 1250; printf '%s\n' '__CMDEND__26__'
+[?2004l__CMDEND__26__
+[?2004hroot@4ff76c48fd89:/app# setsid qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 </dev/null >/dev/null 2>&1 &
+[?2004l[2] 1344
+[1]   Done                    qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 < /dev/null > /dev/null 2>&1
+[?2004hroot@4ff76c48fd89:/app# sleep 5; printf '%s\n' '__CMDEND__27__'
+[?2004l[2]+  Done                    setsid qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 < /dev/null > /dev/null 2>&1
+__CMDEND__27__
+[?2004hroot@4ff76c48fd89:/app# (timeout 3 telnet 127.0.0.1 6665 2>&1 || true) | head -40
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 2>&1 | head -20 &
+[?2004l[1] 1415
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: Failed to find an available port: Address already in use
+qemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: could not connect serial device to character backend 'telnet:127.0.0.1:6665,server,nowait'
+pkill -9 qemu; printf '%s\n' '__CMDEND__28__'
+[?2004lbash: pkill: command not found
+[1]+  Done                    qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 2>&1 | head -20
+__CMDEND__28__
+[?2004hroot@4ff76c48fd89:/app# sleep 5; printf '%s\n' '__CMDEND__29__'
+[?2004l__CMDEND__29__
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 </dev/null &>/dev/null &
+[?2004l[1] 1486
+[?2004hroot@4ff76c48fd89:/app# sleep 3; printf '%s\n' '__CMDEND__30__'
+[?2004l[1]+  Exit 1                  qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 < /dev/null &> /dev/null
+__CMDEND__30__
+[?2004hroot@4ff76c48fd89:/app# (timeout 2 telnet 127.0.0.1 6665 2>&1 || true) | head -30
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+[?2004hroot@4ff76c48fd89:/app# timeout 5 qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 2>&1 || true
+[?2004lqemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: Failed to find an available port: Address already in use
+qemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: could not connect serial device to character backend 'telnet:127.0.0.1:6665,server,nowait'
+[?2004hroot@4ff76c48fd89:/app# jobs; printf '%s\n' '__CMDEND__31__'
+[?2004l__CMDEND__31__
+[?2004hroot@4ff76c48fd89:/app# echo 'Waiting for port to be released...'
+[?2004lWaiting for port to be released...
+[?2004hroot@4ff76c48fd89:/app# sleep 10; printf '%s\n' '__CMDEND__32__'
+[?2004l__CMDEND__32__
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 </dev/null &>/dev/null &
+[?2004l[1] 1649
+[?2004hroot@4ff76c48fd89:/app# sleep 5; printf '%s\n' '__CMDEND__33__'
+[?2004l[1]+  Exit 1                  qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 < /dev/null &> /dev/null
+__CMDEND__33__
+[?2004hroot@4ff76c48fd89:/app# (timeout 3 telnet 127.0.0.1 6665 2>&1 || true) | head -50
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512 &
+[?2004l[1] 1718
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: Failed to find an available port: Address already in use
+qemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: could not connect serial device to character backend 'telnet:127.0.0.1:6665,server,nowait'
+qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6666,server,nowait -monitor none -m 512 </dev/null &>/dev/null &
+[?2004l[2] 1738
+[1]   Exit 1                  qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6665,server,nowait -monitor none -m 512
+[?2004hroot@4ff76c48fd89:/app# sleep 8; printf '%s\n' '__CMDEND__34__'
+[?2004l(timeout 3 telnet 127.0.0.1 6666 2>&1 || true) | head -50
+__CMDEND__34__
+[?2004hroot@4ff76c48fd89:/app# (timeout 3 telnet 127.0.0.1 6666 2>&1 || true) | head -50
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+[?2004hroot@4ff76c48fd89:/app# jobs; printf '%s\n' '__CMDEND__35__'
+[?2004l[2]+  Running                 qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6666,server,nowait -monitor none -m 512 < /dev/null &> /dev/null &
+__CMDEND__35__
+[?2004hroot@4ff76c48fd89:/app# kill %2; printf '%s\n' '__CMDEND__36__'
+[?2004l__CMDEND__36__
+[?2004hroot@4ff76c48fd89:/app# sleep 3; printf '%s\n' '__CMDEND__37__'
+[?2004l[2]+  Done                    qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -nographic -serial telnet:127.0.0.1:6666,server,nowait -monitor none -m 512 < /dev/null &> /dev/null
+__CMDEND__37__
+[?2004hroot@4ff76c48fd89:/app# jobs; printf '%s\n' '__CMDEND__38__'
+[?2004l__CMDEND__38__
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 </dev/null &>/dev/null &
+[?2004l[1] 1891
+[?2004hroot@4ff76c48fd89:/app# sleep 8; printf '%s\n' '__CMDEND__39__'
+[?2004l(timeout 3 telnet 127.0.0.1 6665 2>&1 || true) | head -50
+[1]+  Exit 1                  qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 < /dev/null &> /dev/null
+__CMDEND__39__
+[?2004hroot@4ff76c48fd89:/app# (timeout 3 telnet 127.0.0.1 6665 2>&1 || true) | head -50
+[?2004lTrying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512
+[?2004lqemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: Failed to find an available port: Address already in use
+qemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: could not connect serial device to character backend 'telnet:127.0.0.1:6665,server,nowait'
+[?2004hroot@4ff76c48fd89:/app# echo 'Waiting 15 seconds for port to be released...'
+[?2004lWaiting 15 seconds for port to be released...
+[?2004hroot@4ff76c48fd89:/app# sleep 15; printf '%s\n' '__CMDEND__40__'
+[?2004l__CMDEND__40__
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 </dev/null &>/dev/null &
+[?2004l[1] 2028
+[?2004hroot@4ff76c48fd89:/app# echo "QEMU started, PID: $!"
+[?2004lQEMU started, PID: 2028
+[1]+  Exit 1                  qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 < /dev/null &> /dev/null
+[?2004hroot@4ff76c48fd89:/app# echo "Waiting 30 seconds for boot to complete..."
+[?2004lWaiting 30 seconds for boot to complete...
+[?2004hroot@4ff76c48fd89:/app# sleep 30; printf '%s\n' '__CMDEND__41__'
+[?2004l^C
+[?2004hroot@4ff76c48fd89:/app# sleep 15; printf '%s\n' '__CMDEND__42__'
+[?2004lqemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -cdrom /app/alpine.iso -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 </dev/null &>/dev/null &
+echo "QEMU PID: $!"
+sleep 20; printf '%s\n' '__CMDEND__43__'
+__CMDEND__42__
+[?2004hroot@4ff76c48fd89:/app# qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -cdrom /app/alpine.iso -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 </dev/null &>/dev/null &
+[?2004l[1] 2147
+[?2004hroot@4ff76c48fd89:/app# echo "QEMU PID: $!"
+[?2004lQEMU PID: 2147
+[?2004hroot@4ff76c48fd89:/app# sleep 20; printf '%s\n' '__CMDEND__43__'
+[?2004l[1]+  Exit 1                  qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -cdrom /app/alpine.iso -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 < /dev/null &> /dev/null
+__CMDEND__43__
+[?2004hroot@4ff76c48fd89:/app# sleep 20; printf '%s\n' '__CMDEND__44__'
+[?2004ltimeout 5 qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -cdrom /app/alpine.iso -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 2>&1 || echo "Exit code: $?"
+__CMDEND__44__
+[?2004hroot@4ff76c48fd89:/app# timeout 5 qemu-system-x86_64 -kernel /tmp/vmlinuz -initrd /tmp/initramfs -cdrom /app/alpine.iso -append "console=ttyS0" -display none -serial telnet:127.0.0.1:6665,server,nowait -m 512 2>&1 || echo "Exit code: $?"
+[?2004lqemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: Failed to find an available port: Address already in use
+qemu-system-x86_64: -serial telnet:127.0.0.1:6665,server,nowait: could not connect serial device to character backend 'telnet:127.0.0.1:6665,server,nowait'
+Exit code: 1
+[?2004hroot@4ff76c48fd89:/app# cat > /tmp/start_qemu.py << 'PYEOF'
+[?2004l[?2004h> import socket
+[?2004l[?2004h> import time
+[?2004l[?2004h> import subprocess
+[?2004l[?2004h> import sys
+[?2004l[?2004h> 
+[?2004l[?2004h> def is_port_free(port):
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+[?2004l[?2004h>         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+[?2004l[?2004h>         s.bind(('127.0.0.1', port))
+[?2004l[?2004h>         s.close()
+[?2004l[?2004h>         return True
+[?2004l[?2004h>     except:
+[?2004l[?2004h>         return False
+[?2004l[?2004h> 
+[?2004l[?2004h> # Wait for port to be free
+[?2004l[?2004h> print("Checking if port 6665 is free...")
+[?2004l[?2004h> while not is_port_free(6665):
+[?2004l[?2004h>     print("Port 6665 is in use, waiting...")
+[?2004l[?2004h>     time.sleep(2)
+[?2004l[?2004h> 
+[?2004l[?2004h> print("Port 6665 is free! Starting QEMU...")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Start QEMU
+[?2004l[?2004h> cmd = [
+[?2004l[?2004h>     'qemu-system-x86_64',
+[?2004l[?2004h>     '-kernel', '/tmp/vmlinuz',
+[?2004l[?2004h>     '-initrd', '/tmp/initramfs',
+[?2004l[?2004h>     '-cdrom', '/app/alpine.iso',
+[?2004l[?2004h>     '-append', 'console=ttyS0',
+[?2004l[?2004h>     '-display', 'none',
+[?2004l[?2004h>     '-serial', 'telnet:127.0.0.1:6665,server,nowait',
+[?2004l[?2004h>     '-m', '512'
+[?2004l[?2004h> ]
+[?2004l[?2004h> 
+[?2004l[?2004h> proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+[?2004l[?2004h> time.sleep(2)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Check if it started successfully
+[?2004l[?2004h> if proc.poll() is not None:
+[?2004l[?2004h>     stderr = proc.stderr.read().decode()
+[?2004l[?2004h>     print(f"QEMU failed to start: {stderr}")
+[?2004l[?2004h>     sys.exit(1)
+[?2004l[?2004h> 
+[?2004l[?2004h> print(f"QEMU started successfully with PID {proc.pid}")
+[?2004l[?2004h> print("Waiting 30 seconds for boot...")
+[?2004l[?2004h> time.sleep(30)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test connection
+[?2004l[?2004h> print("Testing telnet connection...")
+[?2004l[?2004h> try:
+[?2004l[?2004h>     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+[?2004l[?2004h>     s.settimeout(3)
+[?2004l[?2004h>     s.connect(('127.0.0.1', 6665))
+[?2004l[?2004h>     time.sleep(1)
+[?2004l[?2004h>     data = s.recv(4096)
+[?2004l[?2004h>     s.close()
+[?2004l[?2004h>     if data:
+[?2004l[?2004h>         print(f"Received data ({len(data)} bytes)")
+[?2004l[?2004h>         print(data.decode('ascii', errors='ignore')[:500])
+[?2004l[?2004h>     else:
+[?2004l[?2004h>         print("Connected but no data received yet")
+[?2004l[?2004h> except Exception as e:
+[?2004l[?2004h>     print(f"Connection test failed: {e}")
+[?2004l[?2004h> 
+[?2004l[?2004h> print(f"\nQEMU is running with PID {proc.pid}")
+[?2004l[?2004h> print("You can now connect with: telnet 127.0.0.1 6665")
+[?2004l[?2004h> PYEOF
+[?2004l[?2004hroot@4ff76c48fd89:/app# python3 /tmp/start_qemu.py; printf '%s\n' '__CMDEND__45__'
+[?2004lChecking if port 6665 is free...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+Port 6665 is in use, waiting...
+^CTraceback (most recent call last):
+  File "/tmp/start_qemu.py", line 20, in <module>
+    time.sleep(2)
+KeyboardInterrupt
+
+[?2004hroot@4ff76c48fd89:/app# 

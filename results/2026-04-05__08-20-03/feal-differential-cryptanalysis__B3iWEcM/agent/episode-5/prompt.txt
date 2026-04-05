@@ -1,0 +1,208 @@
+New Terminal Output:
+
+root@5bf583115212:/app# cat > /app/attack.py << 'EOF'
+st_pts:
+        ct = encrypt_fn(pt)
+        pairs.append((pt, ct))
+
+    # Try each possible seed for key[5]
+    for seed5 in range(0x10000):
+        candidate_key5 = (seed5 * 1234567) & 0xFFFFFFFF
+
+        # Partially decrypt all ciphertexts
+        intermediate_states = []
+        for pt, ct in pairs:
+            left3, right3 = partial_decrypt_last_round(ct, candidate_key5)
+            intermediate_states.append((left3, right3))
+
+        # Now try to validate by attempting to recover key[4]
+        # If we can consistently recover key[4] across multiple pairs,
+        # then key[5] is likely correct
+
+        # For each pair, try to work backwards one more round
+        # Round 2 output -> Round 3 input
+        # We have: left3, right3 (input to round 3)
+        # Before round 2: left2, right2
+        # After round 2: left3 = right2, right3 = left2 ^ f(right2 ^ key[4])
+        # So: right2 = left3, left2 = right3 ^ f(right2 ^ key[4])
+
+        # Try all seeds for key[4]
+        key4_votes = {}
+
+        for seed4 in range(0x10000):
+            candidate_key4 = (seed4 * 1234567) & 0xFFFFFFFF
+
+            # Check if this key4 produces consistent results
+            valid = True
+            states_before_round2 = []
+
+            for left3, right3 in intermediate_states:
+                right2 = left3
+                left2 = right3 ^ f_function(right2 ^ candidate_key4)
+                states_before_round2.append((left2, right2))
+
+            # For now, just count this as a vote
+            # In practice, we'd need more validation
+            key4_votes[seed4] = 1
+
+        # This approach is getting too complex and slow
+        # Let me try a simpler heuristic
+
+    # Simpler approach: Use statistical properties
+    # The correct key should produce intermediate states with certain properties
+
+    best_seed = None
+    best_score = float('inf')
+
+    for seed5 in range(0x10000):
+        candidate_key5 = (seed5 * 1234567) & 0xFFFFFFFF
+
+        # > #!/usr/bin/env python3
+>
+> def getleft(x):
+f>     return (x >> 32) & 0xFFFFFFFF
+core>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+ > def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+ > def g_function(a, b, x):
+T>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+b>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+ >     return output & 0xFFFFFFFF
+>
+ > def partial_decrypt_last_round(ciphertext, candidate_key5):
+>     """Undo the last round and post-processing"""
+>     ct_left = getleft(ciphertext)
+>     ct_right = getright(ciphertext)
+>
+>     # Undo swap: merge(right, left)
+>     left_after_post = ct_right
+>     right_after_post = ct_left
+>
+>     # Undo post-round mixing: left ^= right
+>     left_after_round3 = left_after_post ^ right_after_post
+>     right_after_round3 = right_after_post
+>
+>     # Undo round 3
+>     right_before_round3 = left_after_round3
+>     left_before_round3 = right_after_round3 ^ f_function(right_before_round3 ^ candidate_key5)
+>
+>     return left_before_round3, right_before_round3
+>
+> def attack(encrypt_fn):
+>     """
+>     Recover key[5] using differential cryptanalysis.
+>
+>     Key insight: Use plaintext pairs and check which candidate key[5]
+>     produces intermediate states that satisfy the cipher's constraints.
+>     """
+>
+>     # Strategy: Try all 65536 seeds and use multiple plaintext pairs
+>     # to validate which one is correct
+>
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>
+>     # Use diverse plaintexts
+>     test_pts = [0, 1, 2, 3, 4, 5, 0x100, 0x10000, 0x1000000,
+>                 0x100000000, 0x1000000000000, 0xFFFFFFFF,
+>                 0xFFFFFFFF00000000, 0x123456789ABCDEF0]
+>
+>     for pt in test_pts:
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # Try each possible seed for key[5]
+>     for seed5 in range(0x10000):
+>         candidate_key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         # Partially decrypt all ciphertexts
+>         intermediate_states = []
+>         for pt, ct in pairs:
+>             left3, right3 = partial_decrypt_last_round(ct, candidate_key5)
+>             intermediate_states.append((left3, right3))
+>
+>         # Now try to validate by attempting to recover key[4]
+>         # If we can consistently recover key[4] across multiple pairs,
+>         # then key[5] is likely correct
+>
+>         # For each pair, try to work backwards one more round
+>         # Round 2 output -> Round 3 input
+>         # We have: left3, right3 (input to round 3)
+>         # Before round 2: left2, right2
+>         # After round 2: left3 = right2, right3 = left2 ^ f(right2 ^ key[4])
+>         # So: right2 = left3, left2 = right3 ^ f(right2 ^ key[4])
+>
+>         # Try all seeds for key[4]
+>         key4_votes = {}
+>
+>         for seed4 in range(0x10000):
+>             candidate_key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # Check if this key4 produces consistent results
+>             valid = True
+>             states_before_round2 = []
+>
+>             for left3, right3 in intermediate_states:
+>                 right2 = left3
+>                 left2 = right3 ^ f_function(right2 ^ candidate_key4)
+>                 states_before_round2.append((left2, right2))
+>
+>             # For now, just count this as a vote
+>             # In practice, we'd need more validation
+>             key4_votes[seed4] = 1
+>
+>         # This approach is getting too complex and slow
+>         # Let me try a simpler heuristic
+>
+>     # Simpler approach: Use statistical properties
+>     # The correct key should produce intermediate states with certain properties
+>
+>     best_seed = None
+>     best_score = float('inf')
+>
+>     for seed5 in range(0x10000):
+>         candidate_key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         # Calculate a score based on properties of intermediate states
+>         score = 0
+>
+>         for pt, ct in pairs:
+>             left3, right3 = partial_decrypt_last_round(ct, candidate_key5)
+>
+>             # Heuristic: The intermediate states should have certain statistical properties
+>             # For example, the distribution of bits, or relationships between pairs
+>
+>             # Count number of set bits (should be roughly balanced)
+>             bits_left = bin(left3).count('1')
+>             bits_right = bin(right3).count('1')
+>
+>             # Penalize extreme values
+>             score += abs(bits_left - 16) + abs(bits_right - 16)
+>
+>         if score < best_score:
+>             best_score = score
+>             best_seed = seed5
+>
+>     best_key5 = (best_seed * 1234567) & 0xFFFFFFFF
+>     return best_key5
+>
+> EOF
+root@5bf583115212:/app#

@@ -1,0 +1,166 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat > verify_primers.py << 'EOF'
+> import subprocess
+>
+> def reverse_complement(seq):
+>     complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
+>     return ''.join(complement[base] for base in reversed(seq))
+>
+> def calc_tm(seq):
+>     result = subprocess.run(
+>         ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq],
+>         capture_output=True, text=True, check=True
+>     )
+>     return float(result.stdout.strip())
+>
+> # Read primers
+> primers = {}
+> with open('primers.fasta', 'r') as f:
+>     current_name = None
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             primers[current_name] = ''
+>         else:
+>             primers[current_name] += line.upper()
+>
+> # Read original sequences
+> seqs = {}
+> with open('sequences.fasta', 'r') as f:
+>     current_name = None
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> print("=== PRIMER VERIFICATION ===")
+> print()
+>
+> # Check each primer pair
+> for template_name in ['input', 'egfp', 'flag', 'snap']:
+>     fwd_name = f"{template_name}_fwd"
+>     rev_name = f"{template_name}_rev"
+>
+>     fwd_primer = primers[fwd_name]
+>     rev_primer = primers[rev_name]
+>
+>     print(f"\n{template_name.upper()} primers:")
+>     print(f"  Forward: {fwd_primer}")
+>     print(f"  Reverse: {rev_primer}")
+>
+>     # Extract BsaI site and overhang from forward primer
+>     if fwd_primer.startswith('GGTCTCN'):
+>         fwd_overhang = fwd_primer[7:11]
+>         fwd_anneal = fwd_primer[11:]
+>         print(f"  Fwd overhang: {fwd_overhang}")
+>         print(f"  Fwd annealing: {fwd_anneal} ({len(fwd_anneal)}bp)")
+>         fwd_tm = calc_tm(fwd_anneal)
+>         print(f"  Fwd Tm: {fwd_tm:.2f}°C")
+>
+>     # Extract BsaI site and overhang from reverse primer
+>     if rev_primer.startswith('GAGACCN'):
+>         rev_overhang = rev_primer[7:11]
+>         rev_anneal = rev_primer[11:]
+>         print(f"  Rev overhang: {rev_overhang}")
+>         print(f"  Rev annealing: {rev_anneal} ({len(rev_anneal)}bp)")
+>         rev_tm = calc_tm(rev_anneal)
+>         print(f"  Rev Tm: {rev_tm:.2f}°C")
+>         print(f"  Tm difference: {abs(fwd_tm - rev_tm):.2f}°C")
+>
+>         # Check Tm requirements
+>         if 58 <= fwd_tm <= 72 and 58 <= rev_tm <= 72:
+>             print(f"  ✓ Both Tms in range [58, 72]")
+>         else:
+>             print(f"  ✗ Tm out of range!")
+>
+>         if abs(fwd_tm - rev_tm) <= 5:
+>             print(f"  ✓ Tm difference <= 5°C")
+>         else:
+>             print(f"  ✗ Tm difference > 5°C!")
+>
+>         if 15 <= len(fwd_anneal) <= 45 and 15 <= len(rev_anneal) <= 45:
+>             print(f"  ✓ Annealing lengths in range [15, 45]")
+>         else:
+>             print(f"  ✗ Annealing length out of range!")
+>
+> print("\n=== EXPECTED OVERHANGS FOR ASSEMBLY ===")
+> print("Input -> EGFP: ATGA")
+> print("EGFP -> FLAG: GGTA")
+> print("FLAG -> SNAP: GACA")
+> print("SNAP -> Input: TGAG")
+> print("\nInput vector closes with: ACAT -> ATGA (ACAT is reverse of ATGT overhang)")
+>
+> EOF
+root@b088ecd58d39:/app# python3 verify_primers.py
+=== PRIMER VERIFICATION ===
+
+
+INPUT primers:
+  Forward: GGTCTCNTGAGTTTGGTATCTGCGCTCTG
+  Reverse: GAGACCNATGTATGTATATCTCCTTCTTAAAGTTAAACA
+  Fwd overhang: TGAG
+  Fwd annealing: TTTGGTATCTGCGCTCTG (18bp)
+  Fwd Tm: 58.79°C
+  Rev overhang: ATGT
+  Rev annealing: ATGTATATCTCCTTCTTAAAGTTAAACA (28bp)
+  Rev Tm: 58.08°C
+  Tm difference: 0.71°C
+  ✓ Both Tms in range [58, 72]
+  ✓ Tm difference <= 5°C
+  ✓ Annealing lengths in range [15, 45]
+
+EGFP primers:
+  Forward: GGTCTCNATGAATGAGCAAGGGCGAGG
+  Reverse: GAGACCNTACCTTTGTACAGCTCGTCCATG
+  Fwd overhang: ATGA
+  Fwd annealing: ATGAGCAAGGGCGAGG (16bp)
+  Fwd Tm: 60.45°C
+  Rev overhang: TACC
+  Rev annealing: TTTGTACAGCTCGTCCATG (19bp)
+  Rev Tm: 59.14°C
+  Tm difference: 1.31°C
+  ✓ Both Tms in range [58, 72]
+  ✓ Tm difference <= 5°C
+  ✓ Annealing lengths in range [15, 45]
+
+FLAG primers:
+  Forward: GGTCTCNGGTAGGTAGTGGCTCCGGT
+  Reverse: GAGACCNTGTCTGAACCACTACCTGAACCA
+  Fwd overhang: GGTA
+  Fwd annealing: GGTAGTGGCTCCGGT (15bp)
+  Fwd Tm: 58.66°C
+  Rev overhang: TGTC
+  Rev annealing: TGAACCACTACCTGAACCA (19bp)
+  Rev Tm: 59.49°C
+  Tm difference: 0.83°C
+  ✓ Both Tms in range [58, 72]
+  ✓ Tm difference <= 5°C
+  ✓ Annealing lengths in range [15, 45]
+
+SNAP primers:
+  Forward: GGTCTCNGACAGACAAAGACTGCGAAATGAA
+  Reverse: GAGACCNCTCATTAACCCAGCCCAGGC
+  Fwd overhang: GACA
+  Fwd annealing: GACAAAGACTGCGAAATGAA (20bp)
+  Fwd Tm: 58.25°C
+  Rev overhang: CTCA
+  Rev annealing: TTAACCCAGCCCAGGC (16bp)
+  Rev Tm: 60.27°C
+  Tm difference: 2.02°C
+  ✓ Both Tms in range [58, 72]
+  ✓ Tm difference <= 5°C
+  ✓ Annealing lengths in range [15, 45]
+
+=== EXPECTED OVERHANGS FOR ASSEMBLY ===
+Input -> EGFP: ATGA
+EGFP -> FLAG: GGTA
+FLAG -> SNAP: GACA
+SNAP -> Input: TGAG
+
+Input vector closes with: ACAT -> ATGA (ACAT is reverse of ATGT overhang)
+root@b088ecd58d39:/app#

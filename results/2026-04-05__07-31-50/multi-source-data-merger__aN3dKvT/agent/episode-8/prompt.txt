@@ -1,0 +1,62 @@
+New Terminal Output:
+
+root@a57fbfbd74e9:/app# python3 << 'EOF'
+> import pandas as pd
+> import pyarrow.parquet as pq
+>
+> # Read the merged parquet file
+> df = pd.read_parquet('/app/merged_users.parquet')
+>
+> print("Schema:")
+> print(df.dtypes)
+> print("\nData:")
+> print(df)
+> print("\nColumn names:", df.columns.tolist())
+> print("\nNumber of records:", len(df))
+> print("\nUser IDs:", sorted(df['user_id'].tolist()))
+>
+> # Verify data types
+> print("\nData type checks:")
+> print(f"user_id is integer: {df['user_id'].dtype in ['int64', 'int32']}")
+> print(f"name is string: {df['name'].dtype == 'object'}")
+> print(f"email is string: {df['email'].dtype == 'object'}")
+> print(f"created_date is string: {df['created_date'].dtype == 'object'}")
+>
+> # Verify date format
+> print("\nDate format check (should be YYYY-MM-DD):")
+> for idx, date in enumerate(df['created_date']):
+>     print(f"  Row {idx}: {date}")
+> EOF
+Schema:
+user_id          int64
+name            object
+email           object
+created_date    object
+status          object
+dtype: object
+
+Data:
+   user_id         name        email created_date    status
+0      101     John Doe   john@a.com   2024-01-15    active
+1      102   Jane Smith   jane@a.com   2024-02-20  inactive
+2      103   Bob Wilson    bob@b.com   2024-03-01    active
+3      104  Alice Brown  alice@c.com   2024-04-01    active
+
+Column names: ['user_id', 'name', 'email', 'created_date', 'status']
+
+Number of records: 4
+
+User IDs: [101, 102, 103, 104]
+
+Data type checks:
+user_id is integer: True
+name is string: True
+email is string: True
+created_date is string: True
+
+Date format check (should be YYYY-MM-DD):
+  Row 0: 2024-01-15
+  Row 1: 2024-02-20
+  Row 2: 2024-03-01
+  Row 3: 2024-04-01
+root@a57fbfbd74e9:/app#

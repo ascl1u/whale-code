@@ -1,0 +1,81 @@
+New Terminal Output:
+
+root@8feaba7d8e54:/app# python3 << 'EOF'
+> import pandas as pd
+> import json
+>
+> print("=== VERIFICATION ===")
+> print()
+>
+> # Check source data
+> print("Source A users:")
+> with open('/data/source_a/users.json') as f:
+>     sa = json.load(f)
+> for u in sa:
+>     print(f"  ID {u['id']}: {u['full_name']}, {u['email']}, {u['registration_date']}")
+>
+> print("\nSource B users:")
+> sb = pd.read_csv('/data/source_b/users.csv')
+> for _, u in sb.iterrows():
+>     print(f"  ID {u['user_id']}: {u['name']}, {u['email_address']}, {u['created_at']}")
+>
+> print("\nSource C users:")
+> sc = pd.read_parquet('/data/source_c/users.parquet')
+> for _, u in sc.iterrows():
+>     print(f"  ID {u['userId']}: {u['userName']}, {u['email']}, {u['joined']}")
+>
+> print("\n" + "="*50)
+> print("Merged result:")
+> merged = pd.read_parquet('/app/merged_users.parquet')
+> for _, u in merged.iterrows():
+>     print(f"  ID {u['user_id']}: {u['name']}, {u['email']}, {u['created_date']}, status={u['status']}")
+>
+> print("\n" + "="*50)
+> print("Verification checks:")
+> print(f"✓ Total unique users: {len(merged)} (expected: 4)")
+> print(f"✓ User IDs present: {sorted(merged['user_id'].tolist())} (expected: [101, 102, 103, 104])")
+> print(f"✓ user_id is integer: {merged['user_id'].dtype == 'int64'}")
+> print(f"✓ All dates in YYYY-MM-DD format: {all(len(str(d)) == 10 for d in merged['created_date'])}")
+> print(f"✓ User 101 email from source_a: {merged[merged['user_id']==101]['email'].values[0] == 'john@a.com'}")
+> print(f"✓ User 101 name from source_a: {merged[merged['user_id']==101]['name'].values[0] == 'John Doe'}")
+> print(f"✓ User 102 only in source_a: {merged[merged['user_id']==102]['email'].values[0] == 'jane@a.com'}")
+> print(f"✓ User 103 only in source_b: {merged[merged['user_id']==103]['email'].values[0] == 'bob@b.com'}")
+> print(f"✓ User 104 only in source_c: {merged[merged['user_id']==104]['email'].values[0] == 'alice@c.com'}")
+>
+> print("\nAll checks passed!")
+> EOF
+=== VERIFICATION ===
+
+Source A users:
+  ID 101: John Doe, john@a.com, 2024-01-15
+  ID 102: Jane Smith, jane@a.com, 2024-02-20
+
+Source B users:
+  ID 101: John Doe, john@b.com, 2024-01-10
+  ID 103: Bob Wilson, bob@b.com, 2024-03-01
+
+Source C users:
+  ID 101: John D., john@c.com, 2024-01-20
+  ID 104: Alice Brown, alice@c.com, 2024-04-01
+
+==================================================
+Merged result:
+  ID 101: John Doe, john@a.com, 2024-01-15, status=active
+  ID 102: Jane Smith, jane@a.com, 2024-02-20, status=inactive
+  ID 103: Bob Wilson, bob@b.com, 2024-03-01, status=active
+  ID 104: Alice Brown, alice@c.com, 2024-04-01, status=active
+
+==================================================
+Verification checks:
+✓ Total unique users: 4 (expected: 4)
+✓ User IDs present: [101, 102, 103, 104] (expected: [101, 102, 103, 104])
+✓ user_id is integer: True
+✓ All dates in YYYY-MM-DD format: True
+✓ User 101 email from source_a: True
+✓ User 101 name from source_a: True
+✓ User 102 only in source_a: True
+✓ User 103 only in source_b: True
+✓ User 104 only in source_c: True
+
+All checks passed!
+root@8feaba7d8e54:/app#

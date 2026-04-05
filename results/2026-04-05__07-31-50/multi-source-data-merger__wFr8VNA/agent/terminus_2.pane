@@ -1,0 +1,559 @@
+[?2004hroot@8feaba7d8e54:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@8feaba7d8e54:/app# clear
+[?2004l[H[J[3J[?2004hroot@8feaba7d8e54:/app# ls -la /data/; printf '%s\n' '__CMDEND__1__'
+[?2004ltotal 20
+drwxr-xr-x 5 root root 4096 Oct 24 05:18 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:32 ..
+drwxr-xr-x 2 root root 4096 Oct 24 05:18 source_a
+drwxr-xr-x 2 root root 4096 Oct 24 05:18 source_b
+drwxr-xr-x 2 root root 4096 Oct 24 05:18 source_c
+__CMDEND__1__
+[?2004hroot@8feaba7d8e54:/app# cat /data/source_a/users.json; printf '%s\n' '__CMDEND__2__'
+[?2004l[
+  {
+    "id": 101,
+    "full_name": "John Doe",
+    "email": "john@a.com",
+    "registration_date": "2024-01-15",
+    "status": "active"
+  },
+  {
+    "id": 102,
+    "full_name": "Jane Smith",
+    "email": "jane@a.com",
+    "registration_date": "2024-02-20",
+    "status": "inactive"
+  }
+]
+__CMDEND__2__
+[?2004hroot@8feaba7d8e54:/app# cat /data/source_b/users.csv; printf '%s\n' '__CMDEND__3__'
+[?2004luser_id,name,email_address,created_at,is_active
+101,John Doe,john@b.com,2024-01-10,true
+103,Bob Wilson,bob@b.com,2024-03-01,true
+__CMDEND__3__
+[?2004hroot@8feaba7d8e54:/app# python3 -c "import pandas as pd; df = pd.read_parquet('/data/source_c/users.parquet'); print(df.to_string()); print('\nSchema:'); print(df.dtypes)"
+[?2004l   userId     userName        email      joined  active
+0     101      John D.   john@c.com  2024-01-20    True
+1     104  Alice Brown  alice@c.com  2024-04-01    True
+
+Schema:
+userId       int64
+userName    object
+email       object
+joined      object
+active        bool
+dtype: object
+[?2004hroot@8feaba7d8e54:/app# cat > merge_users.py << 'EOF'
+[?2004l[?2004h> import pandas as pd
+[?2004l[?2004h> import json
+[?2004l[?2004h> from datetime import datetime
+[?2004l[?2004h> 
+[?2004l[?2004h> # Read source files
+[?2004lnique_values = s[?2004h> print("Reading source files...")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Source A - JSON (highest priority)
+[?2004l[?2004h> with open('/data/source_a/users.json', 'r') as f:
+[?2004l[?2004h>     source_a_data = json.load(f)
+[?2004l[?2004h> source_a = pd.DataFrame(source_a_data)
+[?2004l[?2004h> 
+[?2004l [?2004h> # Source B - CSV
+[?2004le[?2004h> source_b = pd.read_csv('/data/source_b/users.csv')
+[?2004l[?2004h> 
+[?2004le[?2004h> # Source C - Parquet (lowest priority)
+[?2004l[?2004h> source_c = pd.read_parquet('/data/source_c/users.parquet')
+[?2004l[?2004h> 
+[?2004l[?2004h> print(f"Source A: {len(source_a)} records")
+[?2004l[?2004h> print(f"Source B: {len(source_b)} records")
+[?2004l
+m[?2004h> print(f"Source C: {len(source_c)} records")
+[?2004l[?2004h> 
+[?2004ln[?2004h> # Normalize field names for each source
+[?2004l[?2004h> def normalize_source_a(df):
+[?2004l[?2004h>     normalized = pd.DataFrame()
+[?2004l[?2004h>     normalized['user_id'] = df['id'].astype(int)
+[?2004l[?2004h>     normalized['name'] = df['full_name']
+[?2004l[?2004h>     normalized['email'] = df['email']
+[?2004l[?2004h>     normalized['created_date'] = df['registration_date']
+[?2004l[?2004h>     normalized['status'] = df.get('status', None)
+[?2004l[?2004h>     normalized['source'] = 'source_a'
+[?2004l[?2004h>     return normalized
+[?2004l[?2004h> 
+[?2004l[?2004h> def normalize_source_b(df):
+[?2004l[?2004h>     normalized = pd.DataFrame()
+[?2004l[?2004h>     normalized['user_id'] = df['user_id'].astype(int)
+[?2004l[?2004h>     normalized['name'] = df['name']
+[?2004lr[?2004h>     normalized['email'] = df['email_address']
+[?2004l[?2004h>     normalized['created_date'] = df['created_at']
+[?2004l[?2004h>     # Map is_active to status if present
+[?2004l[?2004h>     if 'is_active' in df.columns:
+[?2004l[?2004h>         normalized['status'] = df['is_active'].apply(lambda x: 'active' if x else 'inactive')
+[?2004l[?2004h>     else:
+[?2004lr[?2004h>         normalized['status'] = None
+[?2004le [?2004h>     normalized['source'] = 'source_b'
+[?2004l[?2004h>     return normalized
+[?2004lnt(f"[?2004h> 
+[?2004l[?2004h> def normalize_source_c(df):
+[?2004l[?2004h>     normalized = pd.DataFrame()
+[?2004l[?2004h>     normalized['user_id'] = df['userId'].astype(int)
+[?2004l[?2004h>     normalized['name'] = df['userName']
+[?2004l[?2004h>     normalized['email'] = df['email']
+[?2004l[?2004h>     normalized['created_date'] = df['joined']
+[?2004l[?2004h>     # Map active to status if present
+[?2004l[?2004h>     if 'active' in df.columns:
+[?2004l[?2004h>         normalized['status'] = df['active'].apply(lambda x: 'active' if x else 'inactive')
+[?2004l[?2004h>     else:
+[?2004l[?2004h>         normalized['status'] = None
+[?2004l[?2004h>     normalized['source'] = 'source_c'
+[?2004l[?2004h>     return normalized
+[?2004l[?2004h> 
+[?2004l[?2004h> # Normalize all sources
+[?2004l[?2004h> print("\nNormalizing sources...")
+[?2004l[?2004h> norm_a = normalize_source_a(source_a)
+[?2004l[?2004h> norm_b = normalize_source_b(source_b)
+[?2004l[?2004h> norm_c = normalize_source_c(source_c)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Ensure dates are in YYYY-MM-DD format
+[?2004l[?2004h> def normalize_date(date_str):
+[?2004l[?2004h>     if pd.isna(date_str):
+[?2004l[?2004h>         return None
+[?2004l[?2004h>     # Try to parse and format
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         # Handle various date formats
+[?2004l[?2004h>         date_str = str(date_str)
+[?2004l[?2004h>         if 'T' in date_str:
+[?2004l[?2004h>             date_str = date_str.split('T')[0]
+[?2004l[?2004h>         return date_str[:10]  # YYYY-MM-DD
+[?2004l[?2004h>     except:
+[?2004l[?2004h>         return date_str
+[?2004l[?2004h> 
+[?2004l[?2004h> for df in [norm_a, norm_b, norm_c]:
+[?2004l[?2004h>     df['created_date'] = df['created_date'].apply(normalize_date)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Combine all sources
+[?2004l[?2004h> all_data = pd.concat([norm_a, norm_b, norm_c], ignore_index=True)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Get all unique user_ids
+[?2004l[?2004h> unique_users = all_data['user_id'].unique()
+[?2004l[?2004h> 
+[?2004l[?2004h> print(f"\nTotal unique users: {len(unique_users)}")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Merge with priority and track conflicts
+[?2004l[?2004h> merged_records = []
+[?2004l[?2004h> conflicts = []
+[?2004l[?2004h> 
+[?2004l[?2004h> for user_id in sorted(unique_users):
+[?2004l[?2004h>     user_records = all_data[all_data['user_id'] == user_id]
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Get records from each source
+[?2004l[?2004h>     records_by_source = {}
+[?2004l[?2004h>     for _, record in user_records.iterrows():
+[?2004l[?2004h>         source = record['source']
+[?2004l[?2004h>         records_by_source[source] = record
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Priority order
+[?2004l[?2004h>     priority = ['source_a', 'source_b', 'source_c']
+[?2004l[?2004h>     
+[?2004l[?2004h>     # Build merged record
+[?2004l[?2004h>     merged = {'user_id': int(user_id)}
+[?2004l[?2004h>     
+[?2004l[?2004h>     # For each field, check for conflicts and apply priority
+[?2004l[?2004h>     fields = ['name', 'email', 'created_date', 'status']
+[?2004l[?2004h>     
+[?2004l[?2004h>     for field in fields:
+[?2004l[?2004h>         values_by_source = {}
+[?2004l[?2004h>         for source in ['source_a', 'source_b', 'source_c']:
+[?2004l[?2004h>             if source in records_by_source:
+[?2004l[?2004h>                 val = records_by_source[source][field]
+[?2004l[?2004h>                 if pd.notna(val):
+[?2004l[?2004h>                     values_by_source[source] = val
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Select value by priority
+[?2004l[?2004h>         selected_value = None
+[?2004l[?2004h>         for source in priority:
+[?2004l[?2004h>             if source in values_by_source:
+[?2004l[?2004h>                 selected_value = values_by_source[source]
+[?2004l[?2004h>                 break
+[?2004l[?2004h>         
+[?2004l[?2004h>         merged[field] = selected_value
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Check for conflicts (different non-null values)
+[?2004l[?2004h>         unique_values = set(v for v in values_by_source.values() if pd.notna(v))
+[?2004l[?2004h>         if len(unique_values) > 1:
+[?2004l[?2004h>             conflict = {
+[?2004l[?2004h>                 'user_id': int(user_id),
+[?2004l[?2004h>                 'field': field,
+[?2004l[?2004h>                 'values': values_by_source,
+[?2004l[?2004h>                 'selected': selected_value
+[?2004l[?2004h>             }
+[?2004l[?2004h>             conflicts.append(conflict)
+[?2004l[?2004h>     
+[?2004l[?2004h>     merged_records.append(merged)
+[?2004l[?2004h> 
+[?2004l[?2004h> print(f"Total conflicts detected: {len(conflicts)}")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Create merged dataframe
+[?2004l[?2004h> merged_df = pd.DataFrame(merged_records)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Ensure correct data types
+[?2004l[?2004h> merged_df['user_id'] = merged_df['user_id'].astype(int)
+[?2004l[?2004h> merged_df['name'] = merged_df['name'].astype(str)
+[?2004l[?2004h> merged_df['email'] = merged_df['email'].astype(str)
+[?2004l[?2004h> merged_df['created_date'] = merged_df['created_date'].astype(str)
+[?2004l[?2004h> # status can be None/null
+[?2004l[?2004h> 
+[?2004l[?2004h> # Sort by user_id
+[?2004l[?2004h> merged_df = merged_df.sort_values('user_id').reset_index(drop=True)
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\nMerged data preview:")
+[?2004l[?2004h> print(merged_df.to_string())
+[?2004l[?2004h> 
+[?2004l[?2004h> # Save merged data to parquet
+[?2004l[?2004h> print("\nSaving merged data to /app/merged_users.parquet...")
+[?2004l[?2004h> merged_df.to_parquet('/app/merged_users.parquet', index=False)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Create conflict report
+[?2004l[?2004h> conflict_report = {
+[?2004l[?2004h>     'total_conflicts': len(conflicts),
+[?2004l[?2004h>     'conflicts': conflicts
+[?2004l[?2004h> }
+[?2004l[?2004h> 
+[?2004l[?2004h> print(f"Saving conflict report to /app/conflicts.json...")
+[?2004l[?2004h> with open('/app/conflicts.json', 'w') as f:
+[?2004l[?2004h>     json.dump(conflict_report, f, indent=2)
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\nMerge complete!")
+[?2004l[?2004h> print(f"Total users: {len(merged_df)}")
+[?2004l[?2004h> print(f"Total conflicts: {len(conflicts)}")
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@8feaba7d8e54:/app# python3 merge_users.py; printf '%s\n' '__CMDEND__4__'
+[?2004lReading source files...
+Source A: 2 records
+Source B: 2 records
+Source C: 2 records
+
+Normalizing sources...
+
+Total unique users: 4
+Total conflicts detected: 3
+
+Merged data preview:
+   user_id         name        email created_date    status
+0      101     John Doe   john@a.com   2024-01-15    active
+1      102   Jane Smith   jane@a.com   2024-02-20  inactive
+2      103   Bob Wilson    bob@b.com   2024-03-01    active
+3      104  Alice Brown  alice@c.com   2024-04-01    active
+
+Saving merged data to /app/merged_users.parquet...
+Saving conflict report to /app/conflicts.json...
+
+Merge complete!
+Total users: 4
+Total conflicts: 3
+__CMDEND__4__
+[?2004hroot@8feaba7d8e54:/app# ls -la /app/; printf '%s\n' '__CMDEND__5__'
+[?2004ltotal 24
+drwxr-xr-x 1 root root 4096 Apr  5 14:33 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:32 ..
+-rw-r--r-- 1 root root  698 Apr  5 14:33 conflicts.json
+-rw-r--r-- 1 root root 5626 Apr  5 14:33 merge_users.py
+-rw-r--r-- 1 root root 3780 Apr  5 14:33 merged_users.parquet
+__CMDEND__5__
+[?2004hroot@8feaba7d8e54:/app# cat /app/conflicts.json; printf '%s\n' '__CMDEND__6__'
+[?2004l{
+  "total_conflicts": 3,
+  "conflicts": [
+    {
+      "user_id": 101,
+      "field": "name",
+      "values": {
+        "source_a": "John Doe",
+        "source_b": "John Doe",
+        "source_c": "John D."
+      },
+      "selected": "John Doe"
+    },
+    {
+      "user_id": 101,
+      "field": "email",
+      "values": {
+        "source_a": "john@a.com",
+        "source_b": "john@b.com",
+        "source_c": "john@c.com"
+      },
+      "selected": "john@a.com"
+    },
+    {
+      "user_id": 101,
+      "field": "created_date",
+      "values": {
+        "source_a": "2024-01-15",
+        "source_b": "2024-01-10",
+        "source_c": "2024-01-20"
+      },
+      "selected": "2024-01-15"
+    }
+  ]
+}__CMDEND__6__
+[?2004hroot@8feaba7d8e54:/app# python3 -c "import pandas as pd; df = pd.read_parquet('/app/merged_users.parquet'); print('Data:'); print(df.to_string()); print('\nData types:'); print(df.dtypes); print('\nShape:', df.shape)"
+[?2004lData:
+   user_id         name        email created_date    status
+0      101     John Doe   john@a.com   2024-01-15    active
+1      102   Jane Smith   jane@a.com   2024-02-20  inactive
+2      103   Bob Wilson    bob@b.com   2024-03-01    active
+3      104  Alice Brown  alice@c.com   2024-04-01    active
+
+Data types:
+user_id          int64
+name            object
+email           object
+created_date    object
+status          object
+dtype: object
+
+Shape: (4, 5)
+[?2004hroot@8feaba7d8e54:/app# python3 << 'EOF'
+[?2004l[?2004h> import pandas as pd
+[?2004l[?2004h> import json
+[?2004l[?2004h> 
+[?2004l[?2004h> print("=== VERIFICATION ===")
+[?2004l[?2004h> print()
+[?2004l[?2004h> 
+[?2004l[?2004h> # Check source data
+[?2004l[?2004h> print("Source A users:")
+[?2004l[?2004h> with open('/data/source_a/users.json') as f:
+[?2004l[?2004h>     sa = json.load(f)
+[?2004l[?2004h> for u in sa:
+[?2004l[?2004h>     print(f"  ID {u['id']}: {u['full_name']}, {u['email']}, {u['registration_date']}")
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\nSource B users:")
+[?2004l[?2004h> sb = pd.read_csv('/data/source_b/users.csv')
+[?2004l[?2004h> for _, u in sb.iterrows():
+[?2004l[?2004h>     print(f"  ID {u['user_id']}: {u['name']}, {u['email_address']}, {u['created_at']}")
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\nSource C users:")
+[?2004l[?2004h> sc = pd.read_parquet('/data/source_c/users.parquet')
+[?2004l[?2004h> for _, u in sc.iterrows():
+[?2004l[?2004h>     print(f"  ID {u['userId']}: {u['userName']}, {u['email']}, {u['joined']}")
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\n" + "="*50)
+[?2004l[?2004h> print("Merged result:")
+[?2004l[?2004h> merged = pd.read_parquet('/app/merged_users.parquet')
+[?2004l[?2004h> for _, u in merged.iterrows():
+[?2004l[?2004h>     print(f"  ID {u['user_id']}: {u['name']}, {u['email']}, {u['created_date']}, status={u['status']}")
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\n" + "="*50)
+[?2004l[?2004h> print("Verification checks:")
+[?2004l[?2004h> print(f"✓ Total unique users: {len(merged)} (expected: 4)")
+[?2004l[?2004h> print(f"✓ User IDs present: {sorted(merged['user_id'].tolist())} (expected: [101, 102, 103, 104])")
+[?2004l[?2004h> print(f"✓ user_id is integer: {merged['user_id'].dtype == 'int64'}")
+[?2004l[?2004h> print(f"✓ All dates in YYYY-MM-DD format: {all(len(str(d)) == 10 for d in merged['created_date'])}")
+[?2004l[?2004h> print(f"✓ User 101 email from source_a: {merged[merged['user_id']==101]['email'].values[0] == 'john@a.com'}")
+[?2004l[?2004h> print(f"✓ User 101 name from source_a: {merged[merged['user_id']==101]['name'].values[0] == 'John Doe'}")
+[?2004l[?2004h> print(f"✓ User 102 only in source_a: {merged[merged['user_id']==102]['email'].values[0] == 'jane@a.com'}")
+[?2004l[?2004h> print(f"✓ User 103 only in source_b: {merged[merged['user_id']==103]['email'].values[0] == 'bob@b.com'}")
+[?2004l[?2004h> print(f"✓ User 104 only in source_c: {merged[merged['user_id']==104]['email'].values[0] == 'alice@c.com'}")
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\nAll checks passed!")
+[?2004l[?2004h> EOF
+[?2004l=== VERIFICATION ===
+
+Source A users:
+  ID 101: John Doe, john@a.com, 2024-01-15
+  ID 102: Jane Smith, jane@a.com, 2024-02-20
+
+Source B users:
+  ID 101: John Doe, john@b.com, 2024-01-10
+  ID 103: Bob Wilson, bob@b.com, 2024-03-01
+
+Source C users:
+  ID 101: John D., john@c.com, 2024-01-20
+  ID 104: Alice Brown, alice@c.com, 2024-04-01
+
+==================================================
+Merged result:
+  ID 101: John Doe, john@a.com, 2024-01-15, status=active
+  ID 102: Jane Smith, jane@a.com, 2024-02-20, status=inactive
+  ID 103: Bob Wilson, bob@b.com, 2024-03-01, status=active
+  ID 104: Alice Brown, alice@c.com, 2024-04-01, status=active
+
+==================================================
+Verification checks:
+✓ Total unique users: 4 (expected: 4)
+✓ User IDs present: [101, 102, 103, 104] (expected: [101, 102, 103, 104])
+✓ user_id is integer: True
+✓ All dates in YYYY-MM-DD format: True
+✓ User 101 email from source_a: True
+✓ User 101 name from source_a: True
+✓ User 102 only in source_a: True
+✓ User 103 only in source_b: True
+✓ User 104 only in source_c: True
+
+All checks passed!
+[?2004hroot@8feaba7d8e54:/app# ls -la /app/; printf '%s\n' '__CMDEND__7__'
+[?2004ltotal 24
+drwxr-xr-x 1 root root 4096 Apr  5 14:33 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:32 ..
+-rw-r--r-- 1 root root  698 Apr  5 14:33 conflicts.json
+-rw-r--r-- 1 root root 5626 Apr  5 14:33 merge_users.py
+-rw-r--r-- 1 root root 3780 Apr  5 14:33 merged_users.parquet
+__CMDEND__7__
+[?2004hroot@8feaba7d8e54:/app# rm merge_users.py; printf '%s\n' '__CMDEND__8__'
+[?2004l__CMDEND__8__
+[?2004hroot@8feaba7d8e54:/app# ls -la /app/; printf '%s\n' '__CMDEND__9__'
+[?2004ltotal 16
+drwxr-xr-x 1 root root 4096 Apr  5 14:34 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:32 ..
+-rw-r--r-- 1 root root  698 Apr  5 14:33 conflicts.json
+-rw-r--r-- 1 root root 3780 Apr  5 14:33 merged_users.parquet
+__CMDEND__9__
+[?2004hroot@8feaba7d8e54:/app# python3 << 'EOF'
+[?2004l[?2004h> import pandas as pd
+[?2004l[?2004h> import json
+[?2004l[?2004h> 
+[?2004l[?2004h> print("=== FINAL VERIFICATION ===")
+[?2004l[?2004h> print()
+[?2004l[?2004h> 
+[?2004l[?2004h> # 1. Check required files exist
+[?2004l[?2004h> import os
+[?2004l[?2004h> print("1. Required files exist:")
+[?2004l[?2004h> print(f"   ✓ /app/merged_users.parquet exists: {os.path.exists('/app/merged_users.parquet')}")
+[?2004l[?2004h> print(f"   ✓ /app/conflicts.json exists: {os.path.exists('/app/conflicts.json')}")
+[?2004l[?2004h> 
+[?2004l[?2004h> # 2. Load and verify merged data
+[?2004l[?2004h> print("\n2. Merged data verification:")
+[?2004l[?2004h> merged = pd.read_parquet('/app/merged_users.parquet')
+[?2004l[?2004h> print(f"   ✓ Total users: {len(merged)}")
+[?2004l[?2004h> print(f"   ✓ Columns: {list(merged.columns)}")
+[?2004l[?2004h> print(f"   ✓ Expected columns present: {set(merged.columns) == {'user_id', 'name', 'email', 'created_date', 'status'}}")
+[?2004l[?2004h> print(f"   ✓ user_id is integer: {merged['user_id'].dtype == 'int64'}")
+[?2004l[?2004h> print(f"   ✓ name is string: {merged['name'].dtype == 'object'}")
+[?2004l[?2004h> print(f"   ✓ email is string: {merged['email'].dtype == 'object'}")
+[?2004l[?2004h> print(f"   ✓ created_date is string: {merged['created_date'].dtype == 'object'}")
+[?2004l[?2004h> 
+[?2004l[?2004h> # 3. Verify date format
+[?2004l[?2004h> print("\n3. Date format verification:")
+[?2004l[?2004h> import re
+[?2004l[?2004h> date_pattern = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+[?2004l[?2004h> for idx, date in enumerate(merged['created_date']):
+[?2004l[?2004h>     matches = bool(date_pattern.match(str(date)))
+[?2004l[?2004h>     print(f"   ✓ Row {idx} date '{date}' in YYYY-MM-DD format: {matches}")
+[?2004l[?2004h> 
+[?2004l[?2004h> # 4. Verify all unique users included
+[?2004l[?2004h> print("\n4. All unique users from all sources:")
+[?2004l[?2004h> with open('/data/source_a/users.json') as f:
+[?2004l[?2004h>     source_a_ids = set(u['id'] for u in json.load(f))
+[?2004l[?2004h> source_b_ids = set(pd.read_csv('/data/source_b/users.csv')['user_id'].tolist())
+[?2004l[?2004h> source_c_ids = set(pd.read_parquet('/data/source_c/users.parquet')['userId'].tolist())
+[?2004l[?2004h> all_source_ids = source_a_ids | source_b_ids | source_c_ids
+[?2004l[?2004h> merged_ids = set(merged['user_id'].tolist())
+[?2004l[?2004h> print(f"   Source A IDs: {sorted(source_a_ids)}")
+[?2004l[?2004h> print(f"   Source B IDs: {sorted(source_b_ids)}")
+[?2004l[?2004h> print(f"   Source C IDs: {sorted(source_c_ids)}")
+[?2004l[?2004h> print(f"   All unique source IDs: {sorted(all_source_ids)}")
+[?2004l[?2004h> print(f"   Merged IDs: {sorted(merged_ids)}")
+[?2004l[?2004h> print(f"   ✓ All users included: {all_source_ids == merged_ids}")
+[?2004l[?2004h> 
+[?2004l[?2004h> # 5. Verify conflict report
+[?2004l[?2004h> print("\n5. Conflict report verification:")
+[?2004l[?2004h> with open('/app/conflicts.json') as f:
+[?2004l[?2004h>     conflicts_data = json.load(f)
+[?2004l[?2004h> print(f"   ✓ total_conflicts field present: {'total_conflicts' in conflicts_data}")
+[?2004l[?2004h> print(f"   ✓ conflicts array present: {'conflicts' in conflicts_data}")
+[?2004l[?2004h> print(f"   ✓ total_conflicts matches array length: {conflicts_data['total_conflicts'] == len(conflicts_data['conflicts'])}")
+[?2004l[?2004h> print(f"   ✓ Number of conflicts: {conflicts_data['total_conflicts']}")
+[?2004l[?2004h> 
+[?2004l[?2004h> # 6. Verify priority resolution for user 101
+[?2004l[?2004h> print("\n6. Priority resolution for user 101 (appears in all sources):")
+[?2004l[?2004h> user_101 = merged[merged['user_id'] == 101].iloc[0]
+[?2004l[?2004h> print(f"   Selected email: {user_101['email']} (should be from source_a: john@a.com)")
+[?2004l[?2004h> print(f"   ✓ Email from source_a: {user_101['email'] == 'john@a.com'}")
+[?2004l[?2004h> print(f"   Selected name: {user_101['name']} (should be from source_a: John Doe)")
+[?2004l[?2004h> print(f"   ✓ Name from source_a: {user_101['name'] == 'John Doe'}")
+[?2004l[?2004h> print(f"   Selected date: {user_101['created_date']} (should be from source_a: 2024-01-15)")
+[?2004l[?2004h> print(f"   ✓ Date from source_a: {user_101['created_date'] == '2024-01-15'}")
+[?2004l[?2004h> 
+[?2004l[?2004h> # 7. Verify field mappings
+[?2004l[?2004h> print("\n7. Field mapping verification:")
+[?2004l[?2004h> print("   ✓ id/user_id/userId → user_id: Verified")
+[?2004l[?2004h> print("   ✓ full_name/name/userName → name: Verified")
+[?2004l[?2004h> print("   ✓ email/email_address → email: Verified")
+[?2004l[?2004h> print("   ✓ registration_date/created_at/joined → created_date: Verified")
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\n" + "="*50)
+[?2004l[?2004h> print("✓ ALL REQUIREMENTS MET!")
+[?2004l[?2004h> print("="*50)
+[?2004l[?2004h> EOF
+[?2004l=== FINAL VERIFICATION ===
+
+1. Required files exist:
+   ✓ /app/merged_users.parquet exists: True
+   ✓ /app/conflicts.json exists: True
+
+2. Merged data verification:
+   ✓ Total users: 4
+   ✓ Columns: ['user_id', 'name', 'email', 'created_date', 'status']
+   ✓ Expected columns present: True
+   ✓ user_id is integer: True
+   ✓ name is string: True
+   ✓ email is string: True
+   ✓ created_date is string: True
+
+3. Date format verification:
+   ✓ Row 0 date '2024-01-15' in YYYY-MM-DD format: True
+   ✓ Row 1 date '2024-02-20' in YYYY-MM-DD format: True
+   ✓ Row 2 date '2024-03-01' in YYYY-MM-DD format: True
+   ✓ Row 3 date '2024-04-01' in YYYY-MM-DD format: True
+
+4. All unique users from all sources:
+   Source A IDs: [101, 102]
+   Source B IDs: [101, 103]
+   Source C IDs: [101, 104]
+   All unique source IDs: [101, 102, 103, 104]
+   Merged IDs: [101, 102, 103, 104]
+   ✓ All users included: True
+
+5. Conflict report verification:
+   ✓ total_conflicts field present: True
+   ✓ conflicts array present: True
+   ✓ total_conflicts matches array length: True
+   ✓ Number of conflicts: 3
+
+6. Priority resolution for user 101 (appears in all sources):
+   Selected email: john@a.com (should be from source_a: john@a.com)
+   ✓ Email from source_a: True
+   Selected name: John Doe (should be from source_a: John Doe)
+   ✓ Name from source_a: True
+   Selected date: 2024-01-15 (should be from source_a: 2024-01-15)
+   ✓ Date from source_a: True
+
+7. Field mapping verification:
+   ✓ id/user_id/userId → user_id: Verified
+   ✓ full_name/name/userName → name: Verified
+   ✓ email/email_address → email: Verified
+   ✓ registration_date/created_at/joined → created_date: Verified
+
+==================================================
+✓ ALL REQUIREMENTS MET!
+==================================================
+[?2004hroot@8feaba7d8e54:/app# ls -la /app/ && echo '---' && ls -la /data/source_a/ && ls -la /data/source_b/ && ls -la /data/source_c/
+[?2004ltotal 16
+drwxr-xr-x 1 root root 4096 Apr  5 14:34 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:32 ..
+-rw-r--r-- 1 root root  698 Apr  5 14:33 conflicts.json
+-rw-r--r-- 1 root root 3780 Apr  5 14:33 merged_users.parquet
+---
+total 12
+drwxr-xr-x 2 root root 4096 Oct 24 05:18 .
+drwxr-xr-x 5 root root 4096 Oct 24 05:18 ..
+-rw-r--r-- 1 root root  291 Oct 24 05:18 users.json
+total 12
+drwxr-xr-x 2 root root 4096 Oct 24 05:18 .
+drwxr-xr-x 5 root root 4096 Oct 24 05:18 ..
+-rw-r--r-- 1 root root  129 Oct 24 05:18 users.csv
+total 12
+drwxr-xr-x 2 root root 4096 Oct 24 05:18 .
+drwxr-xr-x 5 root root 4096 Oct 24 05:18 ..
+-rw-r--r-- 1 root root 3639 Oct 24 05:18 users.parquet
+[?2004hroot@8feaba7d8e54:/app# 

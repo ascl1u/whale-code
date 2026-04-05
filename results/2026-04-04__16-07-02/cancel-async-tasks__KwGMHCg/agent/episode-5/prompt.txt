@@ -1,0 +1,87 @@
+New Terminal Output:
+
+root@a5d065eeb03f:/app# python3 << 'EOF'
+> import asyncio
+> from run import run_tasks
+>
+> print("Test 4: Cancellation and cleanup")
+>
+> async def test_cancellation_cleanup():
+>     cleanup_ran = []
+>     started = []
+>
+>     async def long_task(task_id):
+>         try:
+>             started.append(task_id)
+>             print(f"Task {task_id} started")
+>             # Simulate a long-running task
+>             await asyncio.sleep(10)
+>             print(f"Task {task_id} finished normally (shouldn't happen)")
+>         except asyncio.CancelledError:
+>             print(f"Task {task_id} was cancelled")
+>             raise
+>         finally:
+>             cleanup_ran.append(task_id)
+>             print(f"Task {task_id} cleanup ran")
+>
+>     tasks = [lambda i=i: long_task(i) for i in range(5)]
+>
+>     # Create a task that will cancel the run_tasks after a short delay
+>     async def cancel_after_delay():
+>         await asyncio.sleep(0.2)  # Let some tasks start
+>         print("\nSimulating cancellation...")
+>         # Cancel the main task
+>         main_task.cancel()
+>
+>     main_task = asyncio.create_task(run_tasks(tasks, max_concurrent=2))
+>     cancel_task = asyncio.create_task(cancel_after_delay())
+>
+>     try:
+>         await main_task
+>         print("Main task completed normally")
+>     except asyncio.CancelledError:
+>         print("Main task was cancelled (expected)")
+>
+>     await cancel_task
+>
+>     # Give a moment for cleanup to complete
+>     await asyncio.sleep(0.1)
+>
+>     print(f"\nTasks started: {len(started)}")
+>     print(f"Cleanup ran for: {len(cleanup_ran)} tasks")
+>     print(f"Cleanup ran for all started tasks: {len(cleanup_ran) == len(started)}")
+>
+>     # Verify that cleanup ran for all started tasks
+>     assert len(cleanup_ran) == len(started), f"Cleanup didn't run for all started tasks! Started: {started}, Cleanup: {cleanup_ran}"
+>     print("Test 4: PASSED - Cleanup runs even when cancelled")
+>
+> asyncio.run(test_cancellation_cleanup())
+>
+> # Test 5: Empty task list
+> async def test_empty():
+>     await run_tasks([], max_concurrent=5)
+>     print("Test 5: PASSED - Empty task list handled correctly")
+>
+> asyncio.run(test_empty())
+>
+> print("\nAll additional tests passed!")
+> EOF
+Test 4: Cancellation and cleanup
+Task 0 started
+Task 1 started
+
+Simulating cancellation...
+Task 0 was cancelled
+Task 0 cleanup ran
+Task 1 was cancelled
+Task 1 cleanup ran
+Main task was cancelled (expected)
+
+Tasks started: 2
+Cleanup ran for: 2 tasks
+Cleanup ran for all started tasks: True
+Test 4: PASSED - Cleanup runs even when cancelled
+Test 5: PASSED - Empty task list handled correctly
+
+All additional tests passed!
+root@a5d065eeb03f:/app#

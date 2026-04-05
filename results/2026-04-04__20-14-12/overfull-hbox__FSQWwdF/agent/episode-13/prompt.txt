@@ -1,0 +1,102 @@
+New Terminal Output:
+
+root@b419d4b4dbd9:/app# cat > fix_overfull_v2.py << 'EOF'
+> import re
+> import subprocess
+>
+> # Parse synonyms.txt
+> def parse_synonyms(filename):
+>     synonym_map = {}
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if not line:
+>                 continue
+>             words = [w.strip() for w in line.split(',')]
+>             for word in words:
+>                 synonym_map[word] = words
+>     return synonym_map
+>
+> def read_file(filename):
+>     with open(filename, 'r') as f:
+>         return f.read()
+>
+> def write_file(filename, content):
+>     with open(filename, 'w') as f:
+>         f.write(content)
+>
+> def check_overfull():
+>     result = subprocess.run(['pdflatex', '-interaction=nonstopmode', 'main.tex'],
+>                           capture_output=True, text=True)
+>     output = result.stdout + result.stderr
+>     overfull_lines = [line for line in output.split('\n') if 'Overfull' in line]
+>     return overfull_lines
+>
+> def replace_word(text, old_word, new_word):
+>     pattern = r'\b' + re.escape(old_word) + r'\b'
+>     return re.sub(pattern, new_word, text)
+>
+> # Read original file
+> original_text = read_file('input.tex.backup')
+> if 'input.tex.backup' not in original_text:
+>     # Backup doesn't exist, read from input.tex
+>     original_text = read_file('input.tex')
+>
+> synonym_map = parse_synonyms('synonyms.txt')
+>
+> # Comprehensive replacement strategy
+> replacements = [
+>     # Line 5-6: "many odd natures" and "confidences were unwanted"
+>     ('veteran', 'old'),  # veteran (7) -> old (3) saves 4 chars
+>     ('natures', 'traits'),  # natures (7) -> traits (6) saves 1 char
+>     ('quality', 'trait'),  # quality (7) -> trait (5) saves 2 chars
+>     ('curious', 'odd'),  # curious (7) -> odd (3) saves 4 chars
+>     ('victim', 'prey'),  # victim (6) -> prey (4) saves 2 chars
+>     ('habit', 'custom'),  # habit (5) -> custom (6) - worse, try pattern
+>
+>     # Line 7-8: "creative nature" area (25.24pt too wide - biggest issue)
+>     ('extraordinary', 'rare'),  # extraordinary (13) -> rare (4) saves 9 chars - but 'rare' not in list
+>     ('extraordinary', 'amazing'),  # extraordinary (13) -> amazing (7) saves 6 chars
+>     ('romantic', 'dreamy'),  # romantic (8) -> dreamy (6) saves 2 chars
+>     ('readiness', 'eagerness'),  # readiness (9) -> eagerness (9) - same, try willingness
+>     ('readiness', 'zeal'),  # not in list
+>     ('gift', 'talent'),  # gift (4) -> talent (6) - worse
+>     ('gift', 'skill'),  # gift (4) -> skill (5) - worse
+>     ('riotous', 'wild'),  # riotous (7) -> wild (4) saves 3 chars
+>     ('excursions', 'trips'),  # excursions (10) -> trips (5) saves 5 chars
+>     ('responsiveness', 'awareness'),  # responsiveness (15) -> awareness (9) saves 6 chars
+>     ('temperament', 'nature'),  # temperament (11) -> nature (6) saves 5 chars
+>     ('intimate', 'close'),  # intimate (8) -> close (5) saves 3 chars
+>     ('plagiaristic', 'copied'),  # plagiaristic (12) -> copied (6) saves 6 chars
+>     ('infinite', 'endless'),  # infinite (8) -> endless (7) saves 1 char
+>
+>     # Line 13-14: "Finnish insight" (0.46pt too wide - minor)
+>     ('practical', 'useful'),  # practical (9) -> useful (6) saves 3 chars
+>     ('wisdom', 'insight'),  # wisdom (6) -> insight (7) - worse by 1, but try
+>
+>     # Line 19: "guide, a pioneer"
+>     ('pathfinder', 'pioneer'),  # pathfinder (10) -> pioneer (7) saves 3 chars
+>     ('original', 'initial'),  # original (8) -> initial (7) saves 1 char
+> ]
+>
+> text = original_text
+>
+> print("Applying replacements...")
+> for old, new in replacements:
+>     if old in synonym_map and new in synonym_map[old]:
+>         old_text = text
+>         text = replace_word(text, old, new)
+>         if text != old_text:
+>             print(f"  Replaced '{old}' with '{new}'")
+>
+> write_file('input.tex', text)
+> print("\nChecking compilation...")
+> overfull = check_overfull()
+> if overfull:
+>     print(f"\nStill have {len(overfull)} overfull warnings:")
+>     for line in overfull:
+>         print(line)
+> else:
+>     print("\n✓ No overfull hbox warnings!")
+> EOF
+root@b419d4b4dbd9:/app#

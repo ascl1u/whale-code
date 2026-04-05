@@ -1,0 +1,141 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat >> design_all_primers.py << 'EOFPYTHON'
+> # === FLAG PRIMERS ===
+> print("Designing FLAG primers...")
+a> # Forward: need overhang GGTA
+nneal
+        print(f"  Revers> flag_fwd_tail = "GGTCTCNGGTA"
+> for length in range(15, 46):
+>     anneal = flag_template[:length]
+>     tm = calc_tm(anneal)
+>     if tm and 58 <= tm <= 72:
+>         flag_fwd = flag_fwd_tail + anneal
+in>         flag_fwd_tm = tm
+>         flag_fwd_anneal = anneal
+>         print(f"  Forward annealing region: {length}bp, Tm: {tm:.2f}°C")
+>         break
+>
+t> # Reverse: need overhang GACA (on template after FLAG)
+> # Reverse complement: TGTC
+> flag_rev_tail = "GAGACCNTGTC"
+> flag_template_end_rc = reverse_complement(flag_template[-45:])
+)> for length in range(15, 46):
+\n">     anneal = flag_template_end_rc[:length]
+>     tm = calc_tm(anneal)
+>     if tm and 58 <= tm <= 72 and abs(tm - flag_fwd_tm) <= 5:
+>         flag_rev = flag_rev_tail + anneal
+ >         flag_rev_tm = tm
+>         flag_rev_anneal = anneal
+>         print(f"  Reverse annealing region: {length}bp, Tm: {tm:.2f}°C")
+_re>         print(f"  Tm difference: {abs(tm - flag_fwd_tm):.2f}°C")
+>         break
+>
+> primers.append(('flag_fwd', flag_fwd, flag_fwd_anneal, flag_fwd_tm))
+> primers.append(('flag_rev', flag_rev, flag_rev_anneal, flag_rev_tm))
+> print("\nFLAG primers designed.\n")
+>
+> # === SNAP PRIMERS ===
+> print("Designing SNAP primers...")
+> # Forward: need overhang GACA
+> snap_fwd_tail = "GGTCTCNGACA"
+> for length in range(15, 46):
+>     anneal = snap_template[:length]
+>     tm = calc_tm(anneal)
+>     if tm and 58 <= tm <= 72:
+>         snap_fwd = snap_fwd_tail + anneal
+>         snap_fwd_tm = tm
+>         snap_fwd_anneal = anneal
+>         print(f"  Forward annealing region: {length}bp, Tm: {tm:.2f}°C")
+>         break
+>
+> # Reverse: need overhang TGAG (on template after SNAP)
+> # Reverse complement: CTCA
+> snap_rev_tail = "GAGACCNCTCA"
+> snap_template_end_rc = reverse_complement(snap_template[-45:])
+> for length in range(15, 46):
+>     anneal = snap_template_end_rc[:length]
+>     tm = calc_tm(anneal)
+>     if tm and 58 <= tm <= 72 and abs(tm - snap_fwd_tm) <= 5:
+>         snap_rev = snap_rev_tail + anneal
+>         snap_rev_tm = tm
+>         snap_rev_anneal = anneal
+>         print(f"  Reverse annealing region: {length}bp, Tm: {tm:.2f}°C")
+>         print(f"  Tm difference: {abs(tm - snap_fwd_tm):.2f}°C")
+>         break
+>
+> primers.append(('snap_fwd', snap_rev, snap_fwd_anneal, snap_fwd_tm))
+> primers.append(('snap_rev', snap_rev, snap_rev_anneal, snap_rev_tm))
+> print("\nSNAP primers designed.\n")
+>
+> # === INPUT PLASMID PRIMERS ===
+> print("Designing input plasmid primers...")
+> # Need to linearize the input plasmid at position 210
+> # Forward primer: starts after the cut, needs overhang TGAG (to connect to SNAP)
+> # Reverse primer: ends before the cut, needs overhang ATGA (to connect to EGFP)
+>
+> # The input is circular, and we're cutting at position 210
+> # Forward primer amplifies from position 1554 (after SNAP insertion point) onwards
+> # Reverse primer amplifies up to position 210 (before EGFP insertion point)
+>
+> input_fwd_start = 1554  # After SNAP in output = after insertion in input
+> input_template_fwd = seqs['input'][input_fwd_start:input_fwd_start+45]
+> input_fwd_tail = "GGTCTCNTGAG"
+> for length in range(15, 46):
+>     if input_fwd_start + length > len(seqs['input']):
+>         break
+>     anneal = seqs['input'][input_fwd_start:input_fwd_start+length]
+>     tm = calc_tm(anneal)
+>     if tm and 58 <= tm <= 72:
+>         input_fwd = input_fwd_tail + anneal
+>         input_fwd_tm = tm
+>         input_fwd_anneal = anneal
+>         print(f"  Forward annealing region: {length}bp, Tm: {tm:.2f}°C")
+>         break
+>
+> # Reverse primer: amplifies backwards from position 210
+> # Need overhang ACAT (reverse complement of ATGT) - wait, need to think about this
+> # The cut is at 210, and we want overhang ATGA after the cut for EGFP
+> # So the reverse primer needs to create overhang ACAT before the cut
+> # Reverse complement of ACAT is ATGT
+> input_rev_tail = "GAGACCNATGT"
+> input_template_rev_rc = reverse_complement(seqs['input'][210-45:210])
+> for length in range(15, 46):
+>     anneal = input_template_rev_rc[:length]
+>     tm = calc_tm(anneal)
+>     if tm and 58 <= tm <= 72 and abs(tm - input_fwd_tm) <= 5:
+>         input_rev = input_rev_tail + anneal
+>         input_rev_tm = tm
+>         input_rev_anneal = anneal
+>         print(f"  Reverse annealing region: {length}bp, Tm: {tm:.2f}°C")
+>         print(f"  Tm difference: {abs(tm - input_fwd_tm):.2f}°C")
+>         break
+>
+> primers.append(('input_fwd', input_fwd, input_fwd_anneal, input_fwd_tm))
+> primers.append(('input_rev', input_rev, input_rev_anneal, input_rev_tm))
+> print("\nInput plasmid primers designed.\n")
+>
+> # Write to fasta file
+> print("Writing primers to primers.fasta...")
+> with open('primers.fasta', 'w') as f:
+>     f.write(">input_fwd\n")
+>     f.write(input_fwd + "\n")
+>     f.write(">input_rev\n")
+>     f.write(input_rev + "\n")
+>     f.write(">egfp_fwd\n")
+>     f.write(egfp_fwd + "\n")
+>     f.write(">egfp_rev\n")
+>     f.write(egfp_rev + "\n")
+>     f.write(">flag_fwd\n")
+>     f.write(flag_fwd + "\n")
+>     f.write(">flag_rev\n")
+>     f.write(flag_rev + "\n")
+>     f.write(">snap_fwd\n")
+>     f.write(snap_fwd + "\n")
+>     f.write(">snap_rev\n")
+>     f.write(snap_rev + "\n")
+>
+> print("\nDone! Primers written to primers.fasta")
+> print(f"\nTotal primer pairs: {len(primers)//2}")
+> EOFPYTHON
+root@b088ecd58d39:/app#

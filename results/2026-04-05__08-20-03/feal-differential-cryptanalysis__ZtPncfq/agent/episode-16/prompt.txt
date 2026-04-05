@@ -1,0 +1,134 @@
+New Terminal Output:
+
+root@e46f4ec08a64:/app# cat > /app/attack.py << 'EOF'
+> #!/usr/bin/env python3
+> import random
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+ =>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     # Simpler approach: use the algebraic relationship directly
+>     # For a given plaintext-ciphertext pair and candidate key[5],
+>     # we can compute what (left3, right3) must be.
+>     #
+>     # The correct key should satisfy certain consistency conditions
+>     # across multiple pairs.
+>
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(100):
+>         pt = random.randint(0, 0xFFFFFFFFFFFFFFFF)
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # For each candidate key, compute a consistency score
+>     scores = []
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Compute (left3, right3) for each pair
+>         states = []
+>         for pt, ct in pairs:
+>             CT_L, CT_R = getleft(ct), getright(ct)
+>             right3 = CT_R ^ CT_L
+>             left3 = CT_L ^ f_function(right3 ^ candidate_key5)
+>             states.append((left3, right3))
+>
+>         # Now score this candidate
+>         # The correct key should produce states that follow the Feistel pattern
+>         # One heuristic: check entropy or patterns in the states
+>
+>         # Try this: count how many unique states we get
+>         # The correct key should give us 100 unique states (one per unique plaintext)
+>         unique_states = len(set(states))
+>
+>         # Also check: for states, the relationship between consecutive states
+>         # should follow some pattern
+>
+>         score = unique_states
+>         scores.append((seed, score))
+>
+>     # Find the seed with the best score
+>     # Actually, all candidates will give 100 unique states...
+>     # This approach won't work either.
+>
+>     # Let me try yet another approach: use the structure more directly
+>     # I'll use pairs with specific input differences and look for
+>     # differential characteristics
+>
+>     # Reset and use a better strategy
+>     test_pairs = []
+>     for i in range(50):
+>         pt1 = i * 0x0101010101010101
+>         pt2 = pt1 ^ 0x8080000080800000  # Specific difference
+>         ct1 = encrypt_fn(pt1)
+>         ct2 = encrypt_fn(pt2)
+>         test_pairs.append((pt1, ct1, pt2, ct2))
+>
+>     # For each candidate, check the differential properties
+>     best_seed = 0
+>     best_score = float('inf')
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Count anomalies
+>         anomaly_score = 0
+>
+>         for pt1, ct1, pt2, ct2 in test_pairs:
+>             CT1_L, CT1_R = getleft(ct1), getright(ct1)
+>             CT2_L, CT2_R = getleft(ct2), getright(ct2)
+>
+>             right3_1 = CT1_R ^ CT1_L
+>             left3_1 = CT1_L ^ f_function(right3_1 ^ candidate_key5)
+>
+>             right3_2 = CT2_R ^ CT2_L
+>             left3_2 = CT2_L ^ f_function(right3_2 ^ candidate_key5)
+>
+>             # Compute the difference after round 3
+>             diff_left3 = left3_1 ^ left3_2
+>             diff_right3 = right3_1 ^ right3_2
+>
+>             # The anomaly is measured by how "random" the difference looks
+>             # For the correct key, the differences should follow the Feistel pattern
+>             # Let's use Hamming weight as a proxy
+>             hw = bin(diff_left3).count('1') + bin(diff_right3).count('1')
+>
+>             # Prefer keys that give medium Hamming weights
+>             # (too low or too high is suspicious)
+>             if 20 <= hw <= 44:  # Around 32 bits set out of 64
+>                 anomaly_score += abs(hw - 32)
+>             else:
+>                 anomaly_score += 100
+>
+>         if anomaly_score < best_score:
+>             best_score = anomaly_score
+>             best_seed = seed
+>
+>     return (best_seed * 1234567) & 0xFFFFFFFF
+> EOF
+root@e46f4ec08a64:/app#

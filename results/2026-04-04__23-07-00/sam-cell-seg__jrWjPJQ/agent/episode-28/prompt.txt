@@ -1,0 +1,150 @@
+New Terminal Output:
+
+root@75e0c428ae4c:/app# cat > /app/convert_masks.py << 'EOF'
+> import argparse
+> import cv2
+> import numpy as np
+> import pandas as pd
+> import torch
+> from mobile_sam import sam_model_registry, SamPredictor
+>
+> def parse_coords(coords_str):
+ >     """Parse comma-separated coordinate string to list of integers."""
+>     if pd.isna(coords_str):
+>         return []
+>     return [int(x) for x in str(coords_str).split(',')]
+>
+> def coords_to_string(coords_list):
+>     """Convert list of coordinates to comma-separated string."""
+>     return ','.join(map(str, coords_list))
+>
+> def get_largest_contour(mask):
+>     """Extract the largest contour from a binary mask."""
+>     contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+>     if len(contours) == 0:
+>         return None
+i>     # Get the largest contour by area
+ >     largest_contour = max(contours, key=cv2.contourArea)
+>     return largest_contour
+ >
+> def contour_to_coords(contour):
+>     """Convert OpenCV contour to separate x and y coordinate lists."""
+>     if contour is None or len(contour) == 0:
+>         return [], []
+>     # Squeeze to remove extra dimension and extract x, y coordinates
+>     points = contour.squeeze()
+>     if len(points.shape) == 1:  # Single point
+>         points = points.reshape(1, -1)
+>     coords_x = points[:, 0].tolist()
+>     coords_y = points[:, 1].tolist()
+>     return coords_x, coords_y
+>
+> def refine_mask_with_sam(predictor, bbox):
+>     """Use SAM to refine a mask given a bounding box prompt."""
+>     # bbox format: [xmin, ymin, xmax, ymax]
+>     box_prompt = np.array(bbox)
+>
+>     # Predict mask using bounding box prompt
+>     masks, scores, _ = predictor.predict(
+>         point_coords=None,
+>         point_labels=None,
+>         box=box_prompt,
+>         multimask_output=False  # Single mask output
+>     )
+>
+>     # Return the mask (first one since multimask_output=False)
+>     return masks[0]
+>
+> def main():
+>     parser = argparse.ArgumentParser(
+>         description='Convert cell masks to polylines using MobileSAM'
+>     )
+>     parser.add_argument('weights_path', type=str, help='Path to MobileSAM weights')
+>     parser.add_argument('output_path', type=str, help='Path to output CSV file')
+>     parser.add_argument('rgb_path', type=str, help='Path to RGB image')
+>     parser.add_argument('csv_path', type=str, help='Path to metadata CSV')
+>
+>     args = parser.parse_args()
+>
+>     # Load the image
+>     print("Loading image...")
+>     image = cv2.imread(args.rgb_path)
+>     if image is None:
+>         raise ValueError(f"Could not load image from {args.rgb_path}")
+>     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+>
+>     # Load the CSV
+>     print("Loading CSV...")
+>     df = pd.read_csv(args.csv_path)
+>
+>     # Initialize MobileSAM
+>     print("Loading MobileSAM model...")
+>     device = 'cpu'
+>     sam = sam_model_registry['vit_t'](checkpoint=args.weights_path)
+>     sam.to(device=device)
+>     sam.eval()
+>
+>     predictor = SamPredictor(sam)
+>     predictor.set_image(image_rgb)
+>
+>     # Create a mask to track which pixels are already assigned
+>     assigned_mask = np.zeros(image.shape[:2], dtype=bool)
+>
+>     # Process each mask
+>     print(f"Processing {len(df)} masks...")
+>     for idx in range(len(df)):
+>         row = df.iloc[idx]
+>
+>         # Get bounding box
+>         xmin, ymin, xmax, ymax = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
+>         bbox = [xmin, ymin, xmax, ymax]
+>
+>         # Refine mask with SAM
+>         refined_mask = refine_mask_with_sam(predictor, bbox)
+>
+>         # Remove any overlap with previously assigned masks
+>         refined_mask = refined_mask & (~assigned_mask)
+>
+>         # Extract the largest contour
+>         contour = get_largest_contour(refined_mask)
+>
+>         if contour is not None and len(contour) > 0:
+>             # Convert contour to coordinates
+>             coords_x, coords_y = contour_to_coords(contour)
+>
+>             # Update bounding box based on actual contour
+>             if len(coords_x) > 0:
+>                 new_xmin = min(coords_x)
+>                 new_xmax = max(coords_x)
+>                 new_ymin = min(coords_y)
+>                 new_ymax = max(coords_y)
+>
+>                 # Update dataframe
+>                 df.at[idx, 'xmin'] = new_xmin
+>                 df.at[idx, 'xmax'] = new_xmax
+>                 df.at[idx, 'ymin'] = new_ymin
+>                 df.at[idx, 'ymax'] = new_ymax
+>                 df.at[idx, 'coords_x'] = coords_to_string(coords_x)
+>                 df.at[idx, 'coords_y'] = coords_to_string(coords_y)
+>                 df.at[idx, 'type'] = 'polyline'
+>
+>                 # Mark these pixels as assigned
+>                 mask_filled = np.zeros(image.shape[:2], dtype=np.uint8)
+>                 cv2.drawContours(mask_filled, [contour], -1, 1, -1)
+>                 assigned_mask = assigned_mask | (mask_filled > 0)
+>             else:
+>                 # Keep original if no valid contour found
+>                 print(f"Warning: No valid contour for mask {idx}, keeping original")
+>         else:
+>             # Keep original if no contour found
+>             print(f"Warning: No contour found for mask {idx}, keeping original")
+>
+>     # Save the updated CSV
+>     print(f"Saving results to {args.output_path}...")
+>     df.to_csv(args.output_path, index=False)
+>     print("Done!")
+>
+> if __name__ == '__main__':
+>     main()
+> EOF
+root@75e0c428ae4c:/app#

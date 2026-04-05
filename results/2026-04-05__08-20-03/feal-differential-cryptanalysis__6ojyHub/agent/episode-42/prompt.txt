@@ -1,0 +1,81 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using differential cryptanalysis"""
+>
+>     # Collect plaintext pairs with zero difference (same plaintext encrypted twice should give same result)
+>     # and pairs with specific differences
+>
+>     # First, collect some basic pairs
+>     data = []
+>     for i in range(64):
+>         pt1 = i
+>         pt2 = i ^ 0x8080808080808080  # Specific difference
+>         ct1 = encrypt_fn(pt1)
+>         ct2 = encrypt_fn(pt2)
+>         data.append((ct1, ct2))
+>
+>     # For each candidate, compute how many pairs give a "reasonable" difference after partial decryption
+>     scores = {}
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Count differences that fall into a specific range
+>         count = 0
+>
+>         for ct1, ct2 in data:
+>             # Partially decrypt
+>             fr1 = getleft(ct1)
+>             fl1 = getright(ct1)
+>             rb1 = fl1 ^ fr1
+>             lb1 = fr1 ^ f_function(rb1 ^ candidate_key5)
+>
+>             fr2 = getleft(ct2)
+>             fl2 = getright(ct2)
+>             rb2 = fl2 ^ fr2
+>             lb2 = fr2 ^ f_function(rb2 ^ candidate_key5)
+>
+>             # Compute difference
+>             diff_l = lb1 ^ lb2
+>             diff_r = rb1 ^ rb2
+>
+>             # Simple scoring: count non-zero differences
+>             if diff_l != 0 and diff_r != 0:
+>                 count += 1
+>
+>         scores[candidate_key5] = count
+>
+>     # Return the key with maximum score
+>     return max(scores, key=scores.get)
+>
+> EOF
+root@486aac7a4fa6:/app#

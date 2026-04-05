@@ -1,0 +1,67 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > analyze_better.py << 'EOF'
+> import subprocess
+>
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> print("Sequence lengths:")
+> for name in ['input', 'egfp', 'flag', 'snap', 'output']:
+>     print(f"  {name}: {len(seqs[name])} bp")
+>
+> # Check if egfp is in output
+> egfp_in_output = seqs['egfp'] in seqs['output']
+> flag_in_output = seqs['flag'] in seqs['output']
+> snap_in_output = seqs['snap'] in seqs['output']
+>
+> print(f"\negfp in output: {egfp_in_output}")
+> print(f"flag in output: {flag_in_output}")
+> print(f"snap in output: {snap_in_output}")
+>
+> # Let's check the start of each
+> print(f"\negfp starts with: {seqs['egfp'][:30]}")
+> print(f"flag starts with: {seqs['flag'][:30]}")
+> print(f"snap starts with: {seqs['snap'][:30]}")
+>
+> # Search for these in output
+> for name in ['egfp', 'flag', 'snap']:
+>     start_seq = seqs[name][:30]
+>     pos = seqs['output'].find(start_seq)
+>     print(f"\n{name} start found at position: {pos}")
+>     if pos >= 0:
+>         print(f"  Context: ...{seqs['output'][max(0,pos-20):pos]}[{seqs['output'][pos:pos+30]}]...")
+>
+> EOF
+root@11eec39dc770:/app# python3 analyze_better.py
+Sequence lengths:
+  input: 2727 bp
+  egfp: 717 bp
+  flag: 90 bp
+  snap: 549 bp
+  output: 3591 bp
+
+egfp in output: False
+flag in output: False
+snap in output: False
+
+egfp starts with: atgagcaagggcgaggagctgttcaccggg
+flag starts with: atgggtagtggctccggtagcggtagcggc
+snap starts with: atggacaaagactgcgaaatgaagcgcacc
+
+egfp start found at position: 210
+  Context: ...tttaagaaggagatatacat[atgagcaagggcgaggagctgttcaccggg]...
+
+flag start found at position: -1
+
+snap start found at position: -1
+root@11eec39dc770:/app#

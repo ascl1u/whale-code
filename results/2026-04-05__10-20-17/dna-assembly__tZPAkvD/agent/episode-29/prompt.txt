@@ -1,0 +1,54 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > verify_primers.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> # Read primers
+> primers = {}
+> current_name = None
+> with open('primers.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             primers[current_name] = ''
+>         else:
+>             primers[current_name] += line
+>
+> print("Verifying primers...\n")
+>
+> for name, seq in primers.items():
+>     print(f"{name}:")
+>     print(f"  Full sequence: {seq}")
+>     print(f"  Length: {len(seq)} bp")
+>
+>     # Extract parts
+>     if 'fwd' in name:
+>         bsai_site = seq[:7]  # GGTCTCN
+>         overhang = seq[7:11]  # 4 bases
+>         template_binding = seq[11:]  # Rest
+>         print(f"  BsaI site: {bsai_site}")
+>         print(f"  Overhang: {overhang}")
+>         print(f"  Template binding: {template_binding} ({len(template_binding)} bp)")
+>     else:  # rev
+>         bsai_site = seq[:7]  # GAGACCN
+>         overhang = seq[7:11]  # 4 bases
+>         template_binding = seq[11:]  # Rest
+>         print(f"  BsaI site: {bsai_site}")
+>         print(f"  Overhang: {overhang}")
+>         print(f"  Template binding (RC): {template_binding} ({len(template_binding)} bp)")
+>
+>     print()
+>
+> EOF
+root@5727c976f434:/app#

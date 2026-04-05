@@ -1,0 +1,68 @@
+New Terminal Output:
+
+root@7f9aa432215a:/app# cat > train_model_v2.py << 'EOF'
+> import pandas as pd
+> import fasttext
+> import os
+>
+> print("Loading data...")
+> train_df = pd.read_parquet('data/train-00000-of-00001.parquet')
+> test_df = pd.read_parquet('data/test-00000-of-00001.parquet')
+>
+> print("\nTraining fasttext model with optimized parameters...")
+> # Parameters optimized for size and accuracy:
+> # - minCount: filter rare words to reduce vocabulary size
+> # - dim: lower dimension for smaller model
+> # - epoch: sufficient epochs for good accuracy
+> # - wordNgrams: use bigrams for better accuracy
+> # - minn, maxn: character n-grams for better generalization
+> model = fasttext.train_supervised(
+>     input='train.txt',
+>     epoch=20,
+>     lr=0.5,
+>     dim=50,
+>     wordNgrams=2,
+>     minCount=5,
+>     minn=0,
+>     maxn=0,
+>     loss='softmax',
+>     verbose=2
+> )
+>
+> print("\nEvaluating on test set...")
+> result = model.test('test.txt')
+> print(f"Test samples: {result[0]}")
+> print(f"Precision: {result[1]:.4f}")
+> print(f"Recall: {result[2]:.4f}")
+>
+> # Quantize the model to reduce size
+> print("\nQuantizing model...")
+> model.quantize(input='train.txt', retrain=True, qnorm=True, cutoff=100000)
+>
+> print("\nEvaluating quantized model on test set...")
+> result_q = model.test('test.txt')
+> print(f"Test samples: {result_q[0]}")
+> print(f"Precision: {result_q[1]:.4f}")
+> print(f"Recall: {result_q[2]:.4f}")
+>
+> # Save the quantized model
+> print("\nSaving quantized model...")
+> model.save_model('/app/model.bin')
+>
+> # Check model size
+> model_size = os.path.getsize('/app/model.bin') / (1024 * 1024)  # MB
+> print(f"\nModel size: {model_size:.2f} MB")
+>
+> if model_size >= 150:
+>     print("WARNING: Model size exceeds 150MB!")
+> else:
+>     print("✓ Model size is within 150MB limit")
+>
+> if result_q[1] < 0.62:
+>     print("WARNING: Accuracy is below 0.62!")
+> else:
+>     print("✓ Accuracy meets the 0.62 threshold")
+>
+> print("\nTraining complete!")
+> EOF
+root@7f9aa432215a:/app#

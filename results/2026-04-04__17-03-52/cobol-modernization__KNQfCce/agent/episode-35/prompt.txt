@@ -1,0 +1,146 @@
+New Terminal Output:
+
+root@273e10a6db89:/app# python3 << 'EOF'
+> import os
+> import shutil
+> import subprocess
+>
+> def backup_files():
+>     """Backup data files"""
+>     for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>         shutil.copy(f'data/{fname}', f'data/{fname}.bak')
+>
+> def restore_files():
+>     """Restore data files from backup"""
+>     for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>         shutil.copy(f'data/{fname}.bak', f'data/{fname}')
+>
+> def cleanup_backups():
+>     """Remove backup files"""
+>     for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>         try:
+>             os.remove(f'data/{fname}.bak')
+>         except:
+>             pass
+>
+> print("=" * 60)
+> print("Comprehensive Test: Python vs COBOL")
+> print("=" * 60)
+>
+> # Test 1: Validation failure (B007)
+> print("\nTest 1: Validation Failure (Book B007 doesn't exist)")
+> print("-" * 60)
+> backup_files()
+>
+> # Run COBOL
+> result_cobol = subprocess.run(['./program'], capture_output=True, text=True)
+> cobol_stdout = result_cobol.stdout
+> cobol_files = {}
+> for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>     with open(f'data/{fname}', 'rb') as f:
+>         cobol_files[fname] = f.read()
+>
+> # Restore and run Python
+> restore_files()
+> result_python = subprocess.run(['python3', '/app/program.py'], capture_output=True, text=True)
+> python_stdout = result_python.stdout
+> python_files = {}
+> for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>     with open(f'data/{fname}', 'rb') as f:
+>         python_files[fname] = f.read()
+>
+> print(f"COBOL output: {repr(cobol_stdout)}")
+> print(f"Python output: {repr(python_stdout)}")
+> print(f"Output matches: {cobol_stdout == python_stdout}")
+>
+> for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>     match = cobol_files[fname] == python_files[fname]
+>     print(f"{fname} matches: {match}")
+>     if not match:
+>         print(f"  COBOL:  {len(cobol_files[fname])} bytes")
+>         print(f"  Python: {len(python_files[fname])} bytes")
+>
+> # Test 2: Successful transaction (B001)
+> print("\nTest 2: Successful Transaction (Book B001)")
+> print("-" * 60)
+>
+> # Change INPUT.DAT to use B001
+> with open('src/INPUT.DAT', 'wb') as f:
+>     f.write(b'U001U002B001200')
+>
+> restore_files()
+>
+> # Run COBOL
+> result_cobol = subprocess.run(['./program'], capture_output=True, text=True)
+> cobol_stdout = result_cobol.stdout
+> cobol_files = {}
+> for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>     with open(f'data/{fname}', 'rb') as f:
+>         cobol_files[fname] = f.read()
+>
+> # Restore and run Python
+> restore_files()
+> result_python = subprocess.run(['python3', '/app/program.py'], capture_output=True, text=True)
+> python_stdout = result_python.stdout
+> python_files = {}
+> for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>     with open(f'data/{fname}', 'rb') as f:
+>         python_files[fname] = f.read()
+>
+> print(f"COBOL output: {repr(cobol_stdout)}")
+> print(f"Python output: {repr(python_stdout)}")
+> print(f"Output matches: {cobol_stdout == python_stdout}")
+>
+> for fname in ['ACCOUNTS.DAT', 'BOOKS.DAT', 'TRANSACTIONS.DAT']:
+>     match = cobol_files[fname] == python_files[fname]
+>     print(f"{fname} matches: {match}")
+>     if not match:
+>         print(f"  COBOL:  {len(cobol_files[fname])} bytes")
+>         print(f"  Python: {len(python_files[fname])} bytes")
+>
+> # Restore original INPUT.DAT
+> with open('src/INPUT.DAT', 'wb') as f:
+>     f.write(b'U001U002B007200')
+>
+> restore_files()
+> cleanup_backups()
+>
+> print("\n" + "=" * 60)
+> print("All tests completed!")
+> print("=" * 60)
+> EOF
+============================================================
+Comprehensive Test: Python vs COBOL
+============================================================
+
+Test 1: Validation Failure (Book B007 doesn't exist)
+------------------------------------------------------------
+Traceback (most recent call last):
+  File "<stdin>", line 33, in <module>
+  File "/usr/local/lib/python3.13/subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/subprocess.py", line 1857, in _execute_child
+    self._posix_spawn(args, executable, env, restore_signals, close_fds,
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      p2cread, p2cwrite,
+                      ^^^^^^^^^^^^^^^^^^
+                      c2pread, c2pwrite,
+                      ^^^^^^^^^^^^^^^^^^
+                      errread, errwrite)
+                      ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/subprocess.py", line 1801, in _posix_spawn
+    self.pid = os.posix_spawn(executable, args, env, **kwargs)
+               ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: './program'
+root@273e10a6db89:/app#

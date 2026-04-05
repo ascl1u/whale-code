@@ -1,0 +1,41 @@
+New Terminal Output:
+
+root@eff6b7bdeb11:/app# python3 << 'EOF'
+> import requests
+> import json
+>
+> # Test positive sentiment
+> response = requests.post('http://localhost:5000/sentiment',
+>                          json={'text': 'I love this movie! It is amazing!'})
+> print("Test 1 - Positive sentiment:")
+> print(f"Status Code: {response.status_code}")
+> print(f"Response: {response.json()}")
+> print()
+>
+> # Test negative sentiment
+> response = requests.post('http://localhost:5000/sentiment',
+>                          json={'text': 'This is terrible and I hate it.'})
+> print("Test 2 - Negative sentiment:")
+> print(f"Status Code: {response.status_code}")
+> print(f"Response: {response.json()}")
+> print()
+>
+> # Test error case - missing text field
+> response = requests.post('http://localhost:5000/sentiment',
+>                          json={})
+> print("Test 3 - Error case (missing text):")
+> print(f"Status Code: {response.status_code}")
+> print(f"Response: {response.json()}")
+> EOF
+Test 1 - Positive sentiment:
+Status Code: 200
+Response: {'confidence': {'negative': 0.00011780973727582023, 'positive': 0.9998822212219238}, 'sentiment': 'positive'}
+
+Test 2 - Negative sentiment:
+Status Code: 200
+Response: {'confidence': {'negative': 0.9994720816612244, 'positive': 0.0005279447068460286}, 'sentiment': 'negative'}
+
+Test 3 - Error case (missing text):
+Status Code: 400
+Response: {'error': "Missing 'text' field in request body"}
+root@eff6b7bdeb11:/app#

@@ -1,0 +1,212 @@
+New Terminal Output:
+
+import argparse
+import pandas as pd
+import numpy as np
+import cv2
+import torch
+from mobile_sam import sam_model_registry, SamPredictor
+
+
+def parse_coords(coords_str):
+    """Parse coordinate string to list of integers."""
+    if pd.isna(coords_str) or coords_str == '':
+        return []
+    return [int(x) for x in str(coords_str).split(',')]
+
+
+def coords_to_string(coords_list):
+    """Convert list of coordinates to comma-separated string."""
+    return ','.join(map(str, coords_list))
+
+
+def get_largest_contour(mask):
+    """Get the largest contiguous contour from a binary mask."""
+    # Find contours
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if len(contours) == 0:
+        return None
+
+    # Get the largest contour by area
+    largest_contour = max(contours, key=cv2.contourArea)
+
+    return largest_contour
+
+
+def contour_to_coords(contour):
+    """Convert OpenCV contour to separate x and y coordinate lists."""
+    if contour is None or len(contour) == 0:
+        return [], []
+
+    # Flatten the contour array
+    points = contour.squeeze()
+
+    # Handle single point case
+    if len(points.shape) == 1:
+        points = points.reshape(1, -1)
+
+    coords_x = points[:, 0].tolist()
+    coords_y = points[:, 1].tolist()
+
+    return coords_x, coords_y
+
+
+def get_bbox_from_coords(coords_x, coords_y):
+    """Get bounding box from coordinates."""
+    if len(coords_x) == 0 or len(coords_y) == 0:
+        return None
+
+    xmin = min(coords_x)
+    xmax = max(coords_x)
+    ymin = min(coords_y)
+    ymax = max(coords_y)
+
+    return np.array([xmin, ymin, xmax, ymax])
+
+
+def remove_overlaps(masks_dict, img_shape):
+    """Remove overlaps between masks by assigning each pixel to the closest mask center."""
+    h, w = img_shape[:2]
+    pixel_assignment = np.full((h, w), -1, dtype=np.int32)
+
+    # Create a full mask image for each cell
+    mask_images = {}
+    centers = {}
+
+    for idx, mask_data in masks_dict.items():
+        mask = mask_data['mask']
+        mask_images[idx] = mask
+
+        # Calculate mask center
+        y_coords, x_coords = np.where(mask > 0)
+        if len(x_coords) > 0:
+            centers[idx] = (np.mean(x_coords), np.mean(y_coords))
+        else:
+            centers[idx] = (0, 0)
+
+    # For each pixel, assign to closest mask
+    for idx, mask in mask_images.items():
+        y_coords, x_coords = np.where(mask > 0)
+        for x, y in zip(x_coords, y_coords):
+            if pixel_assignment[y, x] == -1:
+                pixel_assignment[y, x] = idx
+            else:
+                # Check which mask center is closer
+                current_idx = pixel_assignment[y, x]
+                current_dist = np.sqrt((x - centers[current_idx][0])**2 + (y - centers[current_idx][1])**2)
+                new_dist = np.sqrt((x - centers[idx][0])**2 + (y - centers[idx][1])**2)
+
+                if new_dist < current_dist:
+                    pixel_assignment[y, x] = idx
+
+    # Create new non-overlapping masks
+    new_masks = {}
+    for idx in masks_dict.keys():
+        new_mask = (pixel_assignment == idx).astype(np.uint8)
+        new_masks[idx] = new_mask
+
+    return new_masks
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Convert cell masks to polylines using MobileSAM')
+    parser.add_argument('weights_path', type=str, help='Path to MobileSAM weights')
+    parser.add_argument('output_path', type=str, help='Path to output CSV file')
+    parser.add_argument('rgb_path', type=str, help='Path to RGB image')
+    parser.add_argument('csv_path', type=str, help='Path to input CSV file')
+
+    args = parser.parse_args()
+
+    # Load the image
+    print(f"Loading image from {args.rgb_path}...")
+    image = cv2.imread(args.rgb_path)
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # Load MobileSAM model
+    print(f"Loading MobileSAM model from {args.weights_path}...")
+    device = 'cpu'
+    model_type = 'vit_t'
+    mobile_sam = sam_model_registry[model_type](checkpoint=args.weights_path)
+    mobile_sam.to(device=device)
+    mobile_sam.eval()
+
+    predictor = SamPredictor(mobile_sam)
+    predictor.set_image(image_rgb)
+
+    # Load the CSV
+    print(f"Loading CSV from {args.csv_path}...")
+    df = pd.read_csv(args.csv_path)
+
+    # Store all masks first
+    masks_dict = {}
+
+    print("Processing masks...")
+    for idx, row in df.iterrows():
+        # Get bounding box
+        xmin = row['xmin']
+        ymin = row['ymin']
+        xmax = row['xmax']
+        ymax = row['ymax']
+
+        # Create box prompt in XYXY format
+        box = np.array([xmin, ymin, xmax, ymax])
+
+        # Predict mask using MobileSAM
+        masks, scores, _ = predictor.predict(
+            point_coords=None,
+            point_labels=None,
+            box=box,
+            multimask_output=True,
+        )
+
+        # Select the mask with highest score
+        best_mask_idx = np.argmax(scores)
+        mask = masks[best_mask_idx]
+
+        masks_dict[idx] = {
+            'mask': mask.astype(np.uint8),
+            'score': scores[best_mask_idx]
+        }
+
+    # Remove overlaps between masks
+    print("Removing overlaps...")
+    non_overlapping_masks = remove_overlaps(masks_dict, image_rgb.shape)
+
+    # Convert masks to polylines and update dataframe
+    print("Converting masks to polylines...")
+    for idx, row in df.iterrows():
+        mask = non_overlapping_masks[idx]
+
+        # Get largest contour
+        contour = get_largest_contour(mask)
+
+        if contour is not None:
+            # Convert contour to coordinates
+            coords_x, coords_y = contour_to_coords(contour)
+
+            if len(coords_x) > 0 and len(coords_y) > 0:
+                # Update bounding box
+                df.at[idx, 'xmin'] = min(coords_x)
+                df.at[idx, 'xmax'] = max(coords_x)
+                df.at[idx, 'ymin'] = min(coords_y)
+                df.at[idx, 'ymax'] = max(coords_y)
+
+                # Update coordinates
+                df.at[idx, 'coords_x'] = coords_to_string(coords_x)
+                df.at[idx, 'coords_y'] = coords_to_string(coords_y)
+            else:
+                # Keep original if no contour found
+                print(f"Warning: No contour found for mask {idx}, keeping original")
+        else:
+            print(f"Warning: No contour found for mask {idx}, keeping original")
+
+    # Save the updated CSV
+    print(f"Saving results to {args.output_path}...")
+    df.to_csv(args.output_path, index=False)
+    print("Done!")
+
+
+if __name__ == '__main__':
+    main()
+root@f26d45314cff:/app#

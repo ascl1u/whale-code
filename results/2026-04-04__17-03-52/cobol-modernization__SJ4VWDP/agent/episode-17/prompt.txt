@@ -1,0 +1,217 @@
+New Terminal Output:
+
+root@6de734298815:/app# cat > /app/program.py << 'EOF'
+> #!/usr/bin/env python3
+'book_id'].encode('ascii') +
+            f"{trans_data['amount']:010d}".encode('ascii') +
+            trans_data['seller_id'].encode('ascii') +
+            trans_data['buyer_id'].encode('ascii')
+        )
+        f.write(record)
+
+def validate_and_process():
+    """Main function to validate and process transaction."""
+    # Read input
+    input_data = read_input_file('src/INPUT.DAT')
+    if input_data is None:
+        return
+
+    buyer_id = input_data['buyer_id']
+    seller_id = input_data['seller_id']
+    book_id = input_data['book_id']
+    amount = input_data['amount']
+
+    # Read accounts and books
+    accounts = read_accounts_file('data/ACCOUNTS.DAT')
+    books = read_books_file('data/BOOKS.DAT')
+
+    # Validate
+    buyer_found = False
+    seller_found = False
+    book_found = False
+    valid_owner = False
+
+    for account in accounts:
+        if account['id'] == buyer_id:
+            buyer_found = True
+        if account['id'] == seller_id:
+            seller_found = True
+
+    for book in books:
+        if book['id'] == book_id:
+        >
+> def read_input_file(filename):
+ >     """Read the input file and parse the transaction data."""
+>     with open(filename, 'rb') as f:
+>         data = f.read()
+>
+>     if len(data) == 0:
+>         print("Error: Input file is empty")
+>         return None
+>
+>     # Parse input based on COBOL structure
+ >     # INPUT-BUYER-ID: PIC X(4)
+y>     # INPUT-SELLER-ID: PIC X(4)
+>     # INPUT-BOOK-ID: PIC X(4)
+ >     # INPUT-AMOUNT: PIC 9(10)
+>
+>     buyer_id = data[0:4].decode('ascii')
+n>     seller_id = data[4:8].decode('ascii')
+>     book_id = data[8:12].decode('ascii')
+>
+>     # Handle variable-length amount field
+>     if len(data) >= 22:
+>         amount_str = data[12:22].decode('ascii')
+ite_a>     else:
+>         amount_str = data[12:].decode('ascii')
+e>
+>     # Convert amount to integer
+
+>     amount = int(amount_str)
+>
+>     return {
+>         'buyer_id': buyer_id,
+>         'seller_id': seller_id,
+>         'book_id': book_id,
+>         'amount': amount
+>     }
+>
+e> def read_accounts_file(filename):
+>     """Read accounts file and return list of account records."""
+>     accounts = []
+>     with open(filename, 'rb') as f:
+r>         while True:
+e>             record = f.read(34)  # 4 + 20 + 10
+>             if not record:
+e>                 break
+>             account_id = record[0:4].decode('ascii')
+>             account_name = record[4:24].decode('ascii')
+>             account_balance = int(record[24:34].decode('ascii'))
+>             accounts.append({
+>                 'id': account_id,
+>                 'name': account_name,
+>                 'balance': account_balance
+>             })
+>     return accounts
+>
+> def read_books_file(filename):
+>     """Read books file and return list of book records."""
+>     books = []
+>     with open(filename, 'rb') as f:
+>         while True:
+>             record = f.read(28)  # 4 + 20 + 4
+>             if not record:
+>                 break
+>             book_id = record[0:4].decode('ascii')
+>             book_title = record[4:24].decode('ascii')
+>             book_owner = record[24:28].decode('ascii')
+>             books.append({
+>                 'id': book_id,
+>                 'title': book_title,
+>                 'owner': book_owner
+>             })
+>     return books
+>
+> def write_accounts_file(filename, accounts):
+>     """Write accounts to file."""
+>     with open(filename, 'wb') as f:
+>         for account in accounts:
+>             record = (
+>                 account['id'].encode('ascii') +
+>                 account['name'].encode('ascii') +
+>                 f"{account['balance']:010d}".encode('ascii')
+>             )
+>             f.write(record)
+>
+> def write_books_file(filename, books):
+>     """Write books to file."""
+>     with open(filename, 'wb') as f:
+>         for book in books:
+>             record = (
+>                 book['id'].encode('ascii') +
+>                 book['title'].encode('ascii') +
+>                 book['owner'].encode('ascii')
+>             )
+>             f.write(record)
+>
+> def append_transaction(filename, trans_data):
+>     """Append transaction to transactions file."""
+>     with open(filename, 'ab') as f:
+>         record = (
+>             trans_data['book_id'].encode('ascii') +
+>             f"{trans_data['amount']:010d}".encode('ascii') +
+>             trans_data['seller_id'].encode('ascii') +
+>             trans_data['buyer_id'].encode('ascii')
+>         )
+>         f.write(record)
+>
+> def validate_and_process():
+>     """Main function to validate and process transaction."""
+>     # Read input
+>     input_data = read_input_file('src/INPUT.DAT')
+>     if input_data is None:
+>         return
+>
+>     buyer_id = input_data['buyer_id']
+>     seller_id = input_data['seller_id']
+>     book_id = input_data['book_id']
+>     amount = input_data['amount']
+>
+>     # Read accounts and books
+>     accounts = read_accounts_file('data/ACCOUNTS.DAT')
+>     books = read_books_file('data/BOOKS.DAT')
+>
+>     # Validate
+>     buyer_found = False
+>     seller_found = False
+>     book_found = False
+>     valid_owner = False
+>
+>     for account in accounts:
+>         if account['id'] == buyer_id:
+>             buyer_found = True
+>         if account['id'] == seller_id:
+>             seller_found = True
+>
+>     for book in books:
+>         if book['id'] == book_id:
+>             book_found = True
+>             if book['owner'] == seller_id:
+>                 valid_owner = True
+>
+>     print(" ")
+>
+>     if buyer_found and seller_found and book_found and valid_owner:
+>         # Process transaction
+>         # Update account balances
+>         for account in accounts:
+>             if account['id'] == buyer_id:
+>                 account['balance'] -= amount
+>             if account['id'] == seller_id:
+>                 account['balance'] += amount
+>
+>         # Update book ownership
+>         for book in books:
+>             if book['id'] == book_id:
+>                 book['owner'] = buyer_id
+>
+>         # Write updated files
+>         write_accounts_file('data/ACCOUNTS.DAT', accounts)
+>         write_books_file('data/BOOKS.DAT', books)
+>
+>         # Append transaction
+>         append_transaction('data/TRANSACTIONS.DAT', {
+>             'book_id': book_id,
+>             'amount': amount,
+>             'seller_id': seller_id,
+>             'buyer_id': buyer_id
+>         })
+>
+>         print("Transaction completed successfully")
+>     else:
+>         print("Transaction failed due to validation errors")
+>
+> if __name__ == '__main__':
+>     validate_and_process()
+> EOF
+root@6de734298815:/app#

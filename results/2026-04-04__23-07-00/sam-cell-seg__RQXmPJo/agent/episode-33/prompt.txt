@@ -1,0 +1,162 @@
+New Terminal Output:
+
+root@74cce7985efa:/app# cat > /app/convert_masks.py << 'EOF'
+> import argparse
+> import pandas as pd
+d> import numpy as np
+> import cv2
+ > import torch
+> from mobile_sam import sam_model_registry, SamPredictor
+> import os
+>
+ > def parse_coords(coords_str):
+
+   >     """Parse comma-separated coordinate string to list of integers."""
+>     if pd.isna(coords_str) or coords_str == '':
+>         return []
+>     return [int(x) for x in str(coords_str).split(',')]
+>
+ > def coords_to_string(coords_list):
+ =>     """Convert list of coordinates to comma-separated string."""
+>     return ','.join([str(int(x)) for x in coords_list])
+>
+g> def get_largest_contour(mask):
+
+ >     """Extract the largest contiguous contour from a binary mask."""
+>     contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+n>     if len(contours) == 0:
+>         return None
+>     # Get the largest contour
+>     largest_contour = max(contours, key=cv2.contourArea)
+d>     return largest_contour
+r>
+> def contour_to_coords(contour):
+>     """Convert contour to separate x and y coordinate lists."""
+>     if contour is None or len(contour) == 0:
+>         return [], []
+>
+>     # Flatten contour and extract x, y coordinates
+ >     contour = contour.squeeze()
+>     if len(contour.shape) == 1:  # Single point
+>         contour = contour.reshape(1, -1)
+>
+x>     coords_x = contour[:, 0].tolist()
+>     coords_y = contour[:, 1].tolist()
+ >
+>     return coords_x, coords_y
+>
+> def get_bbox_from_coords(xmin, ymin, xmax, ymax):
+>     """Get bounding box in format expected by SAM."""
+ >     return np.array([xmin, ymin, xmax, ymax])
+>
+ > def main():
+>     parser = argparse.ArgumentParser(description='Convert masks to polylines using MobileSAM')
+>     parser.add_argument('weights_path', type=str, help='Path to MobileSAM weights')
+>     parser.add_argument('output_path', type=str, help='Path to output CSV file')
+>     parser.add_argument('rgb_path', type=str, help='Path to RGB image')
+>     parser.add_argument('csv_path', type=str, help='Path to metadata CSV')
+>
+>     args = parser.parse_args()
+>
+>     # Load the image
+>     image = cv2.imread(args.rgb_path)
+>     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+>
+>     # Load the CSV
+>     df = pd.read_csv(args.csv_path)
+>
+>     # Initialize MobileSAM
+>     device = 'cpu'
+>     model_type = 'vit_t'
+>     sam = sam_model_registry[model_type](checkpoint=args.weights_path)
+>     sam.to(device=device)
+>     sam.eval()
+>
+>     predictor = SamPredictor(sam)
+>     predictor.set_image(image_rgb)
+>
+>     # Create a mask to track occupied pixels (to avoid overlaps)
+>     occupied_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+>     mask_assignments = np.zeros(image.shape[:2], dtype=np.int32) - 1  # -1 means unassigned
+>
+>     # Process each mask
+>     refined_masks = []
+>
+>     for idx, row in df.iterrows():
+>         xmin, ymin, xmax, ymax = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
+>
+>         # Use bounding box as prompt for SAM
+>         bbox = get_bbox_from_coords(xmin, ymin, xmax, ymax)
+>
+>         # Predict mask using SAM
+>         with torch.no_grad():
+>             masks, scores, logits = predictor.predict(
+>                 box=bbox,
+>                 multimask_output=False
+>             )
+>
+>         # Get the predicted mask (first one since multimask_output=False)
+>         predicted_mask = masks[0].astype(np.uint8)
+>
+>         # Remove overlaps with previously assigned masks
+>         # Only keep pixels that haven't been assigned to other masks
+>         predicted_mask = predicted_mask * (mask_assignments == -1).astype(np.uint8)
+>
+>         # Get the largest contiguous contour
+>         contour = get_largest_contour(predicted_mask)
+>
+>         if contour is not None and len(contour) > 0:
+>             # Create a clean mask from the contour
+>             clean_mask = np.zeros_like(predicted_mask)
+>             cv2.drawContours(clean_mask, [contour], -1, 1, thickness=cv2.FILLED)
+>
+>             # Mark these pixels as assigned to this mask
+>             mask_assignments[clean_mask == 1] = idx
+>
+>             # Convert contour to coordinates
+>             coords_x, coords_y = contour_to_coords(contour)
+>
+>             # Calculate new bounding box from contour
+>             if len(coords_x) > 0:
+>                 new_xmin = min(coords_x)
+>                 new_xmax = max(coords_x)
+>                 new_ymin = min(coords_y)
+>                 new_ymax = max(coords_y)
+>             else:
+>                 new_xmin, new_xmax = xmin, xmax
+>                 new_ymin, new_ymax = ymin, ymax
+>                 coords_x, coords_y = [xmin, xmax, xmax, xmin, xmin], [ymin, ymin, ymax, ymax, ymin]
+>         else:
+>             # If no contour found, keep original bounding box as polyline
+>             coords_x = [xmin, xmax, xmax, xmin, xmin]
+>             coords_y = [ymin, ymin, ymax, ymax, ymin]
+>             new_xmin, new_xmax = xmin, xmax
+>             new_ymin, new_ymax = ymin, ymax
+>
+>         refined_masks.append({
+>             'coords_x': coords_to_string(coords_x),
+>             'coords_y': coords_to_string(coords_y),
+>             'xmin': new_xmin,
+>             'xmax': new_xmax,
+>             'ymin': new_ymin,
+>             'ymax': new_ymax
+>         })
+>
+>     # Update the dataframe
+>     for idx, refined in enumerate(refined_masks):
+>         df.at[idx, 'coords_x'] = refined['coords_x']
+>         df.at[idx, 'coords_y'] = refined['coords_y']
+>         df.at[idx, 'xmin'] = refined['xmin']
+>         df.at[idx, 'xmax'] = refined['xmax']
+>         df.at[idx, 'ymin'] = refined['ymin']
+>         df.at[idx, 'ymax'] = refined['ymax']
+>         df.at[idx, 'type'] = 'polyline'  # All masks are now polylines
+>
+>     # Save the updated CSV
+>     df.to_csv(args.output_path, index=False)
+>     print(f"Refined masks saved to {args.output_path}")
+>
+> if __name__ == '__main__':
+>     main()
+> EOF
+root@74cce7985efa:/app#

@@ -1,0 +1,61 @@
+New Terminal Output:
+
+root@c29f5ea064c8:/app# cat > verify.py << 'EOF'
+> from datetime import datetime
+>
+> # Scheduled meeting
+> meeting_start = datetime(2024, 1, 17, 11, 0)
+> meeting_end = datetime(2024, 1, 17, 12, 0)
+>
+> print("Scheduled Meeting: Wednesday, January 17, 2024, 11:00 AM - 12:00 PM UTC")
+> print()
+>
+> # Verify Alice's constraints
+> print("Alice's Constraints:")
+> print("  - Available: 9 AM - 2 PM only")
+> print("  - Busy: Mon 10-11 AM, Mon 1-2 PM, Tue 10 AM-12 PM, Wed 10-11 AM, Wed 1-2 PM, Thu 10-11 AM, Fri 10-11 AM, Fri 1-2 PM")
+> print(f"  - Meeting time 11 AM-12 PM: Within 9 AM-2 PM ✓")
+> print(f"  - No conflict with Wed 10-11 AM meeting ✓")
+> print()
+>
+> # Verify Bob's constraints
+> print("Bob's Constraints:")
+> print("  - No meetings before 10 AM")
+> print("  - Must leave by 4:30 PM on Tue/Thu")
+> print("  - Busy: Mon 11 AM-12 PM, Mon 1-3 PM, Tue 1-2 PM, Wed 12-1 PM, Thu 1-2 PM, Fri 12-1 PM")
+> print(f"  - Meeting time 11 AM-12 PM: After 10 AM ✓")
+> print(f"  - No conflict with Wed 12-1 PM meeting ✓")
+> print()
+>
+> # Verify Carol's constraints
+> print("Carol's Constraints:")
+> print("  - Available: 9 AM - 5 PM")
+> print("  - Lunch break: 12:00-12:30 PM (unavailable)")
+> print("  - Prefers not Monday")
+> print("  - Busy: Mon 11 AM-12 PM, Tue 11 AM-12 PM, Tue 1-2 PM, Wed 12-1 PM, Thu 12-1 PM, Fri 11 AM-12 PM")
+> print(f"  - Meeting time 11 AM-12 PM: Within 9 AM-5 PM ✓")
+> print(f"  - No conflict with lunch (12:00-12:30 PM) ✓")
+> print(f"  - Not Monday ✓")
+> print(f"  - No conflict with Wed 12-1 PM meeting ✓")
+> print()
+>
+> # Check if this is the earliest
+> print("Earliest Slot Analysis:")
+> print("  Monday 1/15:")
+> print("    - 9-10 AM: Alice free, Bob can't (before 10 AM), Carol free → INVALID")
+> print("    - 10-11 AM: Alice busy, Bob busy (11 AM-12 PM overlaps), Carol busy → INVALID")
+> print("    - 11 AM-12 PM: Alice free, Bob busy, Carol busy → INVALID")
+> print("    - 12-1 PM: Alice free, Bob free, Carol lunch break (12:00-12:30) → INVALID")
+> print("    - 1-2 PM: Alice busy, Bob busy, Carol free → INVALID")
+> print("  Tuesday 1/16:")
+> print("    - 10-11 AM: Alice busy (10 AM-12 PM), Bob free, Carol free → INVALID")
+> print("    - 11 AM-12 PM: Alice busy (10 AM-12 PM), Bob free, Carol busy → INVALID")
+> print("    - 12-1 PM: Alice free, Bob free, Carol lunch break (12:00-12:30) → INVALID")
+> print("    - 1-2 PM: Alice free, Bob busy, Carol busy → INVALID")
+> print("  Wednesday 1/17:")
+> print("    - 10-11 AM: Alice busy, Bob free, Carol free → INVALID")
+> print("    - 11 AM-12 PM: Alice free, Bob free, Carol free → VALID ✓✓✓")
+> print()
+> print("Result: Wednesday, Jan 17, 11 AM-12 PM is the EARLIEST valid slot!")
+> EOF
+root@c29f5ea064c8:/app#

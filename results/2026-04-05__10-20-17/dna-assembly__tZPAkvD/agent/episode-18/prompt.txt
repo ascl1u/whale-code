@@ -1,0 +1,52 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > debug_flag.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> print("Debugging flag sequence...\n")
+>
+> egfp_no_stop = seqs['egfp'][:-3]
+> egfp_start = 210
+> egfp_end = egfp_start + len(egfp_no_stop)
+>
+> print(f"After egfp (position {egfp_end}):")
+> print(f"  output[{egfp_end}:{egfp_end+90}] = {seqs['output'][egfp_end:egfp_end+90]}")
+> print(f"\nflag (full): {seqs['flag']}")
+> print(f"flag (no start): {seqs['flag'][3:]}")
+>
+> # Try to find flag in output
+> flag_pos = seqs['output'].find(seqs['flag'])
+> if flag_pos >= 0:
+>     print(f"\nFound full flag at position {flag_pos}")
+> else:
+>     print(f"\nFull flag not found in output")
+>     # Try without start
+>     flag_no_start_pos = seqs['output'].find(seqs['flag'][3:])
+>     if flag_no_start_pos >= 0:
+>         print(f"Found flag (no start) at position {flag_no_start_pos}")
+>     else:
+>         print(f"Flag (no start) not found either")
+>         # Try without stop
+>         flag_no_stop = seqs['flag'][:-3]
+>         flag_no_stop_pos = seqs['output'].find(flag_no_stop)
+>         if flag_no_stop_pos >= 0:
+>             print(f"Found flag (no stop) at position {flag_no_stop_pos}")
+>         # Try without start and stop
+>         flag_no_start_stop = seqs['flag'][3:-3]
+>         flag_no_start_stop_pos = seqs['output'].find(flag_no_start_stop)
+>         if flag_no_start_stop_pos >= 0:
+>             print(f"Found flag (no start, no stop) at position {flag_no_start_stop_pos}")
+>             print(f"  flag (no start, no stop): {flag_no_start_stop}")
+>
+> EOF
+root@5727c976f434:/app#

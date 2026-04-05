@@ -1,0 +1,163 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+            fr1 = getleft(ct1)
+            fl1 = getright(ct1)
+            bxl1 = fl1 ^ fr1
+            bxr1 = fr1
+            rb1 = bxl1
+            lb1 = bxr1 ^ f_function(rb1 ^ candidate_key5)
+
+            fr2 = getleft(ct2)
+            fl2 = getright(ct2)
+            bxl2 = fl2 ^ fr2
+            bxr2 = fr2
+            rb2 = bxl2
+            lb2 = bxr2 ^ f_function(rb2 ^ candidate_key5)
+
+            # Compute the difference after partial decryption
+            left_diff = lb1 ^ lb2
+            right_diff = rb1 ^ rb2
+
+            # For the correct key, certain differential properties should hold
+            # This is heuristic-based: we're looking for patterns
+
+            # One heuristic: if the input difference is small,
+            # the intermediate difference might show patterns
+
+            # Count bits in differences
+            left_bits = bin(left_diff).count('1')
+            right_bits = bin(right_diff).count('1')
+
+            # Prefer balanced bit counts (avalanche effect)
+            if 10 <= left_bits <= 22 and 10 <= right_bits <= 22:
+                score += 1
+
+            # Another heuristic: check if differences are non-zero
+            if left_diff != 0 and right_diff != 0:
+                score += 1
+
+        if score > best_score:
+            best_score = score
+            best_key = candidate_key5
+
+    return best_key
+
+EOF
+> #!/usr/bin/env python3
+>
+> def g_function(a, b, x):
+>     """FEAL G function (same as in feal.py)"""
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+>
+> def f_function(input_val):
+>     """FEAL F function (same as in feal.py)"""
+>     x = [0] * 4
+>     y = [0] * 4
+>
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>
+>     return output & 0xFFFFFFFF
+>
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using chosen plaintext attack"""
+>
+>     # New strategy: Use differential cryptanalysis with chosen plaintext pairs
+>     # We'll create pairs that differ in specific ways and track how differences propagate
+>
+>     # Collect plaintext pairs that differ only in specific bits
+>     diff_data = []
+>
+>     # Create pairs with difference in the right half only
+>     for base in range(20):
+>         pt1 = base << 32  # Left = base, Right = 0
+>         pt2 = (base << 32) | 1  # Left = base, Right = 1
+>         ct1 = encrypt_fn(pt1)
+>         ct2 = encrypt_fn(pt2)
+>         diff_data.append((pt1, ct1, pt2, ct2, 1))  # difference = 1
+>
+>     # Create pairs with different differences
+>     for diff in [0x80000000, 0x00000001, 0x0000FF00]:
+>         for base in range(10):
+>             pt1 = base
+>             pt2 = base ^ diff
+>             ct1 = encrypt_fn(pt1)
+>             ct2 = encrypt_fn(pt2)
+>             diff_data.append((pt1, ct1, pt2, ct2, diff))
+>
+>     # Score each candidate
+>     best_key = None
+>     best_score = float('-inf')
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>         score = 0
+>
+>         for pt1, ct1, pt2, ct2, input_diff in diff_data:
+>             # Partially decrypt both ciphertexts
+>             fr1 = getleft(ct1)
+>             fl1 = getright(ct1)
+>             bxl1 = fl1 ^ fr1
+>             bxr1 = fr1
+>             rb1 = bxl1
+>             lb1 = bxr1 ^ f_function(rb1 ^ candidate_key5)
+>
+>             fr2 = getleft(ct2)
+>             fl2 = getright(ct2)
+>             bxl2 = fl2 ^ fr2
+>             bxr2 = fr2
+>             rb2 = bxl2
+>             lb2 = bxr2 ^ f_function(rb2 ^ candidate_key5)
+>
+>             # Compute the difference after partial decryption
+>             left_diff = lb1 ^ lb2
+>             right_diff = rb1 ^ rb2
+>
+>             # For the correct key, certain differential properties should hold
+>             # This is heuristic-based: we're looking for patterns
+>
+>             # One heuristic: if the input difference is small,
+>             # the intermediate difference might show patterns
+>
+>             # Count bits in differences
+>             left_bits = bin(left_diff).count('1')
+>             right_bits = bin(right_diff).count('1')
+>
+>             # Prefer balanced bit counts (avalanche effect)
+>             if 10 <= left_bits <= 22 and 10 <= right_bits <= 22:
+>                 score += 1
+>
+>             # Another heuristic: check if differences are non-zero
+>             if left_diff != 0 and right_diff != 0:
+>                 score += 1
+>
+>         if score > best_score:
+>             best_score = score
+>             best_key = candidate_key5
+>
+>     return best_key
+>
+> EOF
+root@486aac7a4fa6:/app#

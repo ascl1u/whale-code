@@ -1,0 +1,78 @@
+New Terminal Output:
+
+root@eff6b7bdeb11:/app# python3 << 'EOF'
+> import requests
+> import json
+>
+> print("=" * 60)
+> print("FINAL COMPREHENSIVE API TEST")
+> print("=" * 60)
+>
+> # Test 1: Positive sentiment
+> print("\n1. Testing positive sentiment:")
+> response = requests.post('http://localhost:5000/sentiment',
+>                          json={'text': 'I love this product! It works perfectly.'})
+> print(f"   Status: {response.status_code}")
+> result = response.json()
+> print(f"   Sentiment: {result['sentiment']}")
+> print(f"   Confidence - Positive: {result['confidence']['positive']:.4f}")
+> print(f"   Confidence - Negative: {result['confidence']['negative']:.4f}")
+> assert result['sentiment'] == 'positive', "Expected positive sentiment"
+> assert 'confidence' in result, "Missing confidence field"
+> assert 'positive' in result['confidence'], "Missing positive confidence"
+> assert 'negative' in result['confidence'], "Missing negative confidence"
+> print("   ✓ PASSED")
+>
+> # Test 2: Negative sentiment
+> print("\n2. Testing negative sentiment:")
+> response = requests.post('http://localhost:5000/sentiment',
+>                          json={'text': 'This is awful and disappointing.'})
+> print(f"   Status: {response.status_code}")
+> result = response.json()
+> print(f"   Sentiment: {result['sentiment']}")
+> print(f"   Confidence - Positive: {result['confidence']['positive']:.4f}")
+> print(f"   Confidence - Negative: {result['confidence']['negative']:.4f}")
+> assert result['sentiment'] == 'negative', "Expected negative sentiment"
+> print("   ✓ PASSED")
+>
+> # Test 3: Error handling
+> print("\n3. Testing error handling (missing text field):")
+> response = requests.post('http://localhost:5000/sentiment', json={})
+> print(f"   Status: {response.status_code}")
+> result = response.json()
+> print(f"   Error: {result['error']}")
+> assert response.status_code == 400, "Expected 400 status code"
+> assert 'error' in result, "Missing error field"
+> print("   ✓ PASSED")
+>
+> print("\n" + "=" * 60)
+> print("ALL TESTS PASSED - SERVICE IS WORKING CORRECTLY")
+> print("=" * 60)
+> EOF
+============================================================
+FINAL COMPREHENSIVE API TEST
+============================================================
+
+1. Testing positive sentiment:
+   Status: 200
+   Sentiment: positive
+   Confidence - Positive: 0.9999
+   Confidence - Negative: 0.0001
+   ✓ PASSED
+
+2. Testing negative sentiment:
+   Status: 200
+   Sentiment: negative
+   Confidence - Positive: 0.0002
+   Confidence - Negative: 0.9998
+   ✓ PASSED
+
+3. Testing error handling (missing text field):
+   Status: 400
+   Error: Missing 'text' field in request body
+   ✓ PASSED
+
+============================================================
+ALL TESTS PASSED - SERVICE IS WORKING CORRECTLY
+============================================================
+root@eff6b7bdeb11:/app#

@@ -1,0 +1,75 @@
+New Terminal Output:
+
+root@dc8c6ba9a243:/app# cat > fix_overfull.py << 'EOF'
+> import re
+>
+> # Read synonyms
+> synonyms = {}
+> with open('synonyms.txt', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line:
+>             words = [w.strip() for w in line.split(',')]
+>             # Store all synonyms for each word in the group
+>             for word in words:
+>                 synonyms[word] = words
+>
+> # Read input.tex
+> with open('input.tex', 'r') as f:
+>     content = f.read()
+>
+> # Function to find shorter synonym
+> def find_shorter_synonym(word):
+>     if word in synonyms:
+>         candidates = synonyms[word]
+>         # Find shortest synonym
+>         shortest = min(candidates, key=len)
+>         if len(shortest) < len(word):
+>             return shortest
+>     return word
+>
+> # Make a backup
+> with open('input.tex.bak', 'w') as f:
+>     f.write(content)
+>
+> # Strategy: Replace specific words that appear in overfull lines with shorter synonyms
+> replacements = [
+>     ('curious', 'curious'),  # Check for shorter
+>     ('natures', 'natures'),  # Check for shorter
+>     ('unsought', 'unsought'),  # Check for shorter
+>     ('riotous', 'riotous'),  # Check for shorter
+>     ('excursions', 'excursions'),  # Check for shorter
+>     ('responsiveness', 'responsiveness'),  # Check for shorter
+>     ('temperament', 'temperament'),  # Check for shorter
+>     ('wisdom', 'wisdom'),  # Check for shorter
+>     ('pathfinder', 'pathfinder'),  # Check for shorter
+> ]
+>
+> print("Available synonyms for problematic words:")
+> for word, _ in replacements:
+>     if word in synonyms:
+>         print(f"{word}: {synonyms[word]}")
+>         print(f"  Shortest: {min(synonyms[word], key=len)} (len={len(min(synonyms[word], key=len))})")
+>
+> EOF
+root@dc8c6ba9a243:/app# python3 fix_overfull.py
+Available synonyms for problematic words:
+curious: ['curious', 'inquisitive', 'interested', 'odd', 'peculiar']
+  Shortest: odd (len=3)
+natures: ['natures', 'characters', 'temperaments', 'dispositions', 'essences', 'personalities']
+  Shortest: natures (len=7)
+unsought: ['unsought', 'unwanted', 'uninvited', 'unrequested', 'undesired', 'spontaneous']
+  Shortest: unsought (len=8)
+riotous: ['riotous', 'wild', 'unruly', 'chaotic', 'boisterous', 'tumultuous']
+  Shortest: wild (len=4)
+excursions: ['excursions', 'trips', 'outings', 'journeys', 'expeditions', 'adventures']
+  Shortest: trips (len=5)
+responsiveness: ['responsiveness', 'sensitivity', 'awareness', 'reaction', 'attentiveness']
+  Shortest: reaction (len=8)
+temperament: ['temperament', 'disposition', 'nature', 'character', 'personality', 'mood']
+  Shortest: mood (len=4)
+wisdom: ['wisdom', 'knowledge', 'insight', 'understanding', 'intelligence', 'sagacity']
+  Shortest: wisdom (len=6)
+pathfinder: ['pathfinder', 'pioneer', 'trailblazer', 'scout']
+  Shortest: scout (len=5)
+root@dc8c6ba9a243:/app#

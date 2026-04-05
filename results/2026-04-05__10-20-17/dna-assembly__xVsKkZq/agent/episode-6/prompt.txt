@@ -1,0 +1,70 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > analyze_sequences.py << 'EOF'
+> import re
+>
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> # Print sequence lengths
+> for name, seq in seqs.items():
+>     print(f"{name}: {len(seq)} bp")
+>
+> # Find where egfp starts in output
+> egfp_start = seqs['output'].find(seqs['egfp'][:50])
+> print(f"\negfp starts at position {egfp_start} in output")
+>
+> # Find where snap ends in output
+> snap_end_seq = seqs['snap'][-50:]
+> snap_end = seqs['output'].find(snap_end_seq)
+> if snap_end != -1:
+>     snap_end += len(snap_end_seq)
+> print(f"snap ends at position {snap_end} in output")
+>
+> # Find the junction point in input
+> input_before_insert = seqs['output'][:egfp_start]
+> input_after_insert = seqs['output'][snap_end:]
+>
+> print(f"\nBefore insert: {len(input_before_insert)} bp")
+> print(f"After insert: {len(input_after_insert)} bp")
+>
+> # Find these in input
+> before_pos = seqs['input'].find(input_before_insert[-50:])
+> after_pos = seqs['input'].find(input_after_insert[:50])
+>
+> print(f"\nBefore sequence found at: {before_pos}")
+> print(f"After sequence found at: {after_pos}")
+>
+> if before_pos != -1:
+>     print(f"Last 20bp before insert: {seqs['input'][before_pos+30:before_pos+50]}")
+> if after_pos != -1:
+>     print(f"First 20bp after insert: {seqs['input'][after_pos:after_pos+20]}")
+>
+> EOF
+root@11eec39dc770:/app# python3 analyze_sequences.py
+input: 2727 bp
+egfp: 717 bp
+flag: 90 bp
+snap: 549 bp
+output: 3591 bp
+
+egfp starts at position 210 in output
+snap ends at position 1554 in output
+
+Before insert: 210 bp
+After insert: 2037 bp
+
+Before sequence found at: 160
+After sequence found at: 690
+Last 20bp before insert: tttaagaaggagatatacat
+First 20bp after insert: tgaggatcccgggaattctc
+root@11eec39dc770:/app#

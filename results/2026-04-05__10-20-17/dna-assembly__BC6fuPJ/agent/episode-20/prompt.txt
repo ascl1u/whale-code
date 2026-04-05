@@ -1,0 +1,117 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat > verify_annealing.py << 'EOF'
+> import subprocess
+>
+> def reverse_complement(seq):
+>     complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
+>     return ''.join(complement[base] for base in reversed(seq))
+>
+> # Read sequences
+> seqs = {}
+> with open('sequences.fasta', 'r') as f:
+>     current_name = None
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> # Read primers
+> primers = {}
+> with open('primers.fasta', 'r') as f:
+>     current_name = None
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             primers[current_name] = ''
+>         else:
+>             primers[current_name] += line.upper()
+>
+> print("=== VERIFYING PRIMER ANNEALING ===")
+> print()
+>
+> # Prepare templates
+> egfp_template = seqs['egfp'][:-3]  # Remove stop codon
+> flag_template = seqs['flag'][3:-3]  # Remove ATG and stop
+> snap_template = seqs['snap'][3:]  # Remove ATG
+>
+> templates = {
+>     'input': seqs['input'],
+>     'egfp': egfp_template,
+>     'flag': flag_template,
+>     'snap': snap_template
+> }
+>
+> # Check each primer
+> for name in ['input', 'egfp', 'flag', 'snap']:
+>     fwd_primer = primers[f'{name}_fwd']
+>     rev_primer = primers[f'{name}_rev']
+>     template = templates[name]
+>
+>     # Extract annealing regions
+>     fwd_anneal = fwd_primer[11:]  # Skip GGTCTCN + 4bp overhang
+>     rev_anneal = rev_primer[11:]  # Skip GAGACCN + 4bp overhang
+>
+>     print(f"{name.upper()}:")
+>
+>     # Check forward primer
+>     if name == 'input':
+>         # Input forward starts at position 1554
+>         match_pos = seqs['input'].find(fwd_anneal)
+>         print(f"  Fwd anneals at position: {match_pos}")
+>         if match_pos == 1554:
+>             print(f"  ✓ Forward primer anneals correctly")
+>         else:
+>             print(f"  Note: Expected position 1554")
+>     else:
+>         if template.startswith(fwd_anneal):
+>             print(f"  ✓ Forward primer anneals to start of template")
+>         else:
+>             print(f"  ✗ Forward primer does not match template start!")
+>
+>     # Check reverse primer
+>     rev_anneal_rc = reverse_complement(rev_anneal)
+>     if name == 'input':
+>         # Input reverse ends at position 210
+>         match_pos = seqs['input'].find(rev_anneal_rc)
+>         expected_end = 210
+>         actual_end = match_pos + len(rev_anneal_rc)
+>         print(f"  Rev anneals at position: {match_pos} to {actual_end}")
+>         if actual_end == expected_end:
+>             print(f"  ✓ Reverse primer anneals correctly")
+>         else:
+>             print(f"  Note: Expected to end at position {expected_end}")
+>     else:
+>         if template.endswith(rev_anneal_rc):
+>             print(f"  ✓ Reverse primer anneals to end of template")
+>         else:
+>             print(f"  ✗ Reverse primer does not match template end!")
+>     print()
+>
+> EOF
+root@b088ecd58d39:/app# python3 verify_annealing.py
+=== VERIFYING PRIMER ANNEALING ===
+
+INPUT:
+  Fwd anneals at position: 1554
+  ✓ Forward primer anneals correctly
+  Rev anneals at position: 182 to 210
+  ✓ Reverse primer anneals correctly
+
+EGFP:
+  ✓ Forward primer anneals to start of template
+  ✓ Reverse primer anneals to end of template
+
+FLAG:
+  ✓ Forward primer anneals to start of template
+  ✓ Reverse primer anneals to end of template
+
+SNAP:
+  ✓ Forward primer anneals to start of template
+  ✓ Reverse primer anneals to end of template
+
+root@b088ecd58d39:/app#

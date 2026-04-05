@@ -1,0 +1,36 @@
+Current Terminal Screen:
+root@b4f8d1bbdfe9:/app# ls -la /app/*.py /app/*.csv /app/*.png 2>/dev/null
+-rw-r--r-- 1 root root   5055 Apr  5 06:41 /app/convert_masks.py
+-rw-r--r-- 1 root root   7072 Oct 24 05:18 /app/demo_metadata.csv
+-rw-r--r-- 1 root root 187898 Oct 24 05:18 /app/demo_rgb.png
+import argparse
+import pandas as pd
+import numpy as np
+import cv2
+from mobile_sam import sam_model_registry, SamPredictor
+import torch
+from tqdm import tqdm
+
+def parse_coords(coords_str):
+    """Parse comma-separated coordinate string to list of integers."""
+    if pd.isna(coords_str) or coords_str == '':
+        return []
+    return [int(x) for x in str(coords_str).split(',')]
+
+def coords_to_string(coords_list):
+    """Convert list of coordinates to comma-separated string."""
+    return ','.join(map(str, coords_list))
+
+def get_largest_contour(mask):
+    """Get the largest contiguous region from a binary mask."""
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if len(contours) == 0:
+        return None
+    # Find largest contour by area
+    largest_contour = max(contours, key=cv2.contourArea)
+    return largest_contour
+
+def mask_to_polyline(mask):
+    """Convert binary mask to polyline coordinates."""
+    contour = get_largest_contour(mask)
+root@b4f8d1bbdfe9:/app#

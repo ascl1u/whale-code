@@ -1,0 +1,66 @@
+New Terminal Output:
+
+root@7f9aa432215a:/app# cat > train_model.py << 'EOF'
+> import pandas as pd
+> import fasttext
+> import os
+>
+> # Load data
+> print("Loading data...")
+> train_df = pd.read_parquet('data/train-00000-of-00001.parquet')
+> test_df = pd.read_parquet('data/test-00000-of-00001.parquet')
+>
+> # Prepare fasttext format: __label__<label> <text>
+> def prepare_fasttext_data(df, output_file):
+>     with open(output_file, 'w', encoding='utf-8') as f:
+>         for _, row in df.iterrows():
+>             # Clean text: remove newlines and extra spaces
+>             text = ' '.join(str(row['text']).replace('\n', ' ').split())
+>             label = row['label']
+>             f.write(f'__label__{label} {text}\n')
+>     print(f"Saved {len(df)} samples to {output_file}")
+>
+> print("Preparing training data...")
+> prepare_fasttext_data(train_df, 'train.txt')
+>
+> print("Preparing test data...")
+> prepare_fasttext_data(test_df, 'test.txt')
+>
+> print("\nTraining fasttext model...")
+> # Train with parameters to keep model size small but maintain accuracy
+> # dim: lower dimension for smaller model
+> # epoch: more epochs for better accuracy
+> # lr: learning rate
+> # wordNgrams: use bigrams for better accuracy
+> model = fasttext.train_supervised(
+>     input='train.txt',
+>     epoch=25,
+>     lr=0.5,
+>     dim=100,
+>     wordNgrams=2,
+>     loss='softmax',
+>     verbose=2
+> )
+>
+> print("\nEvaluating on test set...")
+> result = model.test('test.txt')
+> print(f"Test samples: {result[0]}")
+> print(f"Precision: {result[1]:.4f}")
+> print(f"Recall: {result[2]:.4f}")
+>
+> # Save the model
+> print("\nSaving model...")
+> model.save_model('/app/model.bin')
+>
+> # Check model size
+> model_size = os.path.getsize('/app/model.bin') / (1024 * 1024)  # MB
+> print(f"\nModel size: {model_size:.2f} MB")
+>
+> if model_size >= 150:
+>     print("WARNING: Model size exceeds 150MB!")
+> if result[1] < 0.62:
+>     print("WARNING: Accuracy is below 0.62!")
+>
+> print("\nTraining complete!")
+> EOF
+root@7f9aa432215a:/app#

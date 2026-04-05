@@ -1,0 +1,63 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> seqs = read_fasta('sequences.fasta')
+> output_seq = seqs['output']
+> egfp = seqs['egfp']
+>
+> print(f"eGFP length: {len(egfp)}")
+> print(f"Output length: {len(output_seq)}")
+> print(f"Can fit eGFP at 210: {210 + len(egfp) <= len(output_seq)}")
+>
+> # Check exact match
+> output_segment = output_seq[210:210+len(egfp)]
+> print(f"\nOutput segment length: {len(output_segment)}")
+> print(f"eGFP length: {len(egfp)}")
+> print(f"Match: {output_segment == egfp}")
+>
+> # Find first mismatch
+> if output_segment != egfp:
+>     for i in range(min(len(output_segment), len(egfp))):
+>         if output_segment[i] != egfp[i]:
+>             print(f"\nFirst mismatch at position {i}")
+>             print(f"Output: ...{output_segment[max(0,i-10):i+10]}...")
+>             print(f"eGFP:   ...{egfp[max(0,i-10):i+10]}...")
+>             break
+>     else:
+>         print("\nLength mismatch but no character mismatch found")
+>         print(f"Output segment ends at: {len(output_segment)}")
+>         print(f"eGFP ends at: {len(egfp)}")
+>
+> EOF
+eGFP length: 717
+Output length: 3591
+Can fit eGFP at 210: True
+
+Output segment length: 717
+eGFP length: 717
+Match: False
+
+First mismatch at position 714
+Output: ...gctgtacaaaggt...
+eGFP:   ...gctgtacaaataa...
+root@a0b49dcae9e4:/app#

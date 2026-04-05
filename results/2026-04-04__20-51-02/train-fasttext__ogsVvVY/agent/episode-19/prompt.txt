@@ -1,0 +1,44 @@
+New Terminal Output:
+
+root@b212fec9db4d:/app# python3 << 'EOF'
+> import pandas as pd
+> import fasttext
+> import os
+>
+> # Load data
+> print("Loading data...")
+> train_df = pd.read_parquet('data/train-00000-of-00001.parquet')
+> test_df = pd.read_parquet('data/test-00000-of-00001.parquet')
+>
+> print(f"Train size: {len(train_df)}")
+> print(f"Test size: {len(test_df)}")
+>
+> # Prepare fasttext format: __label__X text
+> def prepare_fasttext_line(row):
+>     # Clean text: remove newlines and extra spaces
+>     text = ' '.join(str(row['text']).replace('\n', ' ').replace('\r', ' ').split())
+>     return f"__label__{row['label']} {text}"
+>
+> print("\nPreparing train data...")
+> train_lines = [prepare_fasttext_line(row) for _, row in train_df.iterrows()]
+>
+> print("Preparing test data...")
+> test_lines = [prepare_fasttext_line(row) for _, row in test_df.iterrows()]
+>
+> # Write to files
+> print("\nWriting train file...")
+> with open('/tmp/train.txt', 'w', encoding='utf-8') as f:
+>     f.write('\n'.join(train_lines))
+>
+> print("Writing test file...")
+> with open('/tmp/test.txt', 'w', encoding='utf-8') as f:
+>     f.write('\n'.join(test_lines))
+>
+> print("\nData preparation complete!")
+> EOF
+Loading data...
+Train size: 650000
+Test size: 10000
+
+Preparing train data...
+

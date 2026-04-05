@@ -1,0 +1,71 @@
+New Terminal Output:
+
+root@b5686e945626:/app# python3 << 'EOF'
+> import struct
+>
+> # Re-parse ISO to get correct file location for VMLINUZ-LTS
+> with open('/app/alpine.iso', 'rb') as f:
+>     # Get root directory
+>     f.seek(16 * 2048)
+>     pvd = f.read(2048)
+>     root_lba = struct.unpack('<I', pvd[156+2:156+6])[0]
+>     root_size = struct.unpack('<I', pvd[156+10:156+14])[0]
+>
+>     # Find BOOT directory
+>     f.seek(root_lba * 2048)
+>     root_data = f.read(root_size)
+>
+>     offset = 0
+>     boot_lba = None
+>     while offset < len(root_data):
+>         if root_data[offset] == 0:
+>             offset += 1
+>             continue
+>         length = root_data[offset]
+>         if length == 0:
+>             break
+>         name_len = root_data[offset+32]
+>         name = root_data[offset+33:offset+33+name_len].decode('ascii', errors='ignore')
+>         if 'BOOT' in name.upper():
+>             boot_lba = struct.unpack('<I', root_data[offset+2:offset+6])[0]
+>             boot_size = struct.unpack('<I', root_data[offset+10:offset+14])[0]
+>             print(f"Found BOOT dir at LBA {boot_lba}, size {boot_size}")
+>             break
+>         offset += length
+>
+>     if boot_lba:
+>         # Read BOOT directory
+>         f.seek(boot_lba * 2048)
+>         boot_data = f.read(boot_size)
+>
+>         offset = 0
+>         while offset < len(boot_data):
+>             if boot_data[offset] == 0:
+>                 offset += 1
+>                 continue
+>             length = boot_data[offset]
+>             if length == 0:
+>                 break
+>             name_len = boot_data[offset+32]
+>             name = boot_data[offset+33:offset+33+name_len].decode('ascii', errors='ignore')
+>             if 'VMLINUZ' in name.upper():
+>                 file_lba = struct.unpack('<I', boot_data[offset+2:offset+6])[0]
+>                 file_size = struct.unpack('<I', boot_data[offset+10:offset+14])[0]
+>                 print(f"Found {name} at LBA {file_lba}, size {file_size}")
+>
+>                 # Extract the file
+>                 f.seek(file_lba * 2048)
+>                 file_data = f.read(file_size)
+>                 with open('/tmp/vmlinuz-lts-new', 'wb') as out:
+>                     out.write(file_data)
+>                 print(f"Extracted to /tmp/vmlinuz-lts-new")
+>                 print(f"First 20 bytes: {file_data[:20].hex()}")
+>                 break
+>             offset += length
+>
+> EOF
+Found BOOT dir at LBA 62, size 2048
+Found VMLINUZ_LTS.;1 at LBA 483188, size 11879168
+Extracted to /tmp/vmlinuz-lts-new
+First 20 bytes: 4d5aea0700c0078cc88ed88ec08ed031e4fbfcbe
+root@b5686e945626:/app#

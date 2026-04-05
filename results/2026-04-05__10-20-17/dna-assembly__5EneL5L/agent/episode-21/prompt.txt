@@ -1,0 +1,116 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# cat >> design_gg_primers.py << 'EOFMAIN'
+> # 2. EGFP primers (without stop codon)
+> print("=" * 80)
+> print("2. EGFP INSERT (without stop codon)")
+> print("=" * 80)
+>
+> # eGFP forward: should create overhang 'acat' (to match input left side)
+> egfp_fwd_template = egfp_insert[:100]
+> egfp_rev_template = egfp_insert[-100:]
+>
+> egfp_fwd_anneal, egfp_fwd_tm = find_primer(egfp_fwd_template, 'fwd')
+> egfp_rev_anneal, egfp_rev_tm = find_primer(egfp_rev_template, 'rev')
+>
+> print(f"Forward primer annealing: {egfp_fwd_anneal} (Tm: {egfp_fwd_tm:.2f}°C)")
+> print(f"Reverse primer annealing: {egfp_rev_anneal} (Tm: {egfp_rev_tm:.2f}°C)")
+> print(f"Tm difference: {abs(egfp_fwd_tm - egfp_rev_tm):.2f}°C")
+> print()
+>
+> # eGFP forward primer: creates 'acat' overhang
+> egfp_fwd_primer = 'GGTCTCNACAT' + egfp_fwd_anneal
+>
+> # eGFP reverse primer: needs to create overhang for FLAG
+> # FLAG starts with 'ggtagtggctcc' (after removing ATG)
+> # We need first 4bp: 'ggta'
+> # RC of 'ggta' = 'tacc'
+> egfp_rev_primer_anneal_rc = reverse_complement(egfp_rev_anneal)
+> egfp_rev_primer = egfp_rev_primer_anneal_rc + 'GAGACCNTACC'
+>
+> print(f"eGFP forward primer: {egfp_fwd_primer}")
+> print(f"eGFP reverse primer: {egfp_rev_primer}")
+> print()
+>
+> primers.append(('>egfp_fwd', egfp_fwd_primer))
+> primers.append(('>egfp_rev', egfp_rev_primer))
+>
+> # 3. FLAG primers (without start and stop codons)
+> print("=" * 80)
+> print("3. FLAG INSERT (without start and stop codons)")
+> print("=" * 80)
+>
+> flag_fwd_template = flag_insert[:100]
+> flag_rev_template = flag_insert[-100:]
+>
+> flag_fwd_anneal, flag_fwd_tm = find_primer(flag_fwd_template, 'fwd')
+> flag_rev_anneal, flag_rev_tm = find_primer(flag_rev_template, 'rev')
+>
+> print(f"Forward primer annealing: {flag_fwd_anneal} (Tm: {flag_fwd_tm:.2f}°C)")
+> print(f"Reverse primer annealing: {flag_rev_anneal} (Tm: {flag_rev_tm:.2f}°C)")
+> print(f"Tm difference: {abs(flag_fwd_tm - flag_rev_tm):.2f}°C")
+> print()
+>
+> # FLAG forward primer: creates 'ggta' overhang (to match eGFP end)
+> flag_fwd_primer = 'GGTCTCNGGTA' + flag_fwd_anneal
+>
+> # FLAG reverse primer: needs to create overhang for SNAP
+> # SNAP starts with 'gacaaagactgc' (after removing ATG)
+> # We need first 4bp: 'gaca'
+> # RC of 'gaca' = 'tgtc'
+> flag_rev_primer_anneal_rc = reverse_complement(flag_rev_anneal)
+> flag_rev_primer = flag_rev_primer_anneal_rc + 'GAGACCNTGTC'
+>
+> print(f"FLAG forward primer: {flag_fwd_primer}")
+> print(f"FLAG reverse primer: {flag_rev_primer}")
+> print()
+>
+> primers.append(('>flag_fwd', flag_fwd_primer))
+> primers.append(('>flag_rev', flag_rev_primer))
+>
+> # 4. SNAP primers (without start codon, with stop codon)
+> print("=" * 80)
+> print("4. SNAP INSERT (without start codon)")
+> print("=" * 80)
+>
+> snap_fwd_template = snap_insert[:100]
+> snap_rev_template = snap_insert[-100:]
+>
+> snap_fwd_anneal, snap_fwd_tm = find_primer(snap_fwd_template, 'fwd')
+> snap_rev_anneal, snap_rev_tm = find_primer(snap_rev_template, 'rev')
+>
+> print(f"Forward primer annealing: {snap_fwd_anneal} (Tm: {snap_fwd_tm:.2f}°C)")
+> print(f"Reverse primer annealing: {snap_rev_anneal} (Tm: {snap_rev_tm:.2f}°C)")
+> print(f"Tm difference: {abs(snap_fwd_tm - snap_rev_tm):.2f}°C")
+> print()
+>
+> # SNAP forward primer: creates 'gaca' overhang (to match FLAG end)
+> snap_fwd_primer = 'GGTCTCNGACA' + snap_fwd_anneal
+>
+> # SNAP reverse primer: needs to create overhang for input backbone
+> # Should match 'ttaa' (input backbone expects this)
+> # RC of 'ttaa' = 'ttaa' (palindrome!)
+> snap_rev_primer_anneal_rc = reverse_complement(snap_rev_anneal)
+> snap_rev_primer = snap_rev_primer_anneal_rc + 'GAGACCNTTAA'
+>
+> print(f"SNAP forward primer: {snap_fwd_primer}")
+> print(f"SNAP reverse primer: {snap_rev_primer}")
+> print()
+>
+> primers.append(('>snap_fwd', snap_fwd_primer))
+> primers.append(('>snap_rev', snap_rev_primer))
+>
+> # Write primers to file
+> print("=" * 80)
+> print("Writing primers to primers.fasta...")
+> print("=" * 80)
+>
+> with open('primers.fasta', 'w') as f:
+>     for header, seq in primers:
+>         f.write(f"{header}\n{seq}\n")
+>
+> print("Done! Primers written to primers.fasta")
+> print(f"Total primers: {len(primers)}")
+>
+> EOFMAIN
+root@a0b49dcae9e4:/app#

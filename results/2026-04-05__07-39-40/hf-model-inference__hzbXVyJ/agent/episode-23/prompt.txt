@@ -1,0 +1,31 @@
+New Terminal Output:
+
+total 20
+drwxr-xr-x 1 root root 4096 Apr  5 14:59 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:55 ..
+-rw-r--r-- 1 root root 2175 Apr  5 14:58 app.py
+drwxr-xr-x 3 root root 4096 Apr  5 14:56 model_cache
+-rw-r--r-- 1 root root  799 Apr  5 14:59 service.log
+config.json  model.safetensors  special_tokens_map.json  tokenizer.json  tokenizer_config.json  vocab.txt
+root@8624ba7df4a0:/app# cat /app/app.py | head -20
+from flask import Flask, request, jsonify
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+import torch.nn.functional as F
+
+app = Flask(__name__)
+
+# Load the model and tokenizer from local directory
+model_path = "/app/model_cache/sentiment_model"
+print(f"Loading model from {model_path}...")
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForSequenceClassification.from_pretrained(model_path)
+print("Model loaded successfully!")
+
+@app.route('/sentiment', methods=['POST'])
+def analyze_sentiment():
+    try:
+        # Get JSON data from request
+        data = request.get_json()
+
+root@8624ba7df4a0:/app#

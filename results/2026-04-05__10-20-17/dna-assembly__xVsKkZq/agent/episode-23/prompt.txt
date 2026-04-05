@@ -1,0 +1,119 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > final_check.py << 'EOF'
+> import subprocess
+>
+> # Read primers
+> primers = {}
+> with open('primers.fasta', 'r') as f:
+>     lines = [l.rstrip('\n') for l in f]
+>     for i in range(0, len(lines), 2):
+>         name = lines[i][1:]
+>         seq = lines[i+1]
+>         primers[name] = seq
+>
+> def calc_tm(seq):
+>     cmd = ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq.upper()]
+>     result = subprocess.run(cmd, capture_output=True, text=True)
+>     return float(result.stdout.strip())
+>
+> print("FINAL VALIDATION CHECKLIST")
+> print("="*70)
+>
+> checks = []
+>
+> # 1. Check number of primers
+> num_primers = len(primers)
+> checks.append(("Minimum number of primer pairs", num_primers == 8, f"{num_primers//2} pairs"))
+>
+> # 2. Check header format
+> header_ok = True
+> for name in primers.keys():
+>     parts = name.split('_')
+>     if len(parts) != 2 or parts[0] not in ['input', 'egfp', 'flag', 'snap'] or parts[1] not in ['fwd', 'rev']:
+>         header_ok = False
+> checks.append(("Header format (TEMPLATENAME_DIR)", header_ok, "All correct"))
+>
+> # 3. Check for blank lines
+> with open('primers.fasta', 'r') as f:
+>     content = f.read()
+> no_blanks = '\n\n' not in content
+> checks.append(("No blank lines", no_blanks, "Clean file"))
+>
+> # 4. Check BsaI sites
+> bsai_ok = all(seq.startswith('GGTCTCN') or seq.startswith('GAGACCN') for seq in primers.values())
+> checks.append(("BsaI-HFv2 sites present", bsai_ok, "All primers"))
+>
+> # 5. Check binding region lengths
+> lengths_ok = True
+> for seq in primers.values():
+>     binding_len = len(seq) - 11  # Remove BsaI site + spacer + overhang
+>     if not (15 <= binding_len <= 45):
+>         lengths_ok = False
+> checks.append(("Binding regions 15-45bp", lengths_ok, "All in range"))
+>
+> # 6. Check Tm values
+> tm_ok = True
+> for seq in primers.values():
+>     binding = seq[11:]
+>     tm = calc_tm(binding)
+>     if not (58 <= tm <= 72):
+>         tm_ok = False
+> checks.append(("Tm values 58-72°C", tm_ok, "All in range"))
+>
+> # 7. Check primer pair Tm differences
+> pair_tm_ok = True
+> for template in ['input', 'egfp', 'flag', 'snap']:
+>     fwd = primers[f"{template}_fwd"][11:]
+>     rev = primers[f"{template}_rev"][11:]
+>     tm_diff = abs(calc_tm(fwd) - calc_tm(rev))
+>     if tm_diff > 5:
+>         pair_tm_ok = False
+> checks.append(("Primer pairs ΔTm ≤ 5°C", pair_tm_ok, "All pairs matched"))
+>
+> # 8. Check overhang compatibility
+> overhang_ok = True
+> oh = {
+>     'input_fwd': 'TGAG', 'input_rev': 'TCAT',  # RC of ATGA
+>     'egfp_fwd': 'ATGA', 'egfp_rev': 'CACT',   # RC of AGTG
+>     'flag_fwd': 'AGTG', 'flag_rev': 'TGTC',   # RC of GACA
+>     'snap_fwd': 'GACA', 'snap_rev': 'CTCA'    # RC of TGAG
+> }
+> for name, expected_oh in oh.items():
+>     actual_oh = primers[name][7:11]
+>     if actual_oh != expected_oh:
+>         overhang_ok = False
+> checks.append(("Correct overhangs for assembly", overhang_ok, "Circular compatible"))
+>
+> # Print results
+> all_passed = True
+> for check_name, passed, detail in checks:
+>     status = "✓" if passed else "✗"
+>     print(f"{status} {check_name}: {detail}")
+>     if not passed:
+>         all_passed = False
+>
+> print("\n" + "="*70)
+> if all_passed:
+>     print("✓✓✓ ALL REQUIREMENTS MET - primers.fasta is ready! ✓✓✓")
+> else:
+>     print("✗ Some requirements not met")
+> print("="*70)
+>
+> EOF
+root@11eec39dc770:/app# python3 final_check.py
+FINAL VALIDATION CHECKLIST
+======================================================================
+✓ Minimum number of primer pairs: 4 pairs
+✓ Header format (TEMPLATENAME_DIR): All correct
+✓ No blank lines: Clean file
+✓ BsaI-HFv2 sites present: All primers
+✓ Binding regions 15-45bp: All in range
+✓ Tm values 58-72°C: All in range
+✓ Primer pairs ΔTm ≤ 5°C: All pairs matched
+✓ Correct overhangs for assembly: Circular compatible
+
+======================================================================
+✓✓✓ ALL REQUIREMENTS MET - primers.fasta is ready! ✓✓✓
+======================================================================
+root@11eec39dc770:/app#

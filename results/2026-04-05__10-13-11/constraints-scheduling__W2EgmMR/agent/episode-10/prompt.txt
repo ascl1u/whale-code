@@ -1,0 +1,133 @@
+New Terminal Output:
+
+root@12ed0c16d4a4:/app# cat > validate_solution.py << 'EOF'
+> import re
+> from datetime import datetime
+>
+ > # Parse the scheduled meeting
+True
+ > with open('/app/meeting_scheduled.ics', 'r') as f:
+>     content = f.read()
+>     start_match = re.search(r'DTSTART:(\d{8}T\d{6}Z)', content)
+>     end_match = re.search(r'DTEND:(\d{8}T\d{6}Z)', content)
+>
+>     if start_match and end_match:
+>         start = datetime.strptime(start_match.group(1), '%Y%m%dT%H%M%SZ')
+>         end = datetime.strptime(end_match.group(1), '%Y%m%dT%H%M%SZ')
+>
+> print("=" * 60)
+> print("MEETING SCHEDULING SOLUTION VALIDATION")
+> print("=" * 60)
+> print(f"\nScheduled Meeting: {start.strftime('%A, %B %d, %Y')}")
+> print(f"Time: {start.strftime('%I:%M %p')} - {end.strftime('%I:%M %p')} UTC")
+> print(f"Duration: {(end - start).seconds // 3600} hour")
+>
+> print("\n" + "=" * 60)
+> print("CONSTRAINT VALIDATION")
+> print("=" * 60)
+>
+> # Alice constraints
+> print("\n[Alice's Constraints]")
+> print("  Required: 9 AM - 2 PM only")
+> print(f"  Meeting time: {start.hour}:00 - {end.hour}:00")
+> if 9 <= start.hour and end.hour <= 14:
+>     print("  ✓ SATISFIED: Within Alice's availability window")
+> else:
+>     print("  ✗ FAILED: Outside Alice's availability")
+>
+> # Bob constraints
+> print("\n[Bob's Constraints]")
+> print("  Required: No meetings before 10 AM")
+> print("  Required: Must leave by 4:30 PM on Tue/Thu")
+> print(f"  Meeting day: {start.strftime('%A')} (day {start.day})")
+> print(f"  Meeting time: {start.hour}:00 - {end.hour}:00")
+>
+> bob_ok = True
+> if start.hour < 10:
+>     print("  ✗ FAILED: Meeting starts before 10 AM")
+>     bob_ok = False
+> else:
+>     print("  ✓ SATISFIED: Meeting starts at or after 10 AM")
+>
+> if start.day in [16, 18]:  # Tuesday or Thursday
+>     if end.hour > 16 or (end.hour == 16 and end.minute > 30):
+>         print("  ✗ FAILED: Meeting ends after 4:30 PM on Tue/Thu")
+>         bob_ok = False
+>     else:
+>         print("  ✓ SATISFIED: Meeting ends by 4:30 PM on Tue/Thu")
+>
+> # Carol constraints
+> print("\n[Carol's Constraints]")
+> print("  Required: 9 AM - 5 PM availability")
+> print("  Required: Lunch break 12:00-12:30 PM (unavailable)")
+> print("  Preference: Not on Mondays")
+> print(f"  Meeting day: {start.strftime('%A')}")
+> print(f"  Meeting time: {start.hour}:00 - {end.hour}:00")
+>
+> carol_ok = True
+> if start.hour < 9 or end.hour > 17:
+>     print("  ✗ FAILED: Outside 9 AM - 5 PM window")
+>     carol_ok = False
+> else:
+>     print("  ✓ SATISFIED: Within 9 AM - 5 PM window")
+>
+> # Check lunch conflict
+> lunch_start = datetime(start.year, start.month, start.day, 12, 0, 0)
+> lunch_end = datetime(start.year, start.month, start.day, 12, 30, 0)
+> if start < lunch_end and end > lunch_start:
+>     print("  ✗ FAILED: Conflicts with lunch break (12:00-12:30)")
+>     carol_ok = False
+> else:
+>     print("  ✓ SATISFIED: No conflict with lunch break")
+>
+> if start.weekday() == 0:
+>     print("  ⚠ NOTE: Meeting is on Monday (not preferred but acceptable)")
+> else:
+>     print("  ✓ PREFERENCE: Not on Monday")
+>
+> print("\n" + "=" * 60)
+> print("CALENDAR CONFLICT CHECK")
+> print("=" * 60)
+>
+> # Parse existing calendars
+> def parse_ics(filename):
+>     events = []
+>     with open(filename, 'r') as f:
+>         content = f.read()
+>         vevent_pattern = r'BEGIN:VEVENT.*?END:VEVENT'
+>         vevents = re.findall(vevent_pattern, content, re.DOTALL)
+>
+>         for vevent in vevents:
+>             start_match = re.search(r'DTSTART:(\d{8}T\d{6}Z)', vevent)
+>             end_match = re.search(r'DTEND:(\d{8}T\d{6}Z)', vevent)
+>
+>             if start_match and end_match:
+>                 evt_start = datetime.strptime(start_match.group(1), '%Y%m%dT%H%M%SZ')
+>                 evt_end = datetime.strptime(end_match.group(1), '%Y%m%dT%H%M%SZ')
+>                 events.append((evt_start, evt_end))
+>     return events
+>
+> alice_events = parse_ics('/app/alice_calendar.ics')
+> bob_events = parse_ics('/app/bob_calendar.ics')
+> carol_events = parse_ics('/app/carol_calendar.ics')
+>
+> conflicts = False
+> for person, events in [('Alice', alice_events), ('Bob', bob_events), ('Carol', carol_events)]:
+>     print(f"\n[{person}]")
+>     has_conflict = False
+>     for evt_start, evt_end in events:
+>         if start < evt_end and end > evt_start:
+>             print(f"  ✗ CONFLICT: {evt_start} - {evt_end}")
+>             has_conflict = True
+>             conflicts = True
+>     if not has_conflict:
+>         print(f"  ✓ No conflicts")
+>
+> print("\n" + "=" * 60)
+> if not conflicts and bob_ok and carol_ok:
+>     print("✓ ALL CONSTRAINTS SATISFIED - SOLUTION IS VALID")
+> else:
+>     print("✗ SOLUTION HAS ISSUES")
+> print("=" * 60)
+> EOF
+root@12ed0c16d4a4:/app#

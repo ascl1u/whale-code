@@ -1,0 +1,73 @@
+New Terminal Output:
+
+root@e0e94b7854fe:/tmp/MobileSAM# grep -A 30 'Usage\|Example\|predictor\|box' README.md | head -80
+:star: **Original SAM and MobileSAM with a box as the prompt.**
+<p float="left">
+  <img src="assets/mask_box.jpg?raw=true" width="99.1%" />
+</p>
+
+:muscle: **Is MobileSAM faster and smaller than FastSAM? Yes!**
+MobileSAM is around 7 times smaller and around 5 times faster than the concurrent FastSAM.
+The comparison of the whole pipeline is summarzed as follows:
+Whole Pipeline (Enc+Dec)                                      | FastSAM | MobileSAM
+:-----------------------------------------:|:---------|:-----:
+Parameters      |  68M   | 9.66M
+Speed      |  64ms  |12ms
+
+:muscle: **Does MobileSAM aign better with the original SAM than FastSAM? Yes!**
+FastSAM is suggested to work with multiple points, thus we compare the mIoU with two prompt points (with different pixel distances) and show the resutls as foll
+ows. Higher mIoU indicates higher alignment.
+mIoU                                     | FastSAM | MobileSAM
+:-----------------------------------------:|:---------|:-----:
+100      |  0.27   | 0.73
+200      |  0.33  |0.71
+300      |  0.37  |0.74
+400      |  0.41  |0.73
+500      |  0.41  |0.73
+
+
+
+
+
+
+
+
+## Installation
+
+The code requires `python>=3.8`, as well as `pytorch>=1.7` and `torchvision>=0.8`. Please follow the instructions [here](https://pytorch.org/get-started/locally
+/) to install both PyTorch and TorchVision dependencies. Installing both PyTorch and TorchVision with CUDA support is strongly recommended.
+--
+predictor = SamPredictor(mobile_sam)
+predictor.set_image(<your_image>)
+masks, _, _ = predictor.predict(<input_prompts>)
+```
+
+or generate masks for an entire image:
+
+```
+from mobile_sam import SamAutomaticMaskGenerator
+
+mask_generator = SamAutomaticMaskGenerator(mobile_sam)
+masks = mask_generator.generate(<your_image>)
+```
+## <a name="GettingStarted"></a>Getting Started (MobileSAMv2)
+Download the model weights from the [checkpoints](https://drive.google.com/file/d/1dE-YAG-1mFCBmao2rHDp0n-PP4eH7SjE/view?usp=sharing).
+
+After downloading the model weights, faster SegEvery with MobileSAMv2 can be simply used as follows:
+```
+cd MobileSAMv2
+bash ./experiments/mobilesamv2.sh
+```
+## ONNX Export
+**MobileSAM** now supports ONNX export. Export the model with
+
+```
+python scripts/export_onnx_model.py --checkpoint ./weights/mobile_sam.pt --model-type vit_t --output ./mobile_sam.onnx
+```
+
+Also check the [example notebook](https://github.com/ChaoningZhang/MobileSAM/blob/master/notebooks/onnx_model_example.ipynb) to follow detailed steps.
+We recommend to use `onnx==1.12.0` and `onnxruntime==1.13.1` which is tested.
+
+
+## BibTex of our MobileSAM
+root@e0e94b7854fe:/tmp/MobileSAM#

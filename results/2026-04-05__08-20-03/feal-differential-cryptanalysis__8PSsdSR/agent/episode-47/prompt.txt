@@ -1,0 +1,146 @@
+New Terminal Output:
+
+root@a51ddc59c050:/app# cat > /app/attack.py << 'EOFPYTHON'
+t2_ar2
+            f2_r2 = f_function(right2_ar1 ^ key4)
+            left2_ar1 = right2_ar2 ^ f2_r2
+
+            for seed3 in range(0x10000):
+                key3 = (seed3 * 1234567) & 0xFFFFFFFF
+
+                for seed2 in range(0x10000):
+                    key2 = (seed2 * 1234567) & 0xFFFFFFFF
+
+                    # Undo rounds 1 and 0
+                    right1_ar0 = left1_ar1
+                    left1_ar0 = right1_ar1 ^ f_function(right1_ar0 ^ key3)
+                    right2_ar0 = left2_ar1
+                    left2_ar0 = right2_ar1 ^ f_function(right2_ar0 ^ key3)
+
+                    right1_ap = left1_ar0
+                    left1_ap = right1_ar0 ^ f_function(right1_ap ^ key2)
+                    right2_ap = left2_ar0
+                    left2_ap = right2_ar0 ^ f_function(right2_ap ^ key2)
+
+                    left1_aw = left1_ap
+                    right1_aw = right1_ap ^ left1_ap
+                    left2_aw = left2_ap
+                    right2_aw = right2_ap ^ left2_ap
+
+                    k0_1 = 0 ^ left1_aw
+                    k1_1 = 0 ^ right1_aw
+                    k0_2 = 0 ^ left2_aw
+                    k1_2 = 1 ^ right2_aw
+
+                    if k0_1 == k0_2 and k1_1 == k1_2:
+                        return key5
+
+    return 0
+
+EOFPYTHON
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     """
+>     Recover key[5] using chosen plaintext attack.
+>     Returns the uint32 value of key[5].
+>     """
+>
+>     # Collect plaintext-ciphertext pairs
+>     pt1 = merge(0, 0)
+>     ct1 = encrypt_fn(pt1)
+>     pt2 = merge(0, 1)
+>     ct2 = encrypt_fn(pt2)
+>
+>     # Brute force search with early termination
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         for seed4 in range(0x10000):
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # Partially decrypt both ciphertexts
+>             ct1_left = getleft(ct1)
+>             ct1_right = getright(ct1)
+>             left1_bpm = ct1_right ^ ct1_left
+>             right1_bpm = ct1_left
+>             right1_ar2 = left1_bpm
+>             f1_r3 = f_function(right1_ar2 ^ key5)
+>             left1_ar2 = right1_bpm ^ f1_r3
+>             right1_ar1 = left1_ar2
+>             f1_r2 = f_function(right1_ar1 ^ key4)
+>             left1_ar1 = right1_ar2 ^ f1_r2
+>
+>             ct2_left = getleft(ct2)
+>             ct2_right = getright(ct2)
+>             left2_bpm = ct2_right ^ ct2_left
+>             right2_bpm = ct2_left
+>             right2_ar2 = left2_bpm
+>             f2_r3 = f_function(right2_ar2 ^ key5)
+>             left2_ar2 = right2_bpm ^ f2_r3
+>             right2_ar1 = left2_ar2
+>             f2_r2 = f_function(right2_ar1 ^ key4)
+>             left2_ar1 = right2_ar2 ^ f2_r2
+>
+>             for seed3 in range(0x10000):
+>                 key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>
+>                 for seed2 in range(0x10000):
+>                     key2 = (seed2 * 1234567) & 0xFFFFFFFF
+>
+>                     # Undo rounds 1 and 0
+>                     right1_ar0 = left1_ar1
+>                     left1_ar0 = right1_ar1 ^ f_function(right1_ar0 ^ key3)
+>                     right2_ar0 = left2_ar1
+>                     left2_ar0 = right2_ar1 ^ f_function(right2_ar0 ^ key3)
+>
+>                     right1_ap = left1_ar0
+>                     left1_ap = right1_ar0 ^ f_function(right1_ap ^ key2)
+>                     right2_ap = left2_ar0
+>                     left2_ap = right2_ar0 ^ f_function(right2_ap ^ key2)
+>
+>                     left1_aw = left1_ap
+>                     right1_aw = right1_ap ^ left1_ap
+>                     left2_aw = left2_ap
+>                     right2_aw = right2_ap ^ left2_ap
+>
+>                     k0_1 = 0 ^ left1_aw
+>                     k1_1 = 0 ^ right1_aw
+>                     k0_2 = 0 ^ left2_aw
+>                     k1_2 = 1 ^ right2_aw
+>
+>                     if k0_1 == k0_2 and k1_1 == k1_2:
+>                         return key5
+>
+>     return 0
+>
+> EOFPYTHON
+root@a51ddc59c050:/app#

@@ -1,0 +1,160 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+       ct1 = encrypt_fn(pt1)
+        ct2 = encrypt_fn(pt2)
+        pairs_data.append((pt1, ct1, pt2, ct2))
+
+    # For each candidate key[5], count how many pairs satisfy a specific property
+    candidate_votes = {}
+
+    for seed in range(0x10000):
+        candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+        votes = 0
+
+        for pt1, ct1, pt2, ct2 in pairs_data:
+            # Partially decrypt both ciphertexts
+            fr1 = getleft(ct1)
+            fl1 = getright(ct1)
+            bxl1 = fl1 ^ fr1
+            bxr1 = fr1
+            rb1 = bxl1
+            lb1 = bxr1 ^ f_function(rb1 ^ candidate_key5)
+
+            fr2 = getleft(ct2)
+            fl2 = getright(ct2)
+            bxl2 = fl2 ^ fr2
+            bxr2 = fr2
+            rb2 = bxl2
+            lb2 = bxr2 ^ f_function(rb2 ^ candidate_key5)
+
+            # Compute the difference after partial decryption
+            delta_left = lb1 ^ lb2
+            delta_right = rb1 ^ rb2
+
+            # For the correct key, we expect the difference to propagate in a specific way
+            # Since we started with a difference in the left half of the plaintext,
+            # after 3 rounds and partial decryption of round 4, we should see
+            # a related pattern
+
+            # Vote for candidates where the difference is non-trivial
+            if delta_left != 0:
+                votes += 1
+            if delta_right != 0:
+                votes += 1
+
+            # Additional check: the difference should show avalanche properties
+            left_bits = bin(delta_left).count('1')
+            right_bits = bin(delta_right).count('1')
+
+            # Prefer differences with moderate bit counts
+            if 4 <= left_bits <= 28:
+                votes += 1
+            if 4 <= right_bits <= 28:
+                votes += 1
+
+        candidate_votes[candidate_key5] = votes
+
+    # Return the candidate with the most votes
+    best_key = max(candidate_votes, key=candidate_votes.get)
+    return best_key
+
+EOF
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using differential cryptanalysis"""
+>
+>     # Use a specific differential characteristic
+>     # Create plaintext pairs with a chosen difference
+>     delta_input = 0x8000000000000000  # Difference in MSB of left half
+>
+>     pairs_data = []
+>     for base in range(256):
+>         pt1 = base
+>         pt2 = base ^ delta_input
+>         ct1 = encrypt_fn(pt1)
+>         ct2 = encrypt_fn(pt2)
+>         pairs_data.append((pt1, ct1, pt2, ct2))
+>
+>     # For each candidate key[5], count how many pairs satisfy a specific property
+>     candidate_votes = {}
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>         votes = 0
+>
+>         for pt1, ct1, pt2, ct2 in pairs_data:
+>             # Partially decrypt both ciphertexts
+>             fr1 = getleft(ct1)
+>             fl1 = getright(ct1)
+>             bxl1 = fl1 ^ fr1
+>             bxr1 = fr1
+>             rb1 = bxl1
+>             lb1 = bxr1 ^ f_function(rb1 ^ candidate_key5)
+>
+>             fr2 = getleft(ct2)
+>             fl2 = getright(ct2)
+>             bxl2 = fl2 ^ fr2
+>             bxr2 = fr2
+>             rb2 = bxl2
+>             lb2 = bxr2 ^ f_function(rb2 ^ candidate_key5)
+>
+>             # Compute the difference after partial decryption
+>             delta_left = lb1 ^ lb2
+>             delta_right = rb1 ^ rb2
+>
+>             # For the correct key, we expect the difference to propagate in a specific way
+>             # Since we started with a difference in the left half of the plaintext,
+>             # after 3 rounds and partial decryption of round 4, we should see
+>             # a related pattern
+>
+>             # Vote for candidates where the difference is non-trivial
+>             if delta_left != 0:
+>                 votes += 1
+>             if delta_right != 0:
+>                 votes += 1
+>
+>             # Additional check: the difference should show avalanche properties
+>             left_bits = bin(delta_left).count('1')
+>             right_bits = bin(delta_right).count('1')
+>
+>             # Prefer differences with moderate bit counts
+>             if 4 <= left_bits <= 28:
+>                 votes += 1
+>             if 4 <= right_bits <= 28:
+>                 votes += 1
+>
+>         candidate_votes[candidate_key5] = votes
+>
+>     # Return the candidate with the most votes
+>     best_key = max(candidate_votes, key=candidate_votes.get)
+>     return best_key
+>
+> EOF
+root@486aac7a4fa6:/app#

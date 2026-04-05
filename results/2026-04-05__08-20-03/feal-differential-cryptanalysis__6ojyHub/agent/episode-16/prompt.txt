@@ -1,0 +1,99 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+>
+> def g_function(a, b, x):
+>     """FEAL G function (same as in feal.py)"""
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+>
+> def f_function(input_val):
+>     """FEAL F function (same as in feal.py)"""
+>     x = [0] * 4
+>     y = [0] * 4
+>
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>
+>     return output & 0xFFFFFFFF
+>
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+>
+> def partial_decrypt_last_round(ciphertext, candidate_key5):
+>     """Partially decrypt the last round using a candidate key[5]"""
+>     final_right = getleft(ciphertext)
+>     final_left = getright(ciphertext)
+>
+>     # Undo: left ^= right
+>     before_xor_left = final_left ^ final_right
+>     before_xor_right = final_right
+>
+>     # Undo the last Feistel round
+>     right_before_round3 = before_xor_left
+>     left_before_round3 = before_xor_right ^ f_function(right_before_round3 ^ candidate_key5)
+>
+>     return left_before_round3, right_before_round3
+>
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using chosen plaintext attack"""
+>
+>     # Strategy: Use the fact that encryption is a permutation
+>     # For the correct key, partial decryption should give us valid intermediate states
+>     # We'll use a statistical approach: collect many plaintext-ciphertext pairs
+>     # and find the key that gives the most "reasonable" partial decryptions
+>
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(100):
+>         plaintext = i
+>         ciphertext = encrypt_fn(plaintext)
+>         pairs.append((plaintext, ciphertext))
+>
+>     # For each candidate key, compute a score
+>     best_key = None
+>     best_score = float('-inf')
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Partially decrypt all ciphertexts
+>         decrypted_states = []
+>         for plaintext, ciphertext in pairs:
+>             left, right = partial_decrypt_last_round(ciphertext, candidate_key5)
+>             decrypted_states.append((left, right))
+>
+>         # Score based on: all states should be unique (no collisions)
+>         unique_states = len(set(decrypted_states))
+>         score = unique_states
+>
+>         # Additional scoring: check if decrypted states show expected patterns
+>         # For plaintexts 0, 1, 2, ..., the decrypted states should also be diverse
+>
+>         if score > best_score:
+>             best_score = score
+>             best_key = candidate_key5
+>
+>     return best_key
+>
+> EOF
+root@486aac7a4fa6:/app#

@@ -1,0 +1,37 @@
+Current Terminal Screen:
+>         c1_left, c1_right = getleft(c1), getright(c1)
+>         R3_1 = c1_right ^ c1_left
+>         L3_1 = c1_left ^ f_function(R3_1 ^ key5)
+>
+>         # Try only 32 key[4] samples for speed
+>         matches = 0
+>         for seed4 in range(0, 0x10000, 2048):  # Only 32 samples
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>             L2_diff = (R3_0 ^ f_function(L3_0 ^ key4)) ^ (R3_1 ^ f_function(L3_1 ^ key4))
+>             if L2_diff in valid_diffs:
+>                 matches += 1
+>                 if matches >= 2:
+>                     return key5
+>
+>     return 0
+>
+> EOF
+Actual key[5]: 206216280
+All keys: [1542795856, 458159245, 3533283048, 3335752328, 144900824, 206216280]
+Recovered key[5]: 0
+FAILED! Key not recovered.
+
+real    0m14.091s
+user    0m13.910s
+sys     0m0.017s
+root@506b644d66f7:/app# sed -i 's/range(0, 0x10000, 2048)/range(0, 0x10000, 1024)/' /app/attack.py
+root@506b644d66f7:/app# sed -i 's/if matches >= 2:/if matches >= 3:/' /app/attack.py
+Actual key[5]: 241379644
+All keys: [4200544716, 870734923, 1185184320, 2614856497, 2931683731, 241379644]
+Recovered key[5]: 0
+FAILED! Key not recovered.
+
+real    0m27.337s
+user    0m27.170s
+sys     0m0.013s
+root@506b644d66f7:/app#

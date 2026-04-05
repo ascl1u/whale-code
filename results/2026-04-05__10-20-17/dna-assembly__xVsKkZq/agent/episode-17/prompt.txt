@@ -1,0 +1,218 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > verify_primers.py << 'EOF'
+> import subprocess
+>
+> # Read primers
+> primers = {}
+> current_name = None
+> with open('primers.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             primers[current_name] = ''
+>         elif line:  # Check for blank lines
+>             primers[current_name] += line
+>
+> def calc_tm(seq):
+>     cmd = ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq.upper()]
+>     result = subprocess.run(cmd, capture_output=True, text=True)
+>     return float(result.stdout.strip())
+>
+> print("Verifying primers...\n")
+> print("="*70)
+>
+> for name, seq in primers.items():
+>     print(f"\n{name}:")
+>     print(f"  Full sequence: {seq}")
+>     print(f"  Length: {len(seq)}bp")
+>
+>     # Check for BsaI site
+>     if seq.startswith('GGTCTCN'):
+>         print(f"  BsaI site: GGTCTCN (forward) ✓")
+>         overhang = seq[7:11]
+>         binding = seq[11:]
+>         print(f"  Overhang: {overhang}")
+>         print(f"  Binding region: {binding} ({len(binding)}bp)")
+>         tm = calc_tm(binding)
+>         print(f"  Tm: {tm:.2f}°C")
+>
+>         if 15 <= len(binding) <= 45:
+>             print(f"  Binding length: ✓ (15-45bp)")
+>         else:
+>             print(f"  Binding length: ✗ (should be 15-45bp)")
+>
+>         if 58 <= tm <= 72:
+>             print(f"  Tm range: ✓ (58-72°C)")
+>         else:
+>             print(f"  Tm range: ✗ (should be 58-72°C)")
+>
+>     elif seq.startswith('GAGACCN'):
+>         print(f"  BsaI site: GAGACCN (reverse) ✓")
+>         overhang = seq[7:11]
+>         binding = seq[11:]
+>         print(f"  Overhang (RC): {overhang}")
+>         print(f"  Binding region (RC): {binding} ({len(binding)}bp)")
+>         tm = calc_tm(binding)
+>         print(f"  Tm: {tm:.2f}°C")
+>
+>         if 15 <= len(binding) <= 45:
+>             print(f"  Binding length: ✓ (15-45bp)")
+>         else:
+>             print(f"  Binding length: ✗ (should be 15-45bp)")
+>
+>         if 58 <= tm <= 72:
+>             print(f"  Tm range: ✓ (58-72°C)")
+>         else:
+>             print(f"  Tm range: ✗ (should be 58-72°C)")
+>
+> # Check primer pairs
+> print("\n" + "="*70)
+> print("Checking primer pairs...\n")
+>
+> for template in ['input', 'egfp', 'flag', 'snap']:
+>     fwd_name = f"{template}_fwd"
+>     rev_name = f"{template}_rev"
+>
+>     if fwd_name in primers and rev_name in primers:
+>         fwd_binding = primers[fwd_name][11:]
+>         rev_binding = primers[rev_name][11:]
+>
+>         fwd_tm = calc_tm(fwd_binding)
+>         rev_tm = calc_tm(rev_binding)
+>         tm_diff = abs(fwd_tm - rev_tm)
+>
+>         print(f"{template}:")
+>         print(f"  Forward Tm: {fwd_tm:.2f}°C")
+>         print(f"  Reverse Tm: {rev_tm:.2f}°C")
+>         print(f"  ΔTm: {tm_diff:.2f}°C")
+>
+>         if tm_diff <= 5:
+>             print(f"  Pair Tm difference: ✓ (≤5°C)")
+>         else:
+>             print(f"  Pair Tm difference: ✗ (should be ≤5°C)")
+>         print()
+>
+> print("="*70)
+> print(f"\nTotal primers: {len(primers)}")
+> print("All checks complete!")
+>
+> EOF
+root@11eec39dc770:/app# python3 verify_primers.py
+Verifying primers...
+
+======================================================================
+
+input_fwd:
+  Full sequence: GGTCTCNTGAGTGAGGATCCCGGGAATTC
+  Length: 29bp
+  BsaI site: GGTCTCN (forward) ✓
+  Overhang: TGAG
+  Binding region: TGAGGATCCCGGGAATTC (18bp)
+  Tm: 59.81°C
+  Binding length: ✓ (15-45bp)
+  Tm range: ✓ (58-72°C)
+
+input_rev:
+  Full sequence: GAGACCNTCATATGTATATCTCCTTCTTAAAGTTAAACAAAAT
+  Length: 43bp
+  BsaI site: GAGACCN (reverse) ✓
+  Overhang (RC): TCAT
+  Binding region (RC): ATGTATATCTCCTTCTTAAAGTTAAACAAAAT (32bp)
+  Tm: 59.83°C
+  Binding length: ✓ (15-45bp)
+  Tm range: ✓ (58-72°C)
+
+egfp_fwd:
+  Full sequence: GGTCTCNATGAATGAGCAAGGGCGAGGAGCTG
+  Length: 32bp
+  BsaI site: GGTCTCN (forward) ✓
+  Overhang: ATGA
+  Binding region: ATGAGCAAGGGCGAGGAGCTG (21bp)
+  Tm: 68.53°C
+  Binding length: ✓ (15-45bp)
+  Tm range: ✓ (58-72°C)
+
+egfp_rev:
+  Full sequence: GAGACCNCACTTTTGTACAGCTCGTCCATGCCGAG
+  Length: 35bp
+  BsaI site: GAGACCN (reverse) ✓
+  Overhang (RC): CACT
+  Binding region (RC): TTTGTACAGCTCGTCCATGCCGAG (24bp)
+  Tm: 68.48°C
+  Binding length: ✓ (15-45bp)
+  Tm range: ✓ (58-72°C)
+
+flag_fwd:
+  Full sequence: GGTCTCNAGTGGGTAGTGGCTCCGGTAGCGGTAG
+  Length: 34bp
+  BsaI site: GGTCTCN (forward) ✓
+  Overhang: AGTG
+  Binding region: GGTAGTGGCTCCGGTAGCGGTAG (23bp)
+  Tm: 69.51°C
+  Binding length: ✓ (15-45bp)
+  Tm range: ✓ (58-72°C)
+
+flag_rev:
+  Full sequence: GAGACCNTGTCTGAACCACTACCTGAACCAGAACCGG
+  Length: 37bp
+  BsaI site: GAGACCN (reverse) ✓
+  Overhang (RC): TGTC
+  Binding region (RC): TGAACCACTACCTGAACCAGAACCGG (26bp)
+  Tm: 69.35°C
+  Binding length: ✓ (15-45bp)
+  Tm range: ✓ (58-72°C)
+
+snap_fwd:
+  Full sequence: GGTCTCNGACAGACAAAGACTGCGAAATGAAGCGCACCA
+  Length: 39bp
+  BsaI site: GGTCTCN (forward) ✓
+  Overhang: GACA
+  Binding region: GACAAAGACTGCGAAATGAAGCGCACCA (28bp)
+  Tm: 71.20°C
+  Binding length: ✓ (15-45bp)
+  Tm range: ✓ (58-72°C)
+
+snap_rev:
+  Full sequence: GAGACCNCTCATTAACCCAGCCCAGGCTTACCCAGTC
+  Length: 37bp
+  BsaI site: GAGACCN (reverse) ✓
+  Overhang (RC): CTCA
+  Binding region (RC): TTAACCCAGCCCAGGCTTACCCAGTC (26bp)
+  Tm: 71.25°C
+  Binding length: ✓ (15-45bp)
+  Tm range: ✓ (58-72°C)
+
+======================================================================
+Checking primer pairs...
+
+input:
+  Forward Tm: 59.81°C
+  Reverse Tm: 59.83°C
+  ΔTm: 0.03°C
+  Pair Tm difference: ✓ (≤5°C)
+
+egfp:
+  Forward Tm: 68.53°C
+  Reverse Tm: 68.48°C
+  ΔTm: 0.05°C
+  Pair Tm difference: ✓ (≤5°C)
+
+flag:
+  Forward Tm: 69.51°C
+  Reverse Tm: 69.35°C
+  ΔTm: 0.16°C
+  Pair Tm difference: ✓ (≤5°C)
+
+snap:
+  Forward Tm: 71.20°C
+  Reverse Tm: 71.25°C
+  ΔTm: 0.05°C
+  Pair Tm difference: ✓ (≤5°C)
+
+======================================================================
+
+Total primers: 8
+All checks complete!
+root@11eec39dc770:/app#

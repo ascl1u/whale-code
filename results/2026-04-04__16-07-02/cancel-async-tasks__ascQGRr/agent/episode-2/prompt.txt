@@ -1,0 +1,75 @@
+New Terminal Output:
+
+root@b1eff7d0257d:/app# cat > /tmp/test_run.py << 'EOF'
+> import asyncio
+> import time
+> from run import run_tasks
+>
+> # Test 1: Basic functionality
+> print("Test 1: Basic functionality")
+> executed = []
+>
+> async def task1():
+>     executed.append(1)
+>     await asyncio.sleep(0.1)
+>
+> async def task2():
+>     executed.append(2)
+>     await asyncio.sleep(0.1)
+>
+> async def task3():
+>     executed.append(3)
+>     await asyncio.sleep(0.1)
+>
+> async def test_basic():
+>     await run_tasks([task1, task2, task3], max_concurrent=2)
+>     assert len(executed) == 3
+>     print(f"✓ All 3 tasks executed: {executed}")
+>
+> asyncio.run(test_basic())
+>
+> # Test 2: Concurrency limiting
+> print("\nTest 2: Concurrency limiting")
+> concurrent_count = 0
+> max_concurrent_seen = 0
+>
+> async def concurrent_task():
+>     global concurrent_count, max_concurrent_seen
+>     concurrent_count += 1
+>     max_concurrent_seen = max(max_concurrent_seen, concurrent_count)
+>     await asyncio.sleep(0.2)
+>     concurrent_count -= 1
+>
+> async def test_concurrency():
+>     global max_concurrent_seen
+>     max_concurrent_seen = 0
+>     tasks = [concurrent_task for _ in range(10)]
+>     await run_tasks(tasks, max_concurrent=3)
+>     assert max_concurrent_seen <= 3
+>     print(f"✓ Max concurrent tasks was {max_concurrent_seen} (limit: 3)")
+>
+> asyncio.run(test_concurrency())
+>
+> # Test 3: Cleanup code runs
+> print("\nTest 3: Cleanup code runs")
+> cleanup_ran = []
+>
+> async def task_with_cleanup(task_id):
+>     try:
+>         await asyncio.sleep(0.1)
+>     finally:
+>         cleanup_ran.append(task_id)
+>
+> async def test_cleanup():
+>     global cleanup_ran
+>     cleanup_ran = []
+>     tasks = [lambda i=i: task_with_cleanup(i) for i in range(5)]
+>     await run_tasks(tasks, max_concurrent=2)
+>     assert len(cleanup_ran) == 5
+>     print(f"✓ Cleanup ran for all {len(cleanup_ran)} tasks")
+>
+> asyncio.run(test_cleanup())
+>
+> print("\n✅ All tests passed!")
+> EOF
+root@b1eff7d0257d:/app#

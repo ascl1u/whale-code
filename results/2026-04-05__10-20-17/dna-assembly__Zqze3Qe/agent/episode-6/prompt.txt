@@ -1,0 +1,58 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# python3 << 'EOF'
+> # Parse sequences
+> with open('sequences.fasta', 'r') as f:
+>     lines = f.readlines()
+>
+> seqs = {}
+> current = None
+> for line in lines:
+>     line = line.strip()
+>     if line.startswith('>'):
+>         current = line[1:]
+>         seqs[current] = ''
+>     else:
+>         seqs[current] += line
+>
+> # Find exact positions
+> egfp_start = seqs['output'].find(seqs['egfp'])
+> print(f"eGFP in output: {egfp_start} to {egfp_start + len(seqs['egfp'])}")
+>
+> # Check flag without start and stop
+> flag_core = seqs['flag'][3:-3]  # Remove ATG and TAA
+> flag_start = seqs['output'].find(flag_core)
+> print(f"FLAG (no start/stop) in output: {flag_start} to {flag_start + len(flag_core)}")
+>
+> # Check snap without start and stop
+> snap_no_start = seqs['snap'][3:]
+> snap_start = seqs['output'].find(snap_no_start)
+> print(f"SNAP (no start) in output: {snap_start} to {snap_start + len(snap_no_start)}")
+>
+> snap_no_stop = seqs['snap'][:-3]
+> snap_start2 = seqs['output'].find(snap_no_stop)
+> print(f"SNAP (no stop) in output: {snap_start2} to {snap_start2 + len(snap_no_stop)}")
+>
+> snap_no_both = seqs['snap'][3:-3]
+> snap_start3 = seqs['output'].find(snap_no_both)
+> print(f"SNAP (no start/stop) in output: {snap_start3} to {snap_start3 + len(snap_no_both)}")
+>
+> # Look at junctions
+> print("\n=== Junction Analysis ===")
+> print(f"Before eGFP (output[200:210]): {seqs['output'][200:210]}")
+> print(f"eGFP starts with: {seqs['egfp'][:10]}")
+> print(f"After eGFP (output[{egfp_start + len(seqs['egfp'])}:{egfp_start + len(seqs['egfp']) + 10}]): {seqs['output'][egfp_start + len(seqs['egfp']):egfp_start
+ + len(seqs['egfp']) + 10]}")
+>
+> EOF
+eGFP in output: -1 to 716
+FLAG (no start/stop) in output: 924 to 1008
+SNAP (no start) in output: 1008 to 1554
+SNAP (no stop) in output: -1 to 545
+SNAP (no start/stop) in output: 1008 to 1551
+
+=== Junction Analysis ===
+Before eGFP (output[200:210]): agatatacat
+eGFP starts with: atgagcaagg
+After eGFP (output[716:726]): caacatcgag
+root@40713b84f85c:/app#

@@ -1,0 +1,31 @@
+New Terminal Output:
+
+root@da8012ae1cad:/git/server/hooks# cat > post-receive << 'EOF'
+> #!/bin/bash
+>
+> # Define the web root directory
+> WEB_ROOT="/var/www/html"
+>
+> # Read the push information
+> while read oldrev newrev refname; do
+>     # Check if this is the master branch
+>     if [[ $refname == "refs/heads/master" ]]; then
+>         echo "Deploying to web server..."
+>
+>         # Create a temporary directory for checkout
+>         TEMP_DIR=$(mktemp -d)
+>
+>         # Clone the repository to temp directory
+>         git clone /git/server "$TEMP_DIR" 2>&1
+>
+>         # Copy files to web root (excluding .git directory)
+>         rsync -av --delete --exclude='.git' "$TEMP_DIR/" "$WEB_ROOT/"
+>
+>         # Clean up temp directory
+>         rm -rf "$TEMP_DIR"
+>
+>         echo "Deployment complete!"
+>     fi
+> done
+> EOF
+root@da8012ae1cad:/git/server/hooks#

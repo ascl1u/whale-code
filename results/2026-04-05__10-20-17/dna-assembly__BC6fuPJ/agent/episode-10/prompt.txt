@@ -1,0 +1,55 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat > check_sequences.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> # Look for egfp in output
+> egfp_start = seqs['output'].find(seqs['egfp'][:100])
+> print(f"First 100bp of EGFP found at: {egfp_start}")
+>
+> if egfp_start != -1:
+>     # Check if full egfp matches
+>     output_egfp = seqs['output'][egfp_start:egfp_start+len(seqs['egfp'])]
+>     if output_egfp == seqs['egfp']:
+>         print("Full EGFP matches!")
+>         egfp_end = egfp_start + len(seqs['egfp'])
+>
+>         # Check what comes after
+>         after_egfp = seqs['output'][egfp_end:egfp_end+100]
+>         print(f"\nAfter EGFP (100bp): {after_egfp}")
+>         print(f"\nFLAG start (100bp): {seqs['flag'][:100]}")
+>
+>         # Check if they match
+>         if after_egfp.startswith(seqs['flag']):
+>             print("\n*** FLAG immediately follows EGFP! ***")
+>         else:
+>             print("\nFLAG does not immediately follow EGFP")
+>             # Check character by character
+>             for i in range(min(len(after_egfp), len(seqs['flag']))):
+>                 if after_egfp[i] != seqs['flag'][i]:
+>                     print(f"First mismatch at position {i}: output={after_egfp[i]}, flag={seqs['flag'][i]}")
+>                     print(f"Context: ...{after_egfp[max(0,i-10):i+10]}...")
+>                     break
+>     else:
+>         print("Full EGFP does not match")
+>         for i in range(len(seqs['egfp'])):
+>             if output_egfp[i] != seqs['egfp'][i]:
+>                 print(f"First mismatch at position {i}")
+>                 break
+>
+> EOF
+root@b088ecd58d39:/app# python3 check_sequences.py
+First 100bp of EGFP found at: 210
+Full EGFP does not match
+First mismatch at position 714
+root@b088ecd58d39:/app#

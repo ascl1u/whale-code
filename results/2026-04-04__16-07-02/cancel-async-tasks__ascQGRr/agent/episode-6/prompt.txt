@@ -1,0 +1,54 @@
+New Terminal Output:
+
+root@b1eff7d0257d:/app# cat > /tmp/test_interrupt.py << 'EOF'
+> import asyncio
+> import signal
+> import sys
+> sys.path.insert(0, '/app')
+> from run import run_tasks
+>
+> print("Test: Cleanup on cancellation")
+> cleanup_ran = []
+> started = []
+>
+> async def task_with_cleanup(task_id):
+>     try:
+>         started.append(task_id)
+>         await asyncio.sleep(10)  # Long running task
+>     except asyncio.CancelledError:
+>         print(f"Task {task_id} cancelled, running cleanup...")
+>         raise
+>     finally:
+>         cleanup_ran.append(task_id)
+>         print(f"Task {task_id} cleanup completed")
+>
+> async def test_interrupt():
+>     global cleanup_ran, started
+>     cleanup_ran = []
+>     started = []
+>
+>     # Create tasks
+>     tasks = [lambda i=i: task_with_cleanup(i) for i in range(5)]
+>
+>     # Start tasks and cancel after a short delay
+>     task = asyncio.create_task(run_tasks(tasks, max_concurrent=2))
+>     await asyncio.sleep(0.3)  # Let some tasks start
+>
+>     # Cancel the task
+>     task.cancel()
+>
+>     try:
+>         await task
+>     except asyncio.CancelledError:
+>         print("run_tasks was cancelled")
+>
+>     # Give time for cleanup
+>     await asyncio.sleep(0.1)
+>
+>     print(f"\nStarted: {len(started)} tasks")
+>     print(f"Cleanup ran for: {len(cleanup_ran)} tasks")
+>     print(f"✓ Cleanup code executed for all started tasks")
+>
+> asyncio.run(test_interrupt())
+> EOF
+root@b1eff7d0257d:/app#

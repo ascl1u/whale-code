@@ -1,0 +1,78 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# cat >> design_primers.py << 'SCRIPT_EOF'
+>
+> # For Golden Gate assembly with circular product:
+> # Each fragment needs compatible overhangs to assemble in order
+> # Fragment order: input_backbone -> eGFP -> FLAG -> SNAP -> (back to input_backbone)
+>
+> # The input backbone will be linearized and will have:
+> # - 5' overhang: compatible with SNAP's 3' end (oh4)
+> # - 3' overhang: compatible with eGFP's 5' start (oh1)
+>
+> # eGFP (without stop codon):
+> # - 5' overhang: oh1 (connects to input)
+> # - 3' overhang: oh2 (connects to FLAG)
+>
+> # FLAG (without start/stop):
+> # - 5' overhang: oh2 (connects to eGFP)
+> # - 3' overhang: oh3 (connects to SNAP)
+>
+> # SNAP (without start codon):
+> # - 5' overhang: oh3 (connects to FLAG)
+> # - 3' overhang: oh4 (connects to input)
+>
+> print("\n=== Fragment Design ===")
+> print(f"Fragment 1 (input): oh4 -> backbone -> oh1")
+> print(f"Fragment 2 (eGFP): oh1 -> egfp(no stop) -> oh2")
+> print(f"Fragment 3 (FLAG): oh2 -> flag(no start/stop) -> oh3")
+> print(f"Fragment 4 (SNAP): oh3 -> snap(no start) -> oh4")
+>
+> # Prepare template sequences
+> egfp_template = seqs['egfp'][:-3]  # Remove stop codon TAA
+> flag_template = seqs['flag'][3:-3]  # Remove start ATG and stop TAA
+> snap_template = seqs['snap'][3:]  # Remove start ATG, keep stop
+>
+> # Input backbone: from position 690 to end, then start to 210
+> input_backbone = input_seq[690:] + input_seq[:210]
+>
+> print(f"\neGFP template length: {len(egfp_template)}")
+> print(f"FLAG template length: {len(flag_template)}")
+> print(f"SNAP template length: {len(snap_template)}")
+> print(f"Input backbone length: {len(input_backbone)}")
+>
+> # Design primers for each fragment
+> print("\n=== Designing eGFP primers ===")
+> egfp_fwd, egfp_rev = design_primer_pair('egfp', egfp_template, oh1, oh2)
+> if egfp_fwd and egfp_rev:
+>     print(f"Forward: Tm={egfp_fwd[2]:.1f}°C, anneal_len={len(egfp_fwd[1])}")
+>     print(f"Reverse: Tm={egfp_rev[2]:.1f}°C, anneal_len={len(egfp_rev[1])}")
+> else:
+>     print("Failed to design eGFP primers")
+>
+> print("\n=== Designing FLAG primers ===")
+> flag_fwd, flag_rev = design_primer_pair('flag', flag_template, oh2, oh3)
+> if flag_fwd and flag_rev:
+>     print(f"Forward: Tm={flag_fwd[2]:.1f}°C, anneal_len={len(flag_fwd[1])}")
+>     print(f"Reverse: Tm={flag_rev[2]:.1f}°C, anneal_len={len(flag_rev[1])}")
+> else:
+>     print("Failed to design FLAG primers")
+>
+> print("\n=== Designing SNAP primers ===")
+> snap_fwd, snap_rev = design_primer_pair('snap', snap_template, oh3, oh4)
+> if snap_fwd and snap_rev:
+>     print(f"Forward: Tm={snap_fwd[2]:.1f}°C, anneal_len={len(snap_fwd[1])}")
+>     print(f"Reverse: Tm={snap_rev[2]:.1f}°C, anneal_len={len(snap_rev[1])}")
+> else:
+>     print("Failed to design SNAP primers")
+>
+> print("\n=== Designing Input backbone primers ===")
+> input_fwd, input_rev = design_primer_pair('input', input_backbone, oh4, oh1)
+> if input_fwd and input_rev:
+>     print(f"Forward: Tm={input_fwd[2]:.1f}°C, anneal_len={len(input_fwd[1])}")
+>     print(f"Reverse: Tm={input_rev[2]:.1f}°C, anneal_len={len(input_rev[1])}")
+> else:
+>     print("Failed to design input primers")
+>
+> SCRIPT_EOF
+root@40713b84f85c:/app#

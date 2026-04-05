@@ -1,0 +1,44 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > debug_uniqueness.py << 'EOF'
+> #!/usr/bin/env python3
+> import feal
+> import attack
+>
+> # Initialize with random keys
+> feal.create_random_keys()
+>
+> print("Actual key[5]:", feal.key[5])
+>
+> # Find the correct seed
+> correct_seed = None
+> for seed in range(0x10000):
+>     if (seed * 1234567) & 0xFFFFFFFF == feal.key[5]:
+>         correct_seed = seed
+>         break
+>
+> print(f"Correct seed: {correct_seed}")
+>
+> # Collect some pairs
+> pairs = []
+> for i in range(100):
+>     plaintext = i
+>     ciphertext = feal.encrypt(plaintext)
+>     pairs.append((plaintext, ciphertext))
+>
+> # Test a few candidate seeds
+> test_seeds = [0, 1, 100, 1000, correct_seed]
+>
+> for seed in test_seeds:
+>     candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>     decrypted_states = []
+>     for plaintext, ciphertext in pairs:
+>         left, right = attack.partial_decrypt_last_round(ciphertext, candidate_key5)
+>         decrypted_states.append((left, right))
+>
+>     unique_count = len(set(decrypted_states))
+>     print(f"Seed {seed}: {unique_count} unique states out of 100")
+>     if seed == correct_seed:
+>         print("  ^ This is the correct seed")
+> EOF
+root@486aac7a4fa6:/app#

@@ -1,0 +1,32 @@
+New Terminal Output:
+
+root@273e10a6db89:/app# python3 << 'EOF'
+> with open('cobol_output/ACCOUNTS.DAT', 'rb') as f:
+>     cobol = f.read()
+> with open('data/ACCOUNTS.DAT', 'rb') as f:
+>     python = f.read()
+>
+> print(f"COBOL length: {len(cobol)}")
+> print(f"Python length: {len(python)}")
+> print(f"\nCOBOL:  {repr(cobol)}")
+> print(f"\nPython: {repr(python)}")
+>
+> # Find the difference
+> for i in range(min(len(cobol), len(python))):
+>     if cobol[i] != python[i]:
+>         print(f"\nFirst difference at byte {i}:")
+>         print(f"COBOL:  {repr(cobol[max(0,i-5):i+15])}")
+>         print(f"Python: {repr(python[max(0,i-5):i+15])}")
+>         break
+> EOF
+COBOL length: 102
+Python length: 103
+
+COBOL:  b'U001John Doe            1999998820U002Jane Smith          2000001800U003Bob Wilson          0000001520'
+
+Python: b'U001John Doe            -1999998820U002Jane Smith          2000001800U003Bob Wilson          0000001520'
+
+First difference at byte 24:
+COBOL:  b'     1999998820U002J'
+Python: b'     -1999998820U002'
+root@273e10a6db89:/app#

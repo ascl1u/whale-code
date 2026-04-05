@@ -1,0 +1,478 @@
+[?2004hroot@8624ba7df4a0:/app# asciinema rec --stdin /logs/agent/recording.cast
+[?2004l[0;32masciinema: recording asciicast to /logs/agent/recording.cast[0m
+[0;32masciinema: press <ctrl-d> or type "exit" when you're done[0m
+[?2004hroot@8624ba7df4a0:/app# clear
+[?2004l[H[J[3J[?2004hroot@8624ba7df4a0:/app# ls -la; printf '%s\n' '__CMDEND__1__'
+[?2004ltotal 8
+drwxr-xr-x 2 root root 4096 Aug 22  2025 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:55 ..
+__CMDEND__1__
+[?2004hroot@8624ba7df4a0:/app# python3 --version; printf '%s\n' '__CMDEND__2__'
+[?2004lPython 3.13.7
+__CMDEND__2__
+[?2004hroot@8624ba7df4a0:/app# pip3 --version; printf '%s\n' '__CMDEND__3__'
+[?2004lpip 25.2 from /usr/local/lib/python3.13/site-packages/pip (python 3.13)
+__CMDEND__3__
+[?2004hroot@8624ba7df4a0:/app# pip3 install transformers flask torch --quiet; printf '%s\n' '__CMDEND__4__'
+[?2004l[33mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.[0m[33m
+[0m
+[1m[[0m[34;49mnotice[0m[1;39;49m][0m[39;49m A new release of pip is available: [0m[31;49m25.2[0m[39;49m -> [0m[32;49m26.0.1[0m
+[1m[[0m[34;49mnotice[0m[1;39;49m][0m[39;49m To update, run: [0m[32;49mpip install --upgrade pip[0m
+__CMDEND__4__
+[?2004hroot@8624ba7df4a0:/app# mkdir -p /app/model_cache/sentiment_model; printf '%s\n' '__CMDEND__5__'
+[?2004l__CMDEND__5__
+[?2004hroot@8624ba7df4a0:/app# ls -la /app/model_cache/; printf '%s\n' '__CMDEND__6__'
+[?2004ltotal 12
+drwxr-xr-x 3 root root 4096 Apr  5 14:56 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:56 ..
+drwxr-xr-x 2 root root 4096 Apr  5 14:56 sentiment_model
+__CMDEND__6__
+[?2004hroot@8624ba7df4a0:/app# cat > download_model.py << 'EOF'
+[?2004l[?2004h> from transformers import AutoTokenizer, AutoModelForSequenceClassification
+[?2004l[?2004h> import os
+[?2004l[?2004h> 
+[?2004l[?2004h> model_name = "distilbert-base-uncased-finetuned-sst-2-english"
+[?2004l[?2004h> save_path = "/app/model_cache/sentiment_model"
+[?2004l[?2004h> 
+[?2004l[?2004h> print(f"Downloading model: {model_name}")
+[?2004l[?2004h> print(f"Saving to: {save_path}")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Download and save the tokenizer
+[?2004l[?2004h> tokenizer = AutoTokenizer.from_pretrained(model_name)
+[?2004l[?2004h> tokenizer.save_pretrained(save_path)
+[?2004l[?2004h> print("Tokenizer saved successfully")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Download and save the model
+[?2004l[?2004h> model = AutoModelForSequenceClassification.from_pretrained(model_name)
+[?2004l[?2004h> model.save_pretrained(save_path)
+[?2004l[?2004h> print("Model saved successfully")
+[?2004l[?2004h> 
+[?2004l[?2004h> print("Download complete!")
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@8624ba7df4a0:/app# python3 download_model.py; printf '%s\n' '__CMDEND__7__'
+[?2004lDownloading model: distilbert-base-uncased-finetuned-sst-2-english
+Saving to: /app/model_cache/sentiment_model
+tokenizer_config.json:   0%|                                                                                                         | 0.00/48.0 [00:00<?, ?B/s]tokenizer_config.json: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████| 48.0/48.0 [00:00<00:00, 286kB/s]
+config.json:   0%|                                                                                                                    | 0.00/629 [00:00<?, ?B/s]config.json: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████| 629/629 [00:00<00:00, 2.86MB/s]
+vocab.txt: 0.00B [00:00, ?B/s]vocab.txt: 32.8kB [00:00, 286kB/s]vocab.txt: 197kB [00:00, 733kB/s] vocab.txt: 232kB [00:00, 716kB/s]
+Tokenizer saved successfully
+model.safetensors:   0%|                                                                                                             | 0.00/268M [00:00<?, ?B/s]model.safetensors:  25%|█████████████████████████                                                                           | 67.1M/268M [00:56<02:49, 1.18MB/s]model.safetensors:  50%|██████████████████████████████████████████████████▍                                                  | 134M/268M [01:03<00:54, 2.47MB/s]model.safetensors:  75%|███████████████████████████████████████████████████████████████████████████▋                         | 201M/268M [01:05<00:15, 4.21MB/s]model.safetensors: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 268M/268M [01:06<00:00, 6.76MB/s]model.safetensors: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████| 268M/268M [01:06<00:00, 4.04MB/s]
+Model saved successfully
+Download complete!
+__CMDEND__7__
+[?2004hroot@8624ba7df4a0:/app# ls -la /app/model_cache/sentiment_model/; printf '%s\n' '__CMDEND__8__'
+[?2004ltotal 262504
+drwxr-xr-x 2 root root      4096 Apr  5 14:57 .
+drwxr-xr-x 3 root root      4096 Apr  5 14:56 ..
+-rw-r--r-- 1 root root       687 Apr  5 14:57 config.json
+-rw-r--r-- 1 root root 267832560 Apr  5 14:57 model.safetensors
+-rw-r--r-- 1 root root       125 Apr  5 14:56 special_tokens_map.json
+-rw-r--r-- 1 root root    711396 Apr  5 14:56 tokenizer.json
+-rw-r--r-- 1 root root      1278 Apr  5 14:56 tokenizer_config.json
+-rw-r--r-- 1 root root    231508 Apr  5 14:56 vocab.txt
+__CMDEND__8__
+[?2004hroot@8624ba7df4a0:/app# cat > app.py << 'EOF'
+[?2004l[?2004h> from flask import Flask, request, jsonify
+[?2004l[?2004h> from transformers import AutoTokenizer, AutoModelForSequenceClassification
+[?2004l[?2004h> import torch
+[?2004l[?2004h> import torch.nn.functional as F
+[?2004l[?2004h> 
+[?2004l[?2004h> app = Flask(__name__)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Load the model and tokenizer from local directory
+[?2004l[?2004h> model_path = "/app/model_cache/sentiment_model"
+[?2004l[?2004h> print(f"Loading model from {model_path}...")
+[?2004l[?2004h> tokenizer = AutoTokenizer.from_pretrained(model_path)
+[?2004l[?2004h> model = AutoModelForSequenceClassification.from_pretrained(model_path)
+[?2004l[?2004h> print("Model loaded successfully!")
+[?2004l[?2004h> 
+[?2004l[?2004h> @app.route('/sentiment', methods=['POST'])
+[?2004l[?2004h> def analyze_sentiment():
+[?2004l[?2004h>     try:
+[?2004l[?2004h>         # Get JSON data from request
+[?2004l[?2004h>         data = request.get_json()
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Validate input
+[?2004l[?2004h>         if not data:
+[?2004l[?2004h>             return jsonify({"error": "No JSON data provided"}), 400
+[?2004l[?2004h>         
+[?2004l[?2004h>         if 'text' not in data:
+[?2004l[?2004h>             return jsonify({"error": "Missing 'text' field in request body"}), 400
+[?2004l[?2004h>         
+[?2004l[?2004h>         text = data['text']
+[?2004l[?2004h>         
+[?2004l[?2004h>         if not isinstance(text, str):
+[?2004l[?2004h>             return jsonify({"error": "'text' field must be a string"}), 400
+[?2004l[?2004h>         
+[?2004l[?2004h>         if not text.strip():
+[?2004l[?2004h>             return jsonify({"error": "'text' field cannot be empty"}), 400
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Tokenize and run inference
+[?2004l[?2004h>         inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+[?2004l[?2004h>         
+[?2004l[?2004h>         with torch.no_grad():
+[?2004l[?2004h>             outputs = model(**inputs)
+[?2004l[?2004h>             logits = outputs.logits
+[?2004l[?2004h>             probabilities = F.softmax(logits, dim=1)
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Extract confidence scores
+[?2004l[?2004h>         # Model outputs: [negative, positive]
+[?2004l[?2004h>         negative_score = float(probabilities[0][0])
+[?2004l[?2004h>         positive_score = float(probabilities[0][1])
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Determine sentiment
+[?2004l[?2004h>         sentiment = "positive" if positive_score > negative_score else "negative"
+[?2004l[?2004h>         
+[?2004l[?2004h>         # Return response
+[?2004l[?2004h>         return jsonify({
+[?2004l[?2004h>             "sentiment": sentiment,
+[?2004l[?2004h>             "confidence": {
+[?2004l[?2004h>                 "positive": positive_score,
+[?2004l[?2004h>                 "negative": negative_score
+[?2004l[?2004h>             }
+[?2004l[?2004h>         }), 200
+[?2004l[?2004h>     
+[?2004l[?2004h>     except Exception as e:
+[?2004l[?2004h>         return jsonify({"error": str(e)}), 400
+[?2004l[?2004h> 
+[?2004l[?2004h> if __name__ == '__main__':
+[?2004l[?2004h>     app.run(host='0.0.0.0', port=5000, debug=False)
+[?2004l[?2004h> EOF
+[?2004l[?2004hroot@8624ba7df4a0:/app# nohup python3 app.py > /app/service.log 2>&1 &
+[?2004l[1] 885
+[?2004hroot@8624ba7df4a0:/app# sleep 3; printf '%s\n' '__CMDEND__9__'
+[?2004lcat /app/service.log; printf '%s\n' '__CMDEND__10__'
+__CMDEND__9__
+[?2004hroot@8624ba7df4a0:/app# cat /app/service.log; printf '%s\n' '__CMDEND__10__'
+[?2004lnohup: ignoring input
+Loading model from /app/model_cache/sentiment_model...
+Model loaded successfully!
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.21.0.2:5000
+[33mPress CTRL+C to quit[0m
+__CMDEND__10__
+[?2004hroot@8624ba7df4a0:/app# ps aux | grep app.py
+[?2004lbash: ps: command not found
+[?2004hroot@8624ba7df4a0:/app# curl -X POST http://localhost:5000/sentiment -H "Content-Type: application/json" -d '{"text": "I love this product! It is amazing!"}'
+[?2004lbash: curl: command not found
+[?2004hroot@8624ba7df4a0:/app# python3 << 'EOF'
+[?2004l[?2004h> import requests
+[?2004l[?2004h> import json
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test positive sentiment
+[?2004l[?2004h> response = requests.post(
+[?2004l[?2004h>     'http://localhost:5000/sentiment',
+[?2004l[?2004h>     json={'text': 'I love this product! It is amazing!'}
+[?2004l[?2004h> )
+[?2004l[?2004h> print("Test 1 - Positive sentiment:")
+[?2004l[?2004h> print(f"Status Code: {response.status_code}")
+[?2004l[?2004h> print(f"Response: {json.dumps(response.json(), indent=2)}")
+[?2004l[?2004h> print()
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test negative sentiment
+[?2004l[?2004h> response = requests.post(
+[?2004l[?2004h>     'http://localhost:5000/sentiment',
+[?2004l[?2004h>     json={'text': 'This is terrible and I hate it.'}
+[?2004l[?2004h> )
+[?2004l[?2004h> print("Test 2 - Negative sentiment:")
+[?2004l[?2004h> print(f"Status Code: {response.status_code}")
+[?2004l[?2004h> print(f"Response: {json.dumps(response.json(), indent=2)}")
+[?2004l[?2004h> print()
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test error case - missing text field
+[?2004l[?2004h> response = requests.post(
+[?2004l[?2004h>     'http://localhost:5000/sentiment',
+[?2004l[?2004h>     json={}
+[?2004l[?2004h> )
+[?2004l[?2004h> print("Test 3 - Error case (missing text):")
+[?2004l[?2004h> print(f"Status Code: {response.status_code}")
+[?2004l[?2004h> print(f"Response: {json.dumps(response.json(), indent=2)}")
+[?2004l[?2004h> EOF
+[?2004lTest 1 - Positive sentiment:
+Status Code: 200
+Response: {
+  "confidence": {
+    "negative": 0.00011160859139636159,
+    "positive": 0.9998884201049805
+  },
+  "sentiment": "positive"
+}
+
+Test 2 - Negative sentiment:
+Status Code: 200
+Response: {
+  "confidence": {
+    "negative": 0.9994720816612244,
+    "positive": 0.0005279447068460286
+  },
+  "sentiment": "negative"
+}
+
+Test 3 - Error case (missing text):
+Status Code: 400
+Response: {
+  "error": "No JSON data provided"
+}
+[?2004hroot@8624ba7df4a0:/app# python3 << 'EOF'
+[?2004l[?2004h> import requests
+[?2004l[?2004h> import json
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test error case - empty JSON but with Content-Type header
+[?2004l[?2004h> response = requests.post(
+[?2004l[?2004h>     'http://localhost:5000/sentiment',
+[?2004l[?2004h>     json={'something': 'else'}
+[?2004l[?2004h> )
+[?2004l[?2004h> print("Test - Error case (missing text field):")
+[?2004l[?2004h> print(f"Status Code: {response.status_code}")
+[?2004l[?2004h> print(f"Response: {json.dumps(response.json(), indent=2)}")
+[?2004l[?2004h> EOF
+[?2004lTest - Error case (missing text field):
+Status Code: 400
+Response: {
+  "error": "Missing 'text' field in request body"
+}
+[?2004hroot@8624ba7df4a0:/app# ls -la /app/; printf '%s\n' '__CMDEND__11__'
+[?2004ltotal 24
+drwxr-xr-x 1 root root 4096 Apr  5 14:58 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:55 ..
+-rw-r--r-- 1 root root 2175 Apr  5 14:58 app.py
+-rw-r--r-- 1 root root  634 Apr  5 14:56 download_model.py
+drwxr-xr-x 3 root root 4096 Apr  5 14:56 model_cache
+-rw-r--r-- 1 root root  729 Apr  5 14:59 service.log
+__CMDEND__11__
+[?2004hroot@8624ba7df4a0:/app# rm download_model.py; printf '%s\n' '__CMDEND__12__'
+[?2004l__CMDEND__12__
+[?2004hroot@8624ba7df4a0:/app# ls -la /app/; printf '%s\n' '__CMDEND__13__'
+[?2004ltotal 20
+drwxr-xr-x 1 root root 4096 Apr  5 14:59 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:55 ..
+-rw-r--r-- 1 root root 2175 Apr  5 14:58 app.py
+drwxr-xr-x 3 root root 4096 Apr  5 14:56 model_cache
+-rw-r--r-- 1 root root  729 Apr  5 14:59 service.log
+__CMDEND__13__
+[?2004hroot@8624ba7df4a0:/app# tail -5 /app/service.log; printf '%s\n' '__CMDEND__14__'
+[?2004l[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [05/Apr/2026 14:59:21] "POST /sentiment HTTP/1.1" 200 -
+127.0.0.1 - - [05/Apr/2026 14:59:21] "POST /sentiment HTTP/1.1" 200 -
+127.0.0.1 - - [05/Apr/2026 14:59:21] "[31m[1mPOST /sentiment HTTP/1.1[0m" 400 -
+127.0.0.1 - - [05/Apr/2026 14:59:33] "[31m[1mPOST /sentiment HTTP/1.1[0m" 400 -
+__CMDEND__14__
+[?2004hroot@8624ba7df4a0:/app# python3 << 'EOF'
+[?2004l[?2004h> import requests
+[?2004l[?2004h> import json
+[?2004l[?2004h> 
+[?2004l[?2004h> # Final verification test
+[?2004l[?2004h> response = requests.post(
+[?2004l[?2004h>     'http://localhost:5000/sentiment',
+[?2004l[?2004h>     json={'text': 'This is a great day!'}
+[?2004l[?2004h> )
+[?2004l[?2004h> print("Final verification test:")
+[?2004l[?2004h> print(f"Status Code: {response.status_code}")
+[?2004l[?2004h> print(f"Response: {json.dumps(response.json(), indent=2)}")
+[?2004l[?2004h> print("\nService is running successfully!")
+[?2004l[?2004h> EOF
+[?2004lFinal verification test:
+Status Code: 200
+Response: {
+  "confidence": {
+    "negative": 0.00011974463996011764,
+    "positive": 0.9998801946640015
+  },
+  "sentiment": "positive"
+}
+
+Service is running successfully!
+[?2004hroot@8624ba7df4a0:/app# ls -la /app/; printf '%s\n' '__CMDEND__15__'
+[?2004ltotal 20
+drwxr-xr-x 1 root root 4096 Apr  5 14:59 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:55 ..
+-rw-r--r-- 1 root root 2175 Apr  5 14:58 app.py
+drwxr-xr-x 3 root root 4096 Apr  5 14:56 model_cache
+-rw-r--r-- 1 root root  799 Apr  5 14:59 service.log
+__CMDEND__15__
+[?2004hroot@8624ba7df4a0:/app# ls /app/model_cache/sentiment_model/; printf '%s\n' '__CMDEND__16__'
+[?2004lconfig.json  model.safetensors	special_tokens_map.json  tokenizer.json  tokenizer_config.json	vocab.txt
+__CMDEND__16__
+[?2004hroot@8624ba7df4a0:/app# cat /app/app.py | head -20
+[?2004lfrom flask import Flask, request, jsonify
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+import torch.nn.functional as F
+
+app = Flask(__name__)
+
+# Load the model and tokenizer from local directory
+model_path = "/app/model_cache/sentiment_model"
+print(f"Loading model from {model_path}...")
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForSequenceClassification.from_pretrained(model_path)
+print("Model loaded successfully!")
+
+@app.route('/sentiment', methods=['POST'])
+def analyze_sentiment():
+    try:
+        # Get JSON data from request
+        data = request.get_json()
+        
+[?2004hroot@8624ba7df4a0:/app# jobs; printf '%s\n' '__CMDEND__17__'
+[?2004l[1]+  Running                 nohup python3 app.py > /app/service.log 2>&1 &
+__CMDEND__17__
+[?2004hroot@8624ba7df4a0:/app# netstat -tuln 2>/dev/null | grep 5000 || ss -tuln 2>/dev/null | grep 5000 || echo 'Service running on port 5000 (netstat/ss not available)'
+[?2004lService running on port 5000 (netstat/ss not available)
+[?2004hroot@8624ba7df4a0:/app# python3 << 'EOF'
+[?2004ltive={data['confidence']['positive']:.4f}, negative={data['confidence']['negative']:.4f}")
+assert response.status_code == 200
+assert data['sentiment'] == 'negative'
+print("   ✓ PASSED")
+
+# Test 3: Missing text field
+print("\n3. Testing error handling (missing text field):")
+response = requests.post('http://0.0.0.0:5000/sentiment', json={'wrong_field': 'value'})
+print(f"   Status: {response.status_code}")
+data = response.json()
+print(f"   Error: {data['error']}")
+assert response.status_code == 400
+assert 'error' in data
+print("   ✓ PASSED")
+
+# Test 4: Empty text
+print("\n4. Testing error handling (empty text):")
+response = requests.post('http://0.0.0.0:5000/sentiment', json={'text': ''})
+print(f"   Status: {response.status_code}")
+data = response.json()
+print(f"   Error: {data['error']}")
+assert response.status_code == 400
+assert 'error' in data
+print("   ✓ PASSED")
+
+print("\n" + "=" * 60)
+print("ALL TESTS PASSED! Service is fully functional.")
+print("=" * 60)
+EOF
+[?2004h> import requests
+[?2004l[?2004h> import json
+[?2004l[?2004h> 
+[?2004l[?2004h> print("=" * 60)
+[?2004l[?2004h> print("FINAL COMPREHENSIVE API TEST")
+[?2004l[?2004h> print("=" * 60)
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test 1: Valid positive sentiment
+[?2004l[?2004h> print("\n1. Testing valid positive sentiment:")
+[?2004l[?2004h> response = requests.post('http://0.0.0.0:5000/sentiment', json={'text': 'I love this!'})
+[?2004l[?2004h> print(f"   Status: {response.status_code}")
+[?2004l[?2004h> data = response.json()
+[?2004l[?2004h> print(f"   Sentiment: {data['sentiment']}")
+[?2004l[?2004h> print(f"   Confidence: positive={data['confidence']['positive']:.4f}, negative={data['confidence']['negative']:.4f}")
+[?2004l[?2004h> assert response.status_code == 200
+[?2004l[?2004h> assert 'sentiment' in data
+[?2004l[?2004h> assert 'confidence' in data
+[?2004l[?2004h> assert 'positive' in data['confidence']
+[?2004l[?2004h> assert 'negative' in data['confidence']
+[?2004l[?2004h> print("   ✓ PASSED")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test 2: Valid negative sentiment
+[?2004l[?2004h> print("\n2. Testing valid negative sentiment:")
+[?2004l[?2004h> response = requests.post('http://0.0.0.0:5000/sentiment', json={'text': 'This is awful!'})
+[?2004l[?2004h> print(f"   Status: {response.status_code}")
+[?2004l[?2004h> data = response.json()
+[?2004l[?2004h> print(f"   Sentiment: {data['sentiment']}")
+[?2004l[?2004h> print(f"   Confidence: positive={data['confidence']['positive']:.4f}, negative={data['confidence']['negative']:.4f}")
+[?2004l[?2004h> assert response.status_code == 200
+[?2004l[?2004h> assert data['sentiment'] == 'negative'
+[?2004l[?2004h> print("   ✓ PASSED")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test 3: Missing text field
+[?2004l[?2004h> print("\n3. Testing error handling (missing text field):")
+[?2004l[?2004h> response = requests.post('http://0.0.0.0:5000/sentiment', json={'wrong_field': 'value'})
+[?2004l[?2004h> print(f"   Status: {response.status_code}")
+[?2004l[?2004h> data = response.json()
+[?2004l[?2004h> print(f"   Error: {data['error']}")
+[?2004l[?2004h> assert response.status_code == 400
+[?2004l[?2004h> assert 'error' in data
+[?2004l[?2004h> print("   ✓ PASSED")
+[?2004l[?2004h> 
+[?2004l[?2004h> # Test 4: Empty text
+[?2004l[?2004h> print("\n4. Testing error handling (empty text):")
+[?2004l[?2004h> response = requests.post('http://0.0.0.0:5000/sentiment', json={'text': ''})
+[?2004l[?2004h> print(f"   Status: {response.status_code}")
+[?2004l[?2004h> data = response.json()
+[?2004l[?2004h> print(f"   Error: {data['error']}")
+[?2004l[?2004h> assert response.status_code == 400
+[?2004l[?2004h> assert 'error' in data
+[?2004l[?2004h> print("   ✓ PASSED")
+[?2004l[?2004h> 
+[?2004l[?2004h> print("\n" + "=" * 60)
+[?2004l[?2004h> print("ALL TESTS PASSED! Service is fully functional.")
+[?2004l[?2004h> print("=" * 60)
+[?2004l[?2004h> EOF
+[?2004l============================================================
+FINAL COMPREHENSIVE API TEST
+============================================================
+
+1. Testing valid positive sentiment:
+   Status: 200
+   Sentiment: positive
+   Confidence: positive=0.9999, negative=0.0001
+   ✓ PASSED
+
+2. Testing valid negative sentiment:
+   Status: 200
+   Sentiment: negative
+   Confidence: positive=0.0003, negative=0.9997
+   ✓ PASSED
+
+3. Testing error handling (missing text field):
+   Status: 400
+   Error: Missing 'text' field in request body
+   ✓ PASSED
+
+4. Testing error handling (empty text):
+   Status: 400
+   Error: 'text' field cannot be empty
+   ✓ PASSED
+
+============================================================
+ALL TESTS PASSED! Service is fully functional.
+============================================================
+[?2004hroot@8624ba7df4a0:/app# echo "Final System State:"
+[?2004lFinal System State:
+[?2004hroot@8624ba7df4a0:/app# echo "=================="
+[?2004l==================
+[?2004hroot@8624ba7df4a0:/app# ls -la /app/; printf '%s\n' '__CMDEND__18__'
+[?2004ltotal 20
+drwxr-xr-x 1 root root 4096 Apr  5 14:59 .
+drwxr-xr-x 1 root root 4096 Apr  5 14:55 ..
+-rw-r--r-- 1 root root 2175 Apr  5 14:58 app.py
+drwxr-xr-x 3 root root 4096 Apr  5 14:56 model_cache
+-rw-r--r-- 1 root root 1105 Apr  5 15:00 service.log
+__CMDEND__18__
+[?2004hroot@8624ba7df4a0:/app# echo ""
+[?2004l
+[?2004hroot@8624ba7df4a0:/app# echo "Model files:"
+[?2004lModel files:
+[?2004hroot@8624ba7df4a0:/app# ls -lh /app/model_cache/sentiment_model/ | tail -7
+[?2004ltotal 257M
+-rw-r--r-- 1 root root  687 Apr  5 14:57 config.json
+-rw-r--r-- 1 root root 256M Apr  5 14:57 model.safetensors
+-rw-r--r-- 1 root root  125 Apr  5 14:56 special_tokens_map.json
+-rw-r--r-- 1 root root 695K Apr  5 14:56 tokenizer.json
+-rw-r--r-- 1 root root 1.3K Apr  5 14:56 tokenizer_config.json
+-rw-r--r-- 1 root root 227K Apr  5 14:56 vocab.txt
+[?2004hroot@8624ba7df4a0:/app# echo ""
+[?2004l
+[?2004hroot@8624ba7df4a0:/app# echo "Service status:"
+[?2004lService status:
+[?2004hroot@8624ba7df4a0:/app# jobs; printf '%s\n' '__CMDEND__19__'
+[?2004l[1]+  Running                 nohup python3 app.py > /app/service.log 2>&1 &
+__CMDEND__19__
+[?2004hroot@8624ba7df4a0:/app# echo "✓ Task completed successfully!"
+[?2004l✓ Task completed successfully!
+[?2004hroot@8624ba7df4a0:/app# echo "✓ Sentiment analysis service is running on http://0.0.0.0:5000"
+[?2004l✓ Sentiment analysis service is running on http://0.0.0.0:5000
+[?2004hroot@8624ba7df4a0:/app# echo "✓ POST /sentiment endpoint is ready to accept requests"
+[?2004l✓ POST /sentiment endpoint is ready to accept requests
+[?2004hroot@8624ba7df4a0:/app# 

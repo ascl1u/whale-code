@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>         row = df.iloc[idx]
+>
+>         # Get bounding box
+>         xmin, ymin, xmax, ymax = row['xmin'], row['ymin'], row['xmax'], row['ymax']
+>         box = np.array([xmin, ymin, xmax, ymax])
+>
+>         # Refine mask with SAM
+>         refined_mask = refine_mask_with_sam(predictor, box)
+>
+>         # Remove overlap with previous masks
+>         refined_mask = remove_overlap(all_masks, refined_mask, idx)
+>
+>         # Store mask
+>         all_masks[idx] = refined_mask
+>
+>         # Convert to polyline
+>         result = mask_to_polyline(refined_mask)
+>         if result[0] is not None:
+>             new_xmin, new_ymin, new_xmax, new_ymax, coords_x, coords_y = result
+>
+>             # Update dataframe
+>             df.at[idx, 'xmin'] = new_xmin
+>             df.at[idx, 'ymin'] = new_ymin
+>             df.at[idx, 'xmax'] = new_xmax
+>             df.at[idx, 'ymax'] = new_ymax
+>             df.at[idx, 'coords_x'] = coords_to_string(coords_x)
+>             df.at[idx, 'coords_y'] = coords_to_string(coords_y)
+>             df.at[idx, 'type'] = 'polyline'
+>         else:
+>             print(f"Warning: Could not extract contour for mask {idx}")
+>
+>     # Save updated CSV
+>     print(f"Saving to {args.output_path}...")
+>     df.to_csv(args.output_path, index=False)
+>     print("Done!")
+>
+> if __name__ == '__main__':
+>     main()
+> EOF
+root@b4f8d1bbdfe9:/app#

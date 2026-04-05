@@ -1,0 +1,60 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> seqs = read_fasta('sequences.fasta')
+> output_seq = seqs['output']
+> egfp = seqs['egfp']
+> flag = seqs['flag']
+> snap = seqs['snap']
+>
+> print(f"Output at 211: {output_seq[211:261]}")
+> print(f"eGFP starts:   {egfp[:50]}")
+> print(f"\nMatch at 211: {output_seq[211:211+len(egfp)] == egfp}")
+>
+> # Check each position around 211-214
+> for i in range(209, 216):
+>     if output_seq[i:i+len(egfp)] == egfp:
+>         print(f"\nFound eGFP at position {i}!")
+>         break
+> else:
+>     # Check if it's similar
+>     print("\nChecking similarity...")
+>     for i in range(209, 216):
+>         match_count = sum(1 for j in range(min(50, len(egfp))) if output_seq[i+j] == egfp[j])
+>         print(f"Position {i}: {match_count}/50 matches in first 50 bp")
+>
+> EOF
+Output at 211: tgagcaagggcgaggagctgttcaccggggtggtgcccatcctggtcgag
+eGFP starts:   atgagcaagggcgaggagctgttcaccggggtggtgcccatcctggtcga
+
+Match at 211: False
+
+Checking similarity...
+Position 209: 14/50 matches in first 50 bp
+Position 210: 50/50 matches in first 50 bp
+Position 211: 14/50 matches in first 50 bp
+Position 212: 13/50 matches in first 50 bp
+Position 213: 18/50 matches in first 50 bp
+Position 214: 10/50 matches in first 50 bp
+Position 215: 14/50 matches in first 50 bp
+root@a0b49dcae9e4:/app#

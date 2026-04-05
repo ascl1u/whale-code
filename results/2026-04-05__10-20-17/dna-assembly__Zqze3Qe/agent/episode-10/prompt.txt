@@ -1,0 +1,80 @@
+New Terminal Output:
+
+root@40713b84f85c:/app# cat >> design_primers.py << 'SCRIPT_EOF'
+>
+> # Now design primers
+> # BsaI-HF v2 recognition: GGTCTC (forward) and GAGACC (reverse complement)
+> # BsaI cuts 1 nt downstream on top strand, 5 nt on bottom, creating 4 nt overhang
+> # Forward primer: 5'-[tail]-GGTCTC-N-[4bp overhang]-[template binding]-3'
+> # Reverse primer: 5'-[tail]-GGTCTC-N-[4bp overhang RC]-[template binding RC]-3'
+>
+> def design_primer_pair(template_name, template_seq, left_overhang, right_overhang,
+>                        min_len=15, max_len=45, min_tm=58, max_tm=72, max_delta_tm=5):
+>     """
+>     Design forward and reverse primers for a template
+>     left_overhang: overhang on the 5' end of the insert
+>     right_overhang: overhang on the 3' end of the insert
+>     """
+>     # For forward primer: adds left_overhang
+>     # Structure: GGTCTC N [left_overhang] [template_start]
+>     # The primer binds to template_start
+>
+>     # For reverse primer: adds right_overhang (reverse complement)
+>     # Structure: GGTCTC N [right_overhang_RC] [template_end_RC]
+>     # The primer binds to the reverse complement of template_end
+>
+>     best_fwd = None
+>     best_rev = None
+>     best_delta = float('inf')
+>
+>     # Try different annealing lengths
+>     for fwd_len in range(min_len, max_len + 1):
+>         for rev_len in range(min_len, max_len + 1):
+>             # Forward primer annealing region
+>             fwd_anneal = template_seq[:fwd_len]
+>             fwd_tm = calculate_tm(fwd_anneal)
+>
+>             # Reverse primer annealing region (binds to end of template)
+>             rev_anneal = template_seq[-rev_len:]
+>             rev_tm = calculate_tm(rev_anneal)
+>
+>             # Check constraints
+>             if (min_tm <= fwd_tm <= max_tm and
+>                 min_tm <= rev_tm <= max_tm and
+>                 abs(fwd_tm - rev_tm) <= max_delta_tm):
+>
+>                 delta = abs(fwd_tm - rev_tm)
+>                 if delta < best_delta:
+>                     best_delta = delta
+>
+>                     # Build full primers
+>                     # Forward: GGTCTC-N-[overhang]-[anneal]
+>                     fwd_primer = 'GGTCTC' + 'N' + left_overhang + fwd_anneal
+>
+>                     # Reverse: GGTCTC-N-[overhang_RC]-[anneal_RC]
+>                     right_oh_rc = reverse_complement(right_overhang)
+>                     rev_anneal_rc = reverse_complement(rev_anneal)
+>                     rev_primer = 'GGTCTC' + 'N' + right_oh_rc + rev_anneal_rc
+>
+>                     best_fwd = (fwd_primer, fwd_anneal, fwd_tm)
+>                     best_rev = (rev_primer, rev_anneal, rev_tm)
+>
+>     return best_fwd, best_rev
+>
+> print("\n=== Designing Primers ===")
+>
+> # Fragment 1: Input backbone (linearized)
+> # We need to amplify from position 690 to 210 (going around the circle)
+> # This is actually: input[690:] + input[0:210]
+> # But since it's circular, we can amplify the backbone by:
+> # - Forward primer at position 690 (adds oh4 RC for SNAP->input junction)
+> # - Reverse primer at position 210 (adds oh1 RC for input->eGFP junction)
+>
+> # Actually, let's think about this differently:
+> # The input backbone needs to connect SNAP (with oh4) to eGFP start (with oh1)
+> # So: oh4 -> backbone -> oh1
+> # Forward primer binds after position 690 and adds oh4 on 5' end
+> # Reverse primer binds before position 210 and adds oh1 on 3' end
+>
+> SCRIPT_EOF
+root@40713b84f85c:/app#

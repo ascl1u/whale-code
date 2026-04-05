@@ -1,0 +1,76 @@
+New Terminal Output:
+
+root@b212fec9db4d:/app# python3 << 'EOF'
+> import fasttext
+') / (1024 * 1024)
+print(f"Model size: {size_mb:.2f} MB")
+
+if size_mb > 150:
+    print("\nModel is too large, applying quantization...")
+    model.quantize(input='/tmp/train.txt', retrain=True)
+    model.save_model('/app/model.bin')
+    size_mb = os.path.getsize('/app/model.bin') / (1024 * 1024)
+    print(f"Quantized model size: {size_mb:.2f} MB")
+
+    # Test quantized model
+    result = model.test('/tmp/test.txt')
+    print(f"\nQuantized model accuracy: {result[1]:.4f}")
+
+print("\nDone!")
+EOF
+> import os
+>
+> print("Training fasttext model...")
+> print("Using parameters optimized for size and accuracy")
+>
+> # Train model with controlled parameters
+> # dim: embedding dimension (lower = smaller model)
+> # wordNgrams: use bigrams for better accuracy
+> # epoch: training epochs
+> # lr: learning rate
+> model = fasttext.train_supervised(
+>     input='/tmp/train.txt',
+>     dim=100,           # Lower dimension to reduce size
+>     epoch=10,          # More epochs for better accuracy
+>     lr=0.5,            # Learning rate
+>     wordNgrams=2,      # Use bigrams
+>     loss='softmax',    # Multi-class classification
+>     verbose=2
+> )
+>
+> print("\nTraining complete!")
+>
+> # Test on test set
+> print("\nEvaluating on test set...")
+> result = model.test('/tmp/test.txt')
+> print(f"Samples: {result[0]}")
+> print(f"Precision: {result[1]:.4f}")
+> print(f"Recall: {result[2]:.4f}")
+>
+> # Save model
+> print("\nSaving model to /app/model.bin...")
+> model.save_model('/app/model.bin')
+>
+> # Check model size
+> size_mb = os.path.getsize('/app/model.bin') / (1024 * 1024)
+> print(f"Model size: {size_mb:.2f} MB")
+>
+> if size_mb > 150:
+>     print("\nModel is too large, applying quantization...")
+>     model.quantize(input='/tmp/train.txt', retrain=True)
+>     model.save_model('/app/model.bin')
+>     size_mb = os.path.getsize('/app/model.bin') / (1024 * 1024)
+>     print(f"Quantized model size: {size_mb:.2f} MB")
+>
+>     # Test quantized model
+>     result = model.test('/tmp/test.txt')
+>     print(f"\nQuantized model accuracy: {result[1]:.4f}")
+>
+> print("\nDone!")
+> EOF
+Training fasttext model...
+Using parameters optimized for size and accuracy
+Read 88M words
+Number of words:  1622077
+Number of labels: 5
+Progress:   4.9% words/sec/thread:   70613 lr:  0.475455 avg.loss:  1.097709 ETA:   0h13m14s

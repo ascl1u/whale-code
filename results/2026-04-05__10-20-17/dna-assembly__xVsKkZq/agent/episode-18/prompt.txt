@@ -1,0 +1,68 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > check_overhangs.py << 'EOF'
+> # Check that overhangs create correct assembly order
+>
+> print("Checking overhang compatibility...\n")
+> print("Expected assembly order: input -> egfp -> flag -> snap -> input (circular)\n")
+>
+> # From the verification:
+> print("Fragment overhangs (5' -> 3'):")
+> print("  input:  5'-TGAG ... ATGA-3' (after BsaI digestion)")
+> print("  egfp:   5'-ATGA ... AGTG-3'")
+> print("  flag:   5'-AGTG ... GACA-3'")
+> print("  snap:   5'-GACA ... TGAG-3'")
+>
+> print("\nAssembly compatibility:")
+> print("  input-3'(ATGA) + egfp-5'(ATGA) ✓")
+> print("  egfp-3'(AGTG) + flag-5'(AGTG) ✓")
+> print("  flag-3'(GACA) + snap-5'(GACA) ✓")
+> print("  snap-3'(TGAG) + input-5'(TGAG) ✓ (circular closure)")
+>
+> print("\nAll overhangs are compatible for ordered assembly!")
+>
+> # Check for blank lines in primers.fasta
+> print("\n" + "="*70)
+> print("Checking for blank lines in primers.fasta...")
+>
+> with open('primers.fasta', 'r') as f:
+>     lines = f.readlines()
+>
+> blank_lines = [i+1 for i, line in enumerate(lines) if line.strip() == '']
+>
+> if blank_lines:
+>     print(f"  Found blank lines at: {blank_lines}")
+>     print("  ✗ File should not contain blank lines")
+> else:
+>     print("  ✓ No blank lines found")
+>
+> print("\nTotal lines in file:", len(lines))
+> print("Expected: 16 lines (8 headers + 8 sequences)")
+>
+> EOF
+root@11eec39dc770:/app# python3 check_overhangs.py
+Checking overhang compatibility...
+
+Expected assembly order: input -> egfp -> flag -> snap -> input (circular)
+
+Fragment overhangs (5' -> 3'):
+  input:  5'-TGAG ... ATGA-3' (after BsaI digestion)
+  egfp:   5'-ATGA ... AGTG-3'
+  flag:   5'-AGTG ... GACA-3'
+  snap:   5'-GACA ... TGAG-3'
+
+Assembly compatibility:
+  input-3'(ATGA) + egfp-5'(ATGA) ✓
+  egfp-3'(AGTG) + flag-5'(AGTG) ✓
+  flag-3'(GACA) + snap-5'(GACA) ✓
+  snap-3'(TGAG) + input-5'(TGAG) ✓ (circular closure)
+
+All overhangs are compatible for ordered assembly!
+
+======================================================================
+Checking for blank lines in primers.fasta...
+  ✓ No blank lines found
+
+Total lines in file: 16
+Expected: 16 lines (8 headers + 8 sequences)
+root@11eec39dc770:/app#

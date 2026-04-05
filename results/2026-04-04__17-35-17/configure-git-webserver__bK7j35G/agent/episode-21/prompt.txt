@@ -1,0 +1,47 @@
+New Terminal Output:
+
+root@68af9fa3b59c:/app# echo '=== Git Server Setup ==='
+=== Git Server Setup ===
+root@68af9fa3b59c:/app# ls -la /git/server/ | head -15
+total 48
+drwxr-xr-x 8 root root 4096 Apr  5 00:38 .
+drwxr-xr-x 3 root root 4096 Apr  5 00:37 ..
+-rw-r--r-- 1 root root   23 Apr  5 00:38 HEAD
+drwxr-xr-x 2 root root 4096 Apr  5 00:37 branches
+-rw-r--r-- 1 root root   66 Apr  5 00:37 config
+-rw-r--r-- 1 root root   73 Apr  5 00:37 description
+drwxr-xr-x 2 root root 4096 Apr  5 00:37 hooks
+-rw-r--r-- 1 root root  145 Apr  5 00:38 index
+drwxr-xr-x 2 root root 4096 Apr  5 00:37 info
+drwxr-xr-x 2 root root 4096 Apr  5 00:38 logs
+drwxr-xr-x 7 root root 4096 Apr  5 00:38 objects
+drwxr-xr-x 4 root root 4096 Apr  5 00:37 refs
+root@68af9fa3b59c:/app# echo '=== Post-receive Hook ==='
+=== Post-receive Hook ===
+#!/bin/bash
+
+# Post-receive hook to deploy to web server
+WEB_DIR="/var/www/html"
+GIT_DIR="/git/server"
+WORK_DIR="/tmp/git-work"
+
+# Read the pushed branch
+while read oldrev newrev refname; do
+  # Check if this is the master branch
+  if [[ $refname == "refs/heads/master" ]]; then
+    echo "Deploying to web server..."
+
+    # Create or clean the work directory
+    rm -rf "$WORK_DIR"
+    mkdir -p "$WORK_DIR"
+
+    # Checkout the files to the work directory
+    git --work-tree="$WORK_DIR" --git-dir="$GIT_DIR" checkout -f master
+
+    # Copy files to web directory
+    cp -r "$WORK_DIR"/* "$WEB_DIR"/
+
+    echo "Deployment complete!"
+  fi
+done
+root@68af9fa3b59c:/app#

@@ -1,0 +1,191 @@
+New Terminal Output:
+
+root@e46f4ec08a64:/app# cat > /app/attack.py << 'EOF'
+        # So ct_left is actually the final right value
+            # and ct_right is actually the final left value
+
+            # Try to verify this is consistent
+            # This is a simplified check
+            pass
+
+        # For a more direct approach, we need more sophisticated analysis
+        # Let me try a different strategy
+
+    # Alternative: Use the structure of FEAL more directly
+    # Since we can't easily reverse without knowing all keys,
+    # let's use differential cryptanalysis properly
+
+    # Collect pairs with specific input differences
+    diff_pairs = []
+    for i in range(10):
+        p1 = (i << 32) | i
+        p2 = p1 ^ (0x8000000000000000)  # Flip high bit
+        c1 = encrypt_fn(p1)
+        c2 = encrypt_fn(p2)
+        diff_pairs.append((p1, c1, p2, c2))
+
+    # Score each candidate key
+    best_score = -1
+    best_key = 0
+
+    for seed in range(0x10000):
+        candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+        score = 0
+
+        for p1, c1, p2, c2 in diff_pairs:
+            # Partial decryption of last round
+            # ct = merge(right4, left4)
+            # where right4 = left3 ^ f(right3 ^ key[5])
+            # and left4 = right3
+
+            c1_left = getleft(c1)
+            c1_right = getright(c1)
+            c2_left = getleft(c2)
+            c2_right = getright(c2)
+
+            # Try to check consistency
+            # This is still complex without knowing other keys
+
+            # Simple heuristic: check if differences make sense
+            diff = (c1_left ^ c2_left) ^ (c1_right ^ c2_right)
+            if diff == 0:
+                score += 1
+
+        if score > best_score:
+            best_score = score
+            best_key = candidate_key5
+
+    return best_key
+EOF
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     """Get the left (upper) 32 bits of a 64-bit value"""
+>     return (x >> 32) & 0xFFFFFFFF
+>
+>
+> def getright(x):
+>     """Get the right (lower) 32 bits of a 64-bit value"""
+>     return x & 0xFFFFFFFF
+>
+>
+> def merge(left, right):
+>     """Combine two 32-bit halves into a 64-bit value"""
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+>
+> def g_function(a, b, x):
+>     """FEAL G function"""
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+>
+> def f_function(input_val):
+>     """FEAL F function"""
+>     x = [0] * 4
+>     y = [0] * 4
+>
+>     # Extract bytes from input (big-endian)
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>
+>     # Apply G function operations
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>
+>     # Combine bytes into output (big-endian)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>
+>     return output & 0xFFFFFFFF
+>
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using differential cryptanalysis"""
+>
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     num_pairs = 20
+>
+>     for i in range(num_pairs):
+>         plaintext = i << 32 | i  # Simple pattern
+>         ciphertext = encrypt_fn(plaintext)
+>         pairs.append((plaintext, ciphertext))
+>
+>     # Try all possible 16-bit seeds for key[5]
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Test this candidate against all pairs
+>         valid = True
+>
+>         # We need to check if this key is consistent
+>         # For now, let's use a voting mechanism
+>         for pt, ct in pairs:
+>             # Extract the ciphertext halves
+>             ct_left = getleft(ct)
+>             ct_right = getright(ct)
+>
+>             # The ciphertext has left and right swapped
+>             # After the last round: output = merge(right, left)
+>             # So ct_left is actually the final right value
+>             # and ct_right is actually the final left value
+>
+>             # Try to verify this is consistent
+>             # This is a simplified check
+>             pass
+>
+>         # For a more direct approach, we need more sophisticated analysis
+>         # Let me try a different strategy
+>
+>     # Alternative: Use the structure of FEAL more directly
+>     # Since we can't easily reverse without knowing all keys,
+>     # let's use differential cryptanalysis properly
+>
+>     # Collect pairs with specific input differences
+>     diff_pairs = []
+>     for i in range(10):
+>         p1 = (i << 32) | i
+>         p2 = p1 ^ (0x8000000000000000)  # Flip high bit
+>         c1 = encrypt_fn(p1)
+>         c2 = encrypt_fn(p2)
+>         diff_pairs.append((p1, c1, p2, c2))
+>
+>     # Score each candidate key
+>     best_score = -1
+>     best_key = 0
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>         score = 0
+>
+>         for p1, c1, p2, c2 in diff_pairs:
+>             # Partial decryption of last round
+>             # ct = merge(right4, left4)
+>             # where right4 = left3 ^ f(right3 ^ key[5])
+>             # and left4 = right3
+>
+>             c1_left = getleft(c1)
+>             c1_right = getright(c1)
+>             c2_left = getleft(c2)
+>             c2_right = getright(c2)
+>
+>             # Try to check consistency
+>             # This is still complex without knowing other keys
+>
+>             # Simple heuristic: check if differences make sense
+>             diff = (c1_left ^ c2_left) ^ (c1_right ^ c2_right)
+>             if diff == 0:
+>                 score += 1
+>
+>         if score > best_score:
+>             best_score = score
+>             best_key = candidate_key5
+>
+>     return best_key
+> EOF
+root@e46f4ec08a64:/app#

@@ -1,0 +1,83 @@
+New Terminal Output:
+
+
+    # Process each mask
+    refined_masks = []
+
+    for idx, row in df.iterrows():
+        xmin, ymin, xmax, ymax = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
+
+        # Use bounding box as prompt for SAM
+        bbox = get_bbox_from_coords(xmin, ymin, xmax, ymax)
+
+        # Predict mask using SAM
+        with torch.no_grad():
+            masks, scores, logits = predictor.predict(
+                box=bbox,
+                multimask_output=False
+            )
+
+        # Get the predicted mask (first one since multimask_output=False)
+        predicted_mask = masks[0].astype(np.uint8)
+
+        # Remove overlaps with previously assigned masks
+        # Only keep pixels that haven't been assigned to other masks
+        predicted_mask = predicted_mask * (mask_assignments == -1).astype(np.uint8)
+
+        # Get the largest contiguous contour
+        contour = get_largest_contour(predicted_mask)
+
+        if contour is not None and len(contour) > 0:
+            # Create a clean mask from the contour
+            clean_mask = np.zeros_like(predicted_mask)
+            cv2.drawContours(clean_mask, [contour], -1, 1, thickness=cv2.FILLED)
+
+            # Mark these pixels as assigned to this mask
+            mask_assignments[clean_mask == 1] = idx
+
+            # Convert contour to coordinates
+            coords_x, coords_y = contour_to_coords(contour)
+
+            # Calculate new bounding box from contour
+            if len(coords_x) > 0:
+                new_xmin = min(coords_x)
+                new_xmax = max(coords_x)
+                new_ymin = min(coords_y)
+                new_ymax = max(coords_y)
+            else:
+                new_xmin, new_xmax = xmin, xmax
+                new_ymin, new_ymax = ymin, ymax
+                coords_x, coords_y = [xmin, xmax, xmax, xmin, xmin], [ymin, ymin, ymax, ymax, ymin]
+        else:
+            # If no contour found, keep original bounding box as polyline
+            coords_x = [xmin, xmax, xmax, xmin, xmin]
+            coords_y = [ymin, ymin, ymax, ymax, ymin]
+            new_xmin, new_xmax = xmin, xmax
+            new_ymin, new_ymax = ymin, ymax
+
+        refined_masks.append({
+            'coords_x': coords_to_string(coords_x),
+            'coords_y': coords_to_string(coords_y),
+            'xmin': new_xmin,
+            'xmax': new_xmax,
+            'ymin': new_ymin,
+            'ymax': new_ymax
+        })
+
+    # Update the dataframe
+    for idx, refined in enumerate(refined_masks):
+        df.at[idx, 'coords_x'] = refined['coords_x']
+        df.at[idx, 'coords_y'] = refined['coords_y']
+        df.at[idx, 'xmin'] = refined['xmin']
+        df.at[idx, 'xmax'] = refined['xmax']
+        df.at[idx, 'ymin'] = refined['ymin']
+        df.at[idx, 'ymax'] = refined['ymax']
+        df.at[idx, 'type'] = 'polyline'  # All masks are now polylines
+
+    # Save the updated CSV
+    df.to_csv(args.output_path, index=False)
+    print(f"Refined masks saved to {args.output_path}")
+
+if __name__ == '__main__':
+    main()
+root@74cce7985efa:/app#

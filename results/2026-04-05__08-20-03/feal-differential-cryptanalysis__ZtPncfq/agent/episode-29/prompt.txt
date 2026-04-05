@@ -1,0 +1,120 @@
+New Terminal Output:
+
+root@e46f4ec08a64:/app# cat > /app/attack.py << 'EOF'
+ultiple pairs
+
+    # The key insight: for the correct key[5], the computed (left3, right3) values
+    # should be consistent with what could come from encrypting the plaintexts
+    # through the first 3 rounds
+
+    # Strategy: for each key[5], compute the "complexity" of the resulting round 3 states
+    # The correct key should produce states with specific properties
+
+    best_seed = 0
+    best_metric = float('inf')
+
+    for seed in range(0x10000):
+        key5 = (seed * 1234567) & 0xFFFFFFFF
+
+        # Compute round 3 states for all pairs
+        r3_values = []
+        for pt, ct in pairs:
+            CT_L, CT_R = getleft(ct), getright(ct)
+            r3 = CT_R ^ CT_L
+            r3_values.append(r3)
+
+        # The correct key should produce r3 values that have specific properties
+        # Let's check: the variance or spread of r3 values
+
+        # Compute a simple metric: standard deviation of r3 values
+        if len(r3_values) > 1:
+            mean = sum(r3_values) / len(r3_values)
+            variance = sum((x - mean) ** 2 for x in r3_values) / len(r3_values)
+            metric = variance
+        else:
+            metric = 0
+
+        if metric < best_metric:
+            best_metric = metric
+            best_seed = seed
+
+    return (best_seed * 1234567) & 0xFFFFFFFF
+EOF
+> #!/usr/bin/env python3
+> import sys
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     # Final attempt: use a proper meet-in-the-middle approach
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(4):
+>         pt = i
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # For each candidate key[5], compute what (left3, right3) must be
+>     # Then check consistency across multiple pairs
+>
+>     # The key insight: for the correct key[5], the computed (left3, right3) values
+>     # should be consistent with what could come from encrypting the plaintexts
+>     # through the first 3 rounds
+>
+>     # Strategy: for each key[5], compute the "complexity" of the resulting round 3 states
+>     # The correct key should produce states with specific properties
+>
+>     best_seed = 0
+>     best_metric = float('inf')
+>
+>     for seed in range(0x10000):
+>         key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Compute round 3 states for all pairs
+>         r3_values = []
+>         for pt, ct in pairs:
+>             CT_L, CT_R = getleft(ct), getright(ct)
+>             r3 = CT_R ^ CT_L
+>             r3_values.append(r3)
+>
+>         # The correct key should produce r3 values that have specific properties
+>         # Let's check: the variance or spread of r3 values
+>
+>         # Compute a simple metric: standard deviation of r3 values
+>         if len(r3_values) > 1:
+>             mean = sum(r3_values) / len(r3_values)
+>             variance = sum((x - mean) ** 2 for x in r3_values) / len(r3_values)
+>             metric = variance
+>         else:
+>             metric = 0
+>
+>         if metric < best_metric:
+>             best_metric = metric
+>             best_seed = seed
+>
+>     return (best_seed * 1234567) & 0xFFFFFFFF
+> EOF
+root@e46f4ec08a64:/app#

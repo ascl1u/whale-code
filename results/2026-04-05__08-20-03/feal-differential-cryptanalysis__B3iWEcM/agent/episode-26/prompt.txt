@@ -1,0 +1,41 @@
+Current Terminal Screen:
+>     which gives us (2^16/64)^6 = 2^60 operations. Too large.
+>
+>     Better strategy: Use step=1024 for initial search: (2^16/1024)^6 = 64^6 = 2^36
+>     Then refine around found solution.
+>     """
+>
+>     pairs = [(i, encrypt_fn(i)) for i in range(2)]
+>
+>     # Coarse search with step 1024
+>     step = 1024
+>
+>     for seed5 in range(0, 0x10000, step):
+>         for seed4 in range(0, 0x10000, step):
+>             for seed3 in range(0, 0x10000, step):
+>                 for seed2 in range(0, 0x10000, step):
+>                     for seed1 in range(0, 0x10000, step):
+>                         for seed0 in range(0, 0x10000, step):
+>                             seeds = [seed0, seed1, seed2, seed3, seed4, seed5]
+>
+>                             if test_full_keys(pairs, seeds):
+>                                 # Found approximate match, refine each key independently
+>                                 best_seeds = list(seeds)
+>
+>                                 # Refine each key one at a time
+>                                 for key_idx in range(6):
+>                                     for offset in range(-step, step):
+>                                         test_seeds = list(best_seeds)
+>                                         test_seeds[key_idx] = max(0, min(0xFFFF, best_seeds[key_idx] + offset))
+>
+>                                         if test_full_keys(pairs, test_seeds):
+>                                             best_seeds = test_seeds
+>                                             break
+>
+>                                 key5 = (best_seeds[5] * 1234567) & 0xFFFFFFFF
+>                                 return key5
+>
+>     return 0
+>
+> EOF
+root@5bf583115212:/app#

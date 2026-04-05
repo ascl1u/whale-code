@@ -1,0 +1,235 @@
+New Terminal Output:
+
+root@506b644d66f7:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+
+            R2_1 = L3_1
+            L2_1 = R3_1 ^ f_function(R2_1 ^ key4)
+
+            # Now check if these states are consistent with a third pair
+            p2, c2 = pairs[2]
+
+            c2_left = getleft(c2)
+            c2_right = getright(c2)
+            R4_2 = c2_left
+            L4_2 = c2_right ^ R4_2
+            R3_2 = L4_2
+            L3_2 = R4_2 ^ f_function(R3_2 ^ key5)
+            R2_2 = L3_2
+            L2_2 = R3_2 ^ f_function(R2_2 ^ key4)
+
+            # Check if we can find key0-3 that work for all three
+            # This is still hard, but we can use a heuristic:
+            # Try to find key3 that's consistent
+
+            # Actually, let's use a simpler check:
+            # For the correct keys, certain differential properties should hold
+
+            # Use more pairs to validate
+            valid_count = 0
+            for i in range(3, min(10, len(pairs))):
+                pi, ci = pairs[i]
+
+                ci_left = getleft(ci)
+                ci_right = getright(ci)
+                R4_i = ci_left
+                L4_i = ci_right ^ R4_i
+                R3_i = L4_i
+                L3_i = R4_i ^ f_function(R3_i ^ key5)
+                R2_i = L3_i
+                L2_i = R3_i ^ f_function(R2_i ^ key4)
+
+                # Check if the differential pattern is consistent
+                # This is a weak test but might work
+                diff_L = L2_0 ^ L2_i
+                diff_R = R2_0 ^ R2_i
+
+                # For wrong keys, these should be random
+                # For right keys, there might be structure
+                # This test is very weak, let's try something else
+
+            # Let's try a different validation:
+            # Try to find key3, key2 that work
+            found_consistent_keys = False
+
+            # Sample a few key3 values
+            for seed3 in range(0, 0x10000, 256):
+                key3 = (seed3 * 1234567) & 0xFFFFFFFF
+
+                # Decrypt round 2 for fi>
+> def getleft(x):
+  >     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def g_function(a, b, x):
+
+             >     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+  >     y = [0] * 4
+  >     for i in range(4):
+>         x[i] = input_val & 0xFF
+o>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+4>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+ >     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+ > def attack(encrypt_fn):
+=>     """Recover key[5] using differential cryptanalysis"""
+>
+>     # Collect many plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(256):
+>         p = i << 32 | i  # Use pattern to create structure
+>         c = encrypt_fn(p)
+>         pairs.append((p, c))
+>
+>     # For each candidate key[5], try to find a consistent key[4]
+>     # by checking if there exists a key[4] that works for multiple pairs
+>
+>     for seed5 in range(0x10000):
+>         key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         # For this key5, try to find key4 that's consistent
+>         # Use first two pairs to generate candidates for key4
+>
+>         p0, c0 = pairs[0]
+>         p1, c1 = pairs[1]
+>
+>         # Decrypt last round with key5
+ >         c0_left = getleft(c0)
+ >         c0_right = getright(c0)
+>         R4_0 = c0_left
+>         L4_0 = c0_right ^ R4_0
+i>         R3_0 = L4_0
+>         L3_0 = R4_0 ^ f_function(R3_0 ^ key5)
+>
+>         c1_left = getleft(c1)
+>         c1_right = getright(c1)
+>         R4_1 = c1_left
+>         L4_1 = c1_right ^ R4_1
+>         R3_1 = L4_1
+>         L3_1 = R4_1 ^ f_function(R3_1 ^ key5)
+o>
+>         # Now try all key4 values
+>         for seed4 in range(0x10000):
+>             key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # Decrypt round 3 for both
+>             R2_0 = L3_0
+>             L2_0 = R3_0 ^ f_function(R2_0 ^ key4)
+>
+ >             R2_1 = L3_1
+>             L2_1 = R3_1 ^ f_function(R2_1 ^ key4)
+>
+>             # Now check if these states are consistent with a third pair
+>             p2, c2 = pairs[2]
+>
+>             c2_left = getleft(c2)
+>             c2_right = getright(c2)
+>             R4_2 = c2_left
+>             L4_2 = c2_right ^ R4_2
+>             R3_2 = L4_2
+>             L3_2 = R4_2 ^ f_function(R3_2 ^ key5)
+>             R2_2 = L3_2
+>             L2_2 = R3_2 ^ f_function(R2_2 ^ key4)
+>
+>             # Check if we can find key0-3 that work for all three
+>             # This is still hard, but we can use a heuristic:
+>             # Try to find key3 that's consistent
+>
+>             # Actually, let's use a simpler check:
+>             # For the correct keys, certain differential properties should hold
+>
+>             # Use more pairs to validate
+>             valid_count = 0
+>             for i in range(3, min(10, len(pairs))):
+>                 pi, ci = pairs[i]
+>
+>                 ci_left = getleft(ci)
+>                 ci_right = getright(ci)
+>                 R4_i = ci_left
+>                 L4_i = ci_right ^ R4_i
+>                 R3_i = L4_i
+>                 L3_i = R4_i ^ f_function(R3_i ^ key5)
+>                 R2_i = L3_i
+>                 L2_i = R3_i ^ f_function(R2_i ^ key4)
+>
+>                 # Check if the differential pattern is consistent
+>                 # This is a weak test but might work
+>                 diff_L = L2_0 ^ L2_i
+>                 diff_R = R2_0 ^ R2_i
+>
+>                 # For wrong keys, these should be random
+>                 # For right keys, there might be structure
+>                 # This test is very weak, let's try something else
+>
+>             # Let's try a different validation:
+>             # Try to find key3, key2 that work
+>             found_consistent_keys = False
+>
+>             # Sample a few key3 values
+>             for seed3 in range(0, 0x10000, 256):
+>                 key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>
+>                 # Decrypt round 2 for first pair
+>                 R1_0 = L2_0
+>                 L1_0 = R2_0 ^ f_function(R1_0 ^ key3)
+>
+>                 # Check with second pair
+>                 R1_1 = L2_1
+>                 L1_1 = R2_1 ^ f_function(R1_1 ^ key3)
+>
+>                 # Try to find key2 that works
+>                 for seed2 in range(0, 0x10000, 256):
+>                     key2 = (seed2 * 1234567) & 0xFFFFFFFF
+>
+>                     # Decrypt round 1
+>                     R0_0 = L1_0
+>                     L0_0 = R1_0 ^ f_function(R0_0 ^ key2)
+>
+>                     R0_1 = L1_1
+>                     L0_1 = R1_1 ^ f_function(R0_1 ^ key2)
+>
+>                     # Now check if we can find key0, key1 that match the plaintext
+>                     # After pre-round: R0 = R XOR L (where L, R are after whitening)
+>                     # So: R_after_whitening = R0, L_after_whitening = R0 XOR L0
+>
+>                     # Plaintext structure
+>                     p0_left = getleft(p0)
+>                     p0_right = getright(p0)
+>
+>                     # After whitening: L = p0_left XOR key0, R = p0_right XOR key1
+>                     # After pre-round: R' = R XOR L = (p0_right XOR key1) XOR (p0_left XOR key0)
+>                     # So: R0_0 = p0_right XOR p0_left XOR key1 XOR key0
+>                     # And: L0_0 = R' = R0_0
+>
+>                     # This gives us: key0 XOR key1 = p0_right XOR p0_left XOR R0_0
+>                     key01_xor = p0_right ^ p0_left ^ R0_0
+>
+>                     # Similarly for p1
+>                     p1_left = getleft(p1)
+>                     p1_right = getright(p1)
+>                     key01_xor_check = p1_right ^ p1_left ^ R0_1
+>
+>                     if key01_xor == key01_xor_check:
+>                         # Found consistent keys!
+>                         found_consistent_keys = True
+>                         return key5
+>
+>             if found_consistent_keys:
+>                 return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

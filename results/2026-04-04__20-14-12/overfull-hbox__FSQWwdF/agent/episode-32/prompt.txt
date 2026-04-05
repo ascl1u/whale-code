@@ -1,0 +1,86 @@
+New Terminal Output:
+
+root@b419d4b4dbd9:/app# cat > apply_more_fixes.py << 'EOF'
+> import re
+> import subprocess
+>
+> def parse_synonyms(filename):
+>     synonym_map = {}
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if not line:
+>                 continue
+>             words = [w.strip() for w in line.split(',')]
+>             for word in words:
+>                 synonym_map[word] = words
+>     return synonym_map
+>
+> def replace_word(text, old_word, new_word):
+>     pattern = r'\b' + re.escape(old_word) + r'\b'
+>     return re.sub(pattern, new_word, text)
+>
+> def check_overfull():
+>     result = subprocess.run(['pdflatex', '-interaction=nonstopmode', 'main.tex'],
+>                           capture_output=True, text=True)
+>     output = result.stdout + result.stderr
+>     overfull_lines = [line for line in output.split('\n') if 'Overfull' in line]
+>     return overfull_lines
+>
+> synonym_map = parse_synonyms('synonyms.txt')
+>
+> with open('input.tex', 'r') as f:
+>     text = f.read()
+>
+> # More replacements to fix remaining overfull
+> replacements = [
+>     ('impressionability', 'influence'),  # 17 -> 9, saves 8! Biggest win
+>     ('promises', 'vows'),  # 8 -> 4, saves 4
+>     ('sensitivity', 'reaction'),  # 11 -> 8, saves 3 (but check if it's still there)
+>     ('gorgeous', 'lovely'),  # 8 -> 6, saves 2
+>     ('heightened', 'enhanced'),  # 10 -> 8, saves 2
+>     ('intricate', 'complex'),  # 9 -> 7, saves 2
+>     ('flabby', 'soft'),  # 6 -> 4, saves 2
+>     ('machines', 'devices'),  # 8 -> 7, saves 1
+>     ('name', 'title'),  # 4 -> 5, worse - skip
+> ]
+>
+> print("Applying more fixes...")
+> for old, new in replacements:
+>     if old in synonym_map and new in synonym_map[old]:
+>         if len(new) <= len(old):  # Only if shorter or same
+>             old_text = text
+>             text = replace_word(text, old, new)
+>             if text != old_text:
+>                 print(f"  {old} ({len(old)}) -> {new} ({len(new)}), saves {len(old)-len(new)}")
+>
+> with open('input.tex', 'w') as f:
+>     f.write(text)
+>
+> print("\nChecking compilation...")
+> overfull = check_overfull()
+> if overfull:
+>     print(f"\nStill have {len(overfull)} overfull warnings:")
+>     for line in overfull:
+>         print(line)
+> else:
+>     print("\n✓ SUCCESS! No overfull hbox warnings!")
+> EOF
+root@b419d4b4dbd9:/app# python3 apply_more_fixes.py
+Applying more fixes...
+  impressionability (17) -> influence (9), saves 8
+  promises (8) -> vows (4), saves 4
+  sensitivity (11) -> reaction (8), saves 3
+  gorgeous (8) -> lovely (6), saves 2
+  heightened (10) -> enhanced (8), saves 2
+  intricate (9) -> complex (7), saves 2
+  flabby (6) -> soft (4), saves 2
+  machines (8) -> devices (7), saves 1
+
+Checking compilation...
+
+Still have 3 overfull warnings:
+Overfull \hbox (6.96425pt too wide) in paragraph at lines 7--8
+Overfull \hbox (4.93648pt too wide) in paragraph at lines 7--8
+Overfull \hbox (0.46426pt too wide) in paragraph at lines 13--14
+root@b419d4b4dbd9:/app#

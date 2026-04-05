@@ -1,0 +1,84 @@
+New Terminal Output:
+
+root@a0b49dcae9e4:/app# python3 << 'EOF'
+> def read_fasta(filename):
+>     sequences = {}
+>     current_name = None
+>     current_seq = []
+>
+>     with open(filename, 'r') as f:
+>         for line in f:
+>             line = line.strip()
+>             if line.startswith('>'):
+>                 if current_name:
+>                     sequences[current_name] = ''.join(current_seq)
+>                 current_name = line[1:]
+>                 current_seq = []
+>             else:
+>                 current_seq.append(line)
+>         if current_name:
+>             sequences[current_name] = ''.join(current_seq)
+>
+>     return sequences
+>
+> seqs = read_fasta('sequences.fasta')
+> output_seq = seqs['output']
+> egfp = seqs['egfp']
+> flag = seqs['flag']
+> snap = seqs['snap']
+>
+> # Check what's at position 210 + 714 (where egfp differs)
+> pos = 210
+> print(f"Position {pos} to {pos+30}: {output_seq[pos:pos+30]}")
+> print(f"eGFP starts: {egfp[:30]}")
+> print()
+>
+> # Check around the mismatch point
+> mismatch_pos = pos + 714
+> print(f"Around position {mismatch_pos}:")
+> print(f"Output: {output_seq[mismatch_pos-10:mismatch_pos+20]}")
+> print(f"eGFP end: {egfp[704:]}")
+> print(f"FLAG start: {flag[:20]}")
+> print()
+>
+> # It looks like the stop codon is replaced
+> print("Checking if eGFP(no stop) + FLAG + SNAP + stop is in output:")
+> egfp_no_stop = egfp[:-3]
+> flag_no_stop = flag[:-3]
+> snap_no_stop = snap[:-3]
+>
+> test1 = egfp_no_stop + flag + snap
+> if test1 in output_seq:
+>     print(f"Found: egfp(no stop) + flag(with stop) + snap(with stop)")
+>     pos = output_seq.find(test1)
+>     print(f"Position: {pos}")
+>
+> test2 = egfp_no_stop + flag_no_stop + snap + 'taa'
+> if test2 in output_seq:
+>     print(f"Found: egfp(no stop) + flag(no stop) + snap(with stop) + taa")
+>     pos = output_seq.find(test2)
+>     print(f"Position: {pos}")
+>
+> test3 = egfp_no_stop + flag_no_stop + snap_no_stop + 'taa'
+> if test3 in output_seq:
+>     print(f"Found: egfp(no stop) + flag(no stop) + snap(no stop) + taa")
+>     pos = output_seq.find(test3)
+>     print(f"Position: {pos}")
+>
+> test4 = egfp_no_stop + flag_no_stop + snap
+> if test4 in output_seq:
+>     print(f"Found: egfp(no stop) + flag(no stop) + snap(with stop)")
+>     pos = output_seq.find(test4)
+>     print(f"Position: {pos}")
+>
+> EOF
+Position 210 to 240: atgagcaagggcgaggagctgttcaccggg
+eGFP starts: atgagcaagggcgaggagctgttcaccggg
+
+Around position 924:
+Output: gctgtacaaaggtagtggctccggtagcgg
+eGFP end: gctgtacaaataa
+FLAG start: atgggtagtggctccggtag
+
+Checking if eGFP(no stop) + FLAG + SNAP + stop is in output:
+root@a0b49dcae9e4:/app#

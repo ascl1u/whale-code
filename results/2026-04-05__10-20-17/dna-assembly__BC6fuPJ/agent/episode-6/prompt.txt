@@ -1,0 +1,43 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat > design_primers.py << 'EOF'
+> import subprocess
+> import re
+>
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> print(f"Input length: {len(seqs['input'])}")
+> print(f"Output length: {len(seqs['output'])}")
+> print(f"EGFP length: {len(seqs['egfp'])}")
+> print(f"FLAG length: {len(seqs['flag'])}")
+> print(f"SNAP length: {len(seqs['snap'])}")
+>
+> # Find where egfp starts in output
+> egfp_start_in_output = seqs['output'].find(seqs['egfp'][:50])
+> print(f"\nEGFP starts at position {egfp_start_in_output} in output")
+>
+> # Find where snap ends in output
+> snap_end_seq = seqs['snap'][-50:]
+> snap_end_in_output = seqs['output'].find(snap_end_seq) + len(snap_end_seq)
+> print(f"SNAP ends at position {snap_end_in_output} in output")
+>
+> # Check what comes before egfp in output
+> print(f"\nBefore EGFP in output: ...{seqs['output'][egfp_start_in_output-20:egfp_start_in_output]}")
+> print(f"Start of EGFP: {seqs['egfp'][:20]}...")
+>
+> # Check what comes after snap in output
+> print(f"\nEnd of SNAP: ...{seqs['snap'][-20:]}")
+> print(f"After SNAP in output: {seqs['output'][snap_end_in_output:snap_end_in_output+20]}...")
+>
+> EOF
+root@b088ecd58d39:/app#

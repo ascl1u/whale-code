@@ -1,0 +1,211 @@
+New Terminal Output:
+
+root@506b644d66f7:/app# cat > attack.py << 'EOF'
+ge(4):
+        output |= y[i] << (8 * i)
+
+    return output & 0xFFFFFFFF
+
+
+def attack(encrypt_fn):
+    """Recover key[5] using chosen plaintext attack"""
+
+    # Collect plaintext-ciphertext pairs
+    pairs = []
+
+    # Use various plaintexts to get enough data
+    for i in range(20):
+        plaintext = i << 32 | i
+        ciphertext = encrypt_fn(plaintext)
+        pairs.append((plaintext, ciphertext))
+
+    # Brute force key[5] by trying all possible 16-bit seeds
+    for seed in range(0x10000):
+        candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+
+        # Test if this candidate is consistent across multiple pairs
+        if test_key5_candidate(encrypt_fn, candidate_key5, pairs):
+            return candidate_key5
+
+    return 0
+
+
+def test_key5_candidate(encrypt_fn, candidate_key5, pairs):
+    """Test if a candidate key[5] is consistent"""
+
+    # For a correct key[5], we should be able to partially decrypt
+    # the last round consistently
+
+    # Use a simpler approach: try to find patterns that match
+    # We'll use differential properties
+
+    # Collect some specific pairs for testing
+    p1 = 0x0000000000000000
+    c1 = encrypt_fn(p1)
+
+    p2 = 0x0000000100000000  # Small difference in left half
+    c2 = encrypt_fn(p2)
+
+    # Try to partially decrypt the last round
+    # After encryption: ciphertext = merge(R4, L4)
+    # So: ciphertext_left = R4, ciphertext_right = L4
+
+    c1_left = getleft(c1)
+    c1_right = getright(c1)
+
+    c2_left = getleft(c2)
+    c2_right = getright(c2)
+
+    # Before final swap: L4, R4
+    # After post-round (L4 = L4 XOR R4): we have L4' and R4
+    # So: L4' = c1_right, R4 = c1_left
+    # And: L4 = L4' XOR R4 = c1_right XOR c1_left
+
+    L4_1 = c1_right ^ c1_left
+    R4_1 = c1_left
+
+    L4_2 = c2_right ^ c2_left
+    R4_2 = c2_left
+
+    # In round 4: R4 = L3 XOR f(R3 XOR key[5])
+    # And: L4 = R3
+    # So: R3 = L4, L3 = R4 XOR f(R3 XOR key[5])
+
+    R3_1 = L4_1
+    R3_2 = L4_2
+
+    # L3 = R4 XOR f(R3 XOR key[5])
+    f_out_1 = R4_1 ^ f_function(R3_1 ^ candidate_key5)
+    f_out_2 = R4_2 ^ f_function(R3_2 ^ candidate_key5)
+
+    # This doesn't directly verify, we need more sophisticated check
+    # Let's use a scoring approach instead
+
+    return False  # Placeholder
+
+EOF
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     """Get the left (upper) 32 bits of a 64-bit value"""
+>     return (x >> 32) & 0xFFFFFFFF
+>
+>
+> def getright(x):
+>     """Get the right (lower) 32 bits of a 64-bit value"""
+>     return x & 0xFFFFFFFF
+>
+>
+> def merge(left, right):
+>     """Combine two 32-bit halves into a 64-bit value"""
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+>
+> def g_function(a, b, x):
+>     """FEAL G function"""
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+>
+> def f_function(input_val):
+>     """FEAL F function"""
+>     x = [0] * 4
+>     y = [0] * 4
+>
+>     # Extract bytes from input (big-endian)
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>
+>     # Apply G function operations
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>
+>     # Combine bytes into output (big-endian)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>
+>     return output & 0xFFFFFFFF
+>
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using chosen plaintext attack"""
+>
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>
+>     # Use various plaintexts to get enough data
+>     for i in range(20):
+>         plaintext = i << 32 | i
+>         ciphertext = encrypt_fn(plaintext)
+>         pairs.append((plaintext, ciphertext))
+>
+>     # Brute force key[5] by trying all possible 16-bit seeds
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Test if this candidate is consistent across multiple pairs
+>         if test_key5_candidate(encrypt_fn, candidate_key5, pairs):
+>             return candidate_key5
+>
+>     return 0
+>
+>
+> def test_key5_candidate(encrypt_fn, candidate_key5, pairs):
+>     """Test if a candidate key[5] is consistent"""
+>
+>     # For a correct key[5], we should be able to partially decrypt
+>     # the last round consistently
+>
+>     # Use a simpler approach: try to find patterns that match
+>     # We'll use differential properties
+>
+>     # Collect some specific pairs for testing
+>     p1 = 0x0000000000000000
+>     c1 = encrypt_fn(p1)
+>
+>     p2 = 0x0000000100000000  # Small difference in left half
+>     c2 = encrypt_fn(p2)
+>
+>     # Try to partially decrypt the last round
+>     # After encryption: ciphertext = merge(R4, L4)
+>     # So: ciphertext_left = R4, ciphertext_right = L4
+>
+>     c1_left = getleft(c1)
+>     c1_right = getright(c1)
+>
+>     c2_left = getleft(c2)
+>     c2_right = getright(c2)
+>
+>     # Before final swap: L4, R4
+>     # After post-round (L4 = L4 XOR R4): we have L4' and R4
+>     # So: L4' = c1_right, R4 = c1_left
+>     # And: L4 = L4' XOR R4 = c1_right XOR c1_left
+>
+>     L4_1 = c1_right ^ c1_left
+>     R4_1 = c1_left
+>
+>     L4_2 = c2_right ^ c2_left
+>     R4_2 = c2_left
+>
+>     # In round 4: R4 = L3 XOR f(R3 XOR key[5])
+>     # And: L4 = R3
+>     # So: R3 = L4, L3 = R4 XOR f(R3 XOR key[5])
+>
+>     R3_1 = L4_1
+>     R3_2 = L4_2
+>
+>     # L3 = R4 XOR f(R3 XOR key[5])
+>     f_out_1 = R4_1 ^ f_function(R3_1 ^ candidate_key5)
+>     f_out_2 = R4_2 ^ f_function(R3_2 ^ candidate_key5)
+>
+>     # This doesn't directly verify, we need more sophisticated check
+>     # Let's use a scoring approach instead
+>
+>     return False  # Placeholder
+>
+> EOF
+root@506b644d66f7:/app#

@@ -1,0 +1,93 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > design_gg_primers.py << 'EOF'
+> import subprocess
+>
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> def reverse_complement(seq):
+>     complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'a': 't', 't': 'a', 'g': 'c', 'c': 'g'}
+>     return ''.join(complement[base] for base in reversed(seq))
+>
+> def calc_tm(seq):
+>     """Calculate Tm using oligotm"""
+>     cmd = ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq.upper()]
+>     result = subprocess.run(cmd, capture_output=True, text=True)
+>     return float(result.stdout.strip())
+>
+> print("Golden Gate Assembly Design")
+> print("="*60)
+>
+> # Assembly order:
+> # Vector_upstream -> egfp -> flag -> snap -> Vector_downstream
+>
+> # The junctions in the output:
+> # Position 210: ...atatacat|atgagcaa... (vector -> egfp)
+> # Position 927: ...acaaaggt|agtggctc... (egfp -> flag, with 3bp overlap)
+> # Position 1008: ...tggttca|gacaaaga... (flag -> snap)
+> # Position 1554: ...gggttaa|tgaggatc... (snap -> vector)
+>
+> # For the input vector, we need to remove the section from ~210 to ~693
+> # and add BsaI sites
+>
+> # Extract the junction sequences (4bp overhangs)
+> output = seqs['output']
+>
+> # Overhang 1: vector to egfp (position 210)
+> overhang1 = output[210:214].upper()  # ATGA
+> print(f"Overhang 1 (vector->egfp): {overhang1}")
+>
+> # Overhang 2: egfp to flag
+> # egfp ends at 927 with ...ggt
+> # flag starts at 924 with ggt...
+> # The junction is at 927: ggt|agt
+> overhang2 = output[927:931].upper()  # AGTG
+> print(f"Overhang 2 (egfp->flag): {overhang2}")
+>
+> # Overhang 3: flag to snap (position 1008)
+> overhang3 = output[1008:1012].upper()  # GACA
+> print(f"Overhang 3 (flag->snap): {overhang3}")
+>
+> # Overhang 4: snap to vector (position 1554)
+> overhang4 = output[1554:1558].upper()  # TGAG
+> print(f"Overhang 4 (snap->vector): {overhang4}")
+>
+> print("\n" + "="*60)
+> print("PRIMER DESIGN")
+> print("="*60)
+>
+> # For BsaI-HFv2:
+> # Recognition: GGTCTC
+> # Cuts after: GGTCTC(N)1/5 - leaves 4bp overhang
+> # Forward primer: GGTCTC N [4bp overhang] [template binding]
+> # Reverse primer: GAGACC N [4bp overhang RC] [template binding RC]
+>
+> print("\nBsaI site: GGTCTC (cuts 1bp downstream on top, 5bp on bottom)")
+> print("This creates a 4bp overhang")
+>
+> EOF
+root@11eec39dc770:/app# python3 design_gg_primers.py
+Golden Gate Assembly Design
+============================================================
+Overhang 1 (vector->egfp): ATGA
+Overhang 2 (egfp->flag): AGTG
+Overhang 3 (flag->snap): GACA
+Overhang 4 (snap->vector): TGAG
+
+============================================================
+PRIMER DESIGN
+============================================================
+
+BsaI site: GGTCTC (cuts 1bp downstream on top, 5bp on bottom)
+This creates a 4bp overhang
+root@11eec39dc770:/app#

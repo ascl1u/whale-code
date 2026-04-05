@@ -1,0 +1,158 @@
+New Terminal Output:
+
+root@506b644d66f7:/app# cat > attack.py << 'EOF'
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+
+   >     x = [0] * 4
+                >     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+ >         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+ >     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+r>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def decrypt_two_rounds(ciphertext, key4, key5):
+>     """Decrypt the last two rounds"""
+>     c_left = getleft(ciphertext)
+>     c_right = getright(ciphertext)
+>
+>     # Undo swap
+>     R4 = c_left
+>     L4_xored = c_right
+>
+>     # Undo post-round XOR: L4 = L4_xored XOR R4
+>     L4 = L4_xored ^ R4
+>
+>     # Undo round 4: R4 = L3 XOR f(R3 XOR key5), L4 = R3
+>     R3 = L4
+>     L3 = R4 ^ f_function(R3 ^ key5)
+>
+>     # Undo round 3: R3 = L2 XOR f(R2 XOR key4), L3 = R2
+>     R2 = L3
+>     L2 = R3 ^ f_function(R2 ^ key4)
+>
+>     return L2, R2
+>
+> def encrypt_three_rounds(plaintext, key0, key1, key2, key3):
+>     """Encrypt through the first 3 rounds"""
+>     left = getleft(plaintext)
+>     right = getright(plaintext)
+>
+>     # Initial whitening
+>     left ^= key0
+>     right ^= key1
+>
+>     # Pre-round
+>     right ^= left
+>
+>     # Round 1
+>     temp = f_function(right ^ key2)
+>     left, right = right, left ^ temp
+>
+>     # Round 2
+>     temp = f_function(right ^ key3)
+>     left, right = right, left ^ temp
+>
+>     return left, right
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using exhaustive search on key[4] and key[5]"""
+>
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(4):
+>         p = i
+>         c = encrypt_fn(p)
+>         pairs.append((p, c))
+>
+>     # Build forward table: encrypt first plaintext through first 3 rounds
+>     # with all possible key[0-3] combinations
+>     print("Building forward table...")
+>     forward_table = {}
+>
+>     for seed0 in range(0x10000):
+>         if seed0 % 0x1000 == 0:
+>             print(f"Progress: {seed0}/{0x10000}")
+>
+>         key0 = (seed0 * 1234567) & 0xFFFFFFFF
+>
+>         for seed1 in range(0, 0x10000, 16):  # Sample every 16th
+>             key1 = (seed1 * 1234567) & 0xFFFFFFFF
+>
+>             for seed2 in range(0, 0x10000, 16):  # Sample every 16th
+>                 key2 = (seed2 * 1234567) & 0xFFFFFFFF
+>
+>                 for seed3 in range(0, 0x10000, 16):  # Sample every 16th
+>                     key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>
+>                     L2, R2 = encrypt_three_rounds(pairs[0][0], key0, key1, key2, key3)
+>
+>                     state = (L2, R2)
+>                     if state not in forward_table:
+>                         forward_table[state] = []
+>                     forward_table[state].append((seed0, seed1, seed2, seed3))
+>
+>     print(f"Forward table size: {len(forward_table)}")
+>
+>     # Now try all key[4] and key[5] combinations
+>     print("Searching for key[4] and key[5]...")
+>     for seed4 in range(0x10000):
+>         if seed4 % 0x1000 == 0:
+>             print(f"Progress: {seed4}/{0x10000}")
+>
+>         key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>         for seed5 in range(0x10000):
+>             key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>             L2, R2 = decrypt_two_rounds(pairs[0][1], key4, key5)
+>
+>             if (L2, R2) in forward_table:
+>                 # Found potential match! Verify with other pairs
+>                 candidates = forward_table[(L2, R2)]
+>
+>                 for seed0, seed1, seed2, seed3 in candidates:
+>                     key0 = (seed0 * 1234567) & 0xFFFFFFFF
+>                     key1 = (seed1 * 1234567) & 0xFFFFFFFF
+>                     key2 = (seed2 * 1234567) & 0xFFFFFFFF
+>                     key3 = (seed3 * 1234567) & 0xFFFFFFFF
+>
+>                     # Verify with all other pairs
+>                     all_match = True
+>                     for p, c in pairs[1:]:
+>                         L2_enc, R2_enc = encrypt_three_rounds(p, key0, key1, key2, key3)
+>                         L2_dec, R2_dec = decrypt_two_rounds(c, key4, key5)
+>
+>                         if L2_enc != L2_dec or R2_enc != R2_dec:
+>                             all_match = False
+>                             break
+>
+>                     if all_match:
+>                         print(f"Found key[5]! seed5={seed5}, key5={key5}")
+>                         return key5
+>
+>     return 0
+>
+> EOF
+root@506b644d66f7:/app#

@@ -1,0 +1,129 @@
+New Terminal Output:
+
+root@486aac7a4fa6:/app# cat > attack.py << 'EOF'
+count > 0:
+            p = count / total
+            entropy -= p * math.log2(p)
+    return entropy
+
+def attack(encrypt_fn):
+    """Recover key[5] using chosen plaintext attack"""
+
+    # Collect plaintext-ciphertext pairs
+    pairs = []
+    for i in range(100):
+        pt = i
+        ct = encrypt_fn(pt)
+        pairs.append((pt, ct))
+
+    best_key = 0
+    best_entropy = -1
+
+    for seed in range(0x10000):
+        candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+
+        # Partially decrypt all ciphertexts
+        left_values = []
+        right_values = []
+
+        for pt, ct in pairs:
+            fr = getleft(ct)
+            fl = getright(ct)
+            rb = fl ^ fr
+            lb = fr ^ f_function(rb ^ candidate_key5)
+            left_values.append(lb)
+            right_values.append(rb)
+
+        # Compute entropy - correct key should give high entropy
+        entropy = compute_entropy(left_values + right_values)
+
+        if entropy > best_entropy:
+            best_entropy = entropy
+            best_key = candidate_key5
+
+    return best_key
+
+EOF
+> #!/usr/bin/env python3
+> from collections import Counter
+> import math
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def compute_entropy(values):
+>     """Compute Shannon entropy of byte distribution"""
+>     byte_counts = Counter()
+>     for val in values:
+>         for i in range(8):
+>             byte_counts[(val >> (i*8)) & 0xFF] += 1
+>
+>     total = sum(byte_counts.values())
+>     entropy = 0
+>     for count in byte_counts.values():
+>         if count > 0:
+>             p = count / total
+>             entropy -= p * math.log2(p)
+>     return entropy
+>
+> def attack(encrypt_fn):
+>     """Recover key[5] using chosen plaintext attack"""
+>
+>     # Collect plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(100):
+>         pt = i
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     best_key = 0
+>     best_entropy = -1
+>
+>     for seed in range(0x10000):
+>         candidate_key5 = (seed * 1234567) & 0xFFFFFFFF
+>
+>         # Partially decrypt all ciphertexts
+>         left_values = []
+>         right_values = []
+>
+>         for pt, ct in pairs:
+>             fr = getleft(ct)
+>             fl = getright(ct)
+>             rb = fl ^ fr
+>             lb = fr ^ f_function(rb ^ candidate_key5)
+>             left_values.append(lb)
+>             right_values.append(rb)
+>
+>         # Compute entropy - correct key should give high entropy
+>         entropy = compute_entropy(left_values + right_values)
+>
+>         if entropy > best_entropy:
+>             best_entropy = entropy
+>             best_key = candidate_key5
+>
+>     return best_key
+>
+> EOF
+root@486aac7a4fa6:/app#

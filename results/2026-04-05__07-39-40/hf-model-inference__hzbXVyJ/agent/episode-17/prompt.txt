@@ -1,0 +1,61 @@
+New Terminal Output:
+
+root@8624ba7df4a0:/app# python3 << 'EOF'
+> import requests
+> import json
+>
+> # Test positive sentiment
+> response = requests.post(
+>     'http://localhost:5000/sentiment',
+>     json={'text': 'I love this product! It is amazing!'}
+> )
+> print("Test 1 - Positive sentiment:")
+> print(f"Status Code: {response.status_code}")
+> print(f"Response: {json.dumps(response.json(), indent=2)}")
+> print()
+>
+> # Test negative sentiment
+> response = requests.post(
+>     'http://localhost:5000/sentiment',
+>     json={'text': 'This is terrible and I hate it.'}
+> )
+> print("Test 2 - Negative sentiment:")
+> print(f"Status Code: {response.status_code}")
+> print(f"Response: {json.dumps(response.json(), indent=2)}")
+> print()
+>
+> # Test error case - missing text field
+> response = requests.post(
+>     'http://localhost:5000/sentiment',
+>     json={}
+> )
+> print("Test 3 - Error case (missing text):")
+> print(f"Status Code: {response.status_code}")
+> print(f"Response: {json.dumps(response.json(), indent=2)}")
+> EOF
+Test 1 - Positive sentiment:
+Status Code: 200
+Response: {
+  "confidence": {
+    "negative": 0.00011160859139636159,
+    "positive": 0.9998884201049805
+  },
+  "sentiment": "positive"
+}
+
+Test 2 - Negative sentiment:
+Status Code: 200
+Response: {
+  "confidence": {
+    "negative": 0.9994720816612244,
+    "positive": 0.0005279447068460286
+  },
+  "sentiment": "negative"
+}
+
+Test 3 - Error case (missing text):
+Status Code: 400
+Response: {
+  "error": "No JSON data provided"
+}
+root@8624ba7df4a0:/app#

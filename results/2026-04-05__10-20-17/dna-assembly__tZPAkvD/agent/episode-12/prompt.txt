@@ -1,0 +1,68 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > compare_sequences.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> # Find where egfp starts in output (first 100bp match)
+> egfp_start = seqs['output'].find(seqs['egfp'][:100])
+> print(f"egfp starts at position {egfp_start} in output")
+> print(f"\nComparing egfp with output[{egfp_start}:{egfp_start+len(seqs['egfp'])}]:")
+>
+> # Compare egfp with output
+> for i in range(min(len(seqs['egfp']), len(seqs['output']) - egfp_start)):
+>     if seqs['egfp'][i] != seqs['output'][egfp_start + i]:
+>         print(f"  First mismatch at position {i}")
+>         print(f"    egfp[{i}:{i+30}] = {seqs['egfp'][i:i+30]}")
+>         print(f"    output[{egfp_start+i}:{egfp_start+i+30}] = {seqs['output'][egfp_start+i:egfp_start+i+30]}")
+>         break
+> else:
+>     print(f"  egfp matches perfectly for {min(len(seqs['egfp']), len(seqs['output']) - egfp_start)} bp")
+>     egfp_end = egfp_start + len(seqs['egfp'])
+>     print(f"\negfp ends at position {egfp_end}")
+>     print(f"After egfp in output: {seqs['output'][egfp_end:egfp_end+100]}")
+>     print(f"\nChecking if flag starts here...")
+>     print(f"flag starts with: {seqs['flag'][:100]}")
+>
+>     # Check if flag follows egfp
+>     if seqs['output'][egfp_end:egfp_end+len(seqs['flag'])] == seqs['flag']:
+>         print("  YES! flag immediately follows egfp")
+>         flag_end = egfp_end + len(seqs['flag'])
+>         print(f"\nflag ends at position {flag_end}")
+>         print(f"After flag in output: {seqs['output'][flag_end:flag_end+100]}")
+>         print(f"\nChecking if snap starts here...")
+>         print(f"snap starts with: {seqs['snap'][:100]}")
+>
+>         # Check if snap follows flag
+>         if seqs['output'][flag_end:flag_end+len(seqs['snap'])] == seqs['snap']:
+>             print("  YES! snap immediately follows flag")
+>             snap_end = flag_end + len(seqs['snap'])
+>             print(f"\nsnap ends at position {snap_end}")
+>         else:
+>             # Find where they differ
+>             for i in range(min(len(seqs['snap']), len(seqs['output']) - flag_end)):
+>                 if seqs['snap'][i] != seqs['output'][flag_end + i]:
+>                     print(f"  First mismatch at position {i}")
+>                     print(f"    snap[{i}:{i+30}] = {seqs['snap'][i:i+30]}")
+>                     print(f"    output[{flag_end+i}:{flag_end+i+30}] = {seqs['output'][flag_end+i:flag_end+i+30]}")
+>                     break
+>     else:
+>         # Find where they differ
+>         for i in range(min(len(seqs['flag']), len(seqs['output']) - egfp_end)):
+>             if seqs['flag'][i] != seqs['output'][egfp_end + i]:
+>                 print(f"  First mismatch at position {i}")
+>                 print(f"    flag[{i}:{i+30}] = {seqs['flag'][i:i+30]}")
+>                 print(f"    output[{egfp_end+i}:{egfp_end+i+30}] = {seqs['output'][egfp_end+i:egfp_end+i+30]}")
+>                 break
+>
+> EOF
+root@5727c976f434:/app#

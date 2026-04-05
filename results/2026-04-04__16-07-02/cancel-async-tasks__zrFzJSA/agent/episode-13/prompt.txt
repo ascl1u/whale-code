@@ -1,0 +1,59 @@
+New Terminal Output:
+
+import asyncio
+from typing import Callable, Awaitable
+
+
+async def run_tasks(tasks: list[Callable[[], Awaitable[None]]], max_concurrent: int) -> None:
+    """Run async tasks with a maximum concurrency limit.
+
+    Args:
+        tasks: List of callables that return awaitables (async functions)
+        max_concurrent: Maximum number of tasks that can run concurrently
+
+    This function ensures that cleanup code in tasks runs even when cancelled
+    via keyboard interrupt (Ctrl+C).
+    """
+    if not tasks:
+        return
+
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def run_task_with_semaphore(task_func: Callable[[], Awaitable[None]]) -> None:
+        """Wrapper to run a task with semaphore control."""
+        async with semaphore:
+            try:
+                await task_func()
+            except asyncio.CancelledError:
+                # Re-raise to allow proper cancellation propagation
+                # but the task's own cleanup code will have run
+                raise
+            except Exception as e:
+                # Log or handle other exceptions as needed
+                # For now, we'll just let them be collected by gather
+                raise
+
+    # Create coroutines for all tasks
+    task_coroutines = [run_task_with_semaphore(task) for task in tasks]
+
+    # Run all tasks concurrently with the semaphore limiting concurrency
+    # return_exceptions=True ensures all tasks complete even if some fail
+    try:
+        await asyncio.gather(*task_coroutines, return_exceptions=False)
+    except asyncio.CancelledError:
+        # If we receive a cancellation (e.g., from Ctrl+C), we need to
+        # cancel all running tasks but give them time to clean up
+        running_tasks = [t for t in asyncio.all_tasks() if not t.done() and t != asyncio.current_task()]
+
+        # Cancel all running tasks
+        for task in running_tasks:
+            task.cancel()
+
+        # Wait for all tasks to complete their cleanup
+        # Use return_exceptions=True to collect any exceptions during cleanup
+        if running_tasks:
+            await asyncio.gather(*running_tasks, return_exceptions=True)
+
+        # Re-raise the cancellation
+        raise
+root@d8b25c2a55ca:/app#

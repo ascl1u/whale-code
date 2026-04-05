@@ -1,0 +1,59 @@
+New Terminal Output:
+
+root@b088ecd58d39:/app# cat > check_sequences3.py << 'EOF'
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line.upper()
+>
+> egfp_start = 210
+> egfp_no_stop = seqs['egfp'][:-3]  # Remove TAA
+> egfp_end = egfp_start + len(egfp_no_stop)
+>
+> print(f"EGFP (no stop) ends at: {egfp_end}")
+> print(f"After EGFP: {seqs['output'][egfp_end:egfp_end+30]}")
+> print(f"FLAG: {seqs['flag']}")
+> print(f"FLAG without ATG: {seqs['flag'][3:]}")
+>
+> # Check if FLAG without start codon follows
+> flag_no_start = seqs['flag'][3:]  # Remove ATG
+> if seqs['output'][egfp_end:egfp_end+len(flag_no_start)] == flag_no_start:
+>     print("\n*** FLAG (no ATG) follows EGFP! ***")
+>     flag_end = egfp_end + len(flag_no_start)
+>     print(f"FLAG ends at: {flag_end}")
+>
+>     # Check if FLAG has stop codon
+>     print(f"\nFLAG ends with: {seqs['flag'][-10:]}")
+>     print(f"Is it a stop codon? {seqs['flag'][-3:] in ['TAA', 'TAG', 'TGA']}")
+>
+>     # Check for SNAP
+>     if seqs['flag'][-3:] in ['TAA', 'TAG', 'TGA']:
+>         flag_no_stop = seqs['flag'][3:-3]  # Remove ATG and stop
+>         flag_end = egfp_end + len(flag_no_stop)
+>         print(f"FLAG (no ATG, no stop) ends at: {flag_end}")
+>         print(f"\nAfter FLAG: {seqs['output'][flag_end:flag_end+30]}")
+>         print(f"SNAP: {seqs['snap'][:30]}")
+>         print(f"SNAP without ATG: {seqs['snap'][3:33]}")
+>
+>         snap_no_start = seqs['snap'][3:]
+>         if seqs['output'][flag_end:flag_end+len(snap_no_start)] == snap_no_start:
+>             print("\n*** SNAP (no ATG) follows FLAG! ***")
+>             snap_end = flag_end + len(snap_no_start)
+>             print(f"SNAP ends at: {snap_end}")
+>             print(f"\nAfter SNAP: {seqs['output'][snap_end:snap_end+20]}")
+>             print(f"SNAP ends with: {seqs['snap'][-10:]}")
+>
+> EOF
+root@b088ecd58d39:/app# python3 check_sequences3.py
+EGFP (no stop) ends at: 924
+After EGFP: GGTAGTGGCTCCGGTAGCGGTAGCGGCAGC
+FLAG: ATGGGTAGTGGCTCCGGTAGCGGTAGCGGCAGCGACTACAAGGACGACGACGACAAGGGTTCCGGTTCTGGTTCAGGTAGTGGTTCATAA
+FLAG without ATG: GGTAGTGGCTCCGGTAGCGGTAGCGGCAGCGACTACAAGGACGACGACGACAAGGGTTCCGGTTCTGGTTCAGGTAGTGGTTCATAA
+root@b088ecd58d39:/app#

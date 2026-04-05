@@ -1,0 +1,158 @@
+New Terminal Output:
+
+root@e46f4ec08a64:/app# cat > /app/attack.py << 'EOF'
+(pt)
+        pairs.append((pt, ct))
+
+    # For computational efficiency, we'll try a different approach:
+    # Use the fact that certain byte values in the F-function have
+    # specific relationships
+
+    # Try all 65536 seeds for key[5]
+    # For each one, check if it's consistent across multiple pairs
+
+    best_seed = 0
+    best_consistency = -1
+
+    for seed5 in range(0x10000):
+        candidate_key5 = (seed5 * 1234567) & 0xFFFFFFFF
+
+        # For each pair, compute what (left3, right3) would be
+        round3_states = []
+        for pt, ct in pairs:
+            CT_L, CT_R = getleft(ct), getright(ct)
+            r3 = CT_R ^ CT_L
+            l3 = CT_L ^ f_function(r3 ^ candidate_key5)
+            round3_states.append((l3, r3))
+
+        # Now, try to find key[4] that's consistent with these states
+        # For each seed of key[4], check if it produces consistent round2 states
+
+        # To speed this up, only try a subset of key[4] values
+        max_consistency = 0
+
+        for seed4 in range(0, 0x10000, 256):  # Sample every 256th value
+            candidate_key4 = (seed4 * 1234567) & 0xFFFFFFFF
+
+            # For each round3 state, compute what round2 would be
+            consistency = 0
+            for l3, r3 in round3_states:
+                # Round 3: left3, right3 came from
+                # left3 = right2
+                # right3 = left2 ^ f(right2 ^ key[4])
+
+                right2 = l3
+                left2 = r3 ^ f_function(right2 ^ candidate_key4)
+
+                # Check if left2 and right2 look "reasonable"
+                # This is still heuristic, but let's count something
+                # For now, just count non-zero values
+                if left2 != 0 or right2 != 0:
+                    consistency += 1
+
+            if consistency > max_consistency:
+                max_consistency = consistency
+
+        if max_consistency > best_consistency:
+            best_consistency = max_consistency
+            best_seed = seed5
+
+    return (best_seed * 1234567) & 0xFFFFFFFF
+EOF
+> #!/usr/bin/env python3
+>
+> def getleft(x):
+>     return (x >> 32) & 0xFFFFFFFF
+>
+> def getright(x):
+>     return x & 0xFFFFFFFF
+>
+> def merge(left, right):
+>     return ((left & 0xFFFFFFFF) << 32) | (right & 0xFFFFFFFF)
+>
+> def g_function(a, b, x):
+>     temp = (a + b + x) & 0xFF
+>     return ((temp << 2) | (temp >> 6)) & 0xFF
+>
+> def f_function(input_val):
+>     x = [0] * 4
+>     y = [0] * 4
+>     for i in range(4):
+>         x[i] = input_val & 0xFF
+>         input_val >>= 8
+>     y[2] = g_function(x[3] ^ x[2], x[1] ^ x[0], 1)
+>     y[3] = g_function(x[3], y[2], 0)
+>     y[1] = g_function(x[1] ^ x[0], y[2], 0)
+>     y[0] = g_function(x[0], y[1], 1)
+>     output = 0
+>     for i in range(4):
+>         output |= y[i] << (8 * i)
+>     return output & 0xFFFFFFFF
+>
+> def attack(encrypt_fn):
+>     # Use a meet-in-the-middle style attack
+>     # Try to recover key[5] and key[4] together by checking consistency
+>
+>     # First, collect some plaintext-ciphertext pairs
+>     pairs = []
+>     for i in range(16):
+>         pt = i
+>         ct = encrypt_fn(pt)
+>         pairs.append((pt, ct))
+>
+>     # For computational efficiency, we'll try a different approach:
+>     # Use the fact that certain byte values in the F-function have
+>     # specific relationships
+>
+>     # Try all 65536 seeds for key[5]
+>     # For each one, check if it's consistent across multiple pairs
+>
+>     best_seed = 0
+>     best_consistency = -1
+>
+>     for seed5 in range(0x10000):
+>         candidate_key5 = (seed5 * 1234567) & 0xFFFFFFFF
+>
+>         # For each pair, compute what (left3, right3) would be
+>         round3_states = []
+>         for pt, ct in pairs:
+>             CT_L, CT_R = getleft(ct), getright(ct)
+>             r3 = CT_R ^ CT_L
+>             l3 = CT_L ^ f_function(r3 ^ candidate_key5)
+>             round3_states.append((l3, r3))
+>
+>         # Now, try to find key[4] that's consistent with these states
+>         # For each seed of key[4], check if it produces consistent round2 states
+>
+>         # To speed this up, only try a subset of key[4] values
+>         max_consistency = 0
+>
+>         for seed4 in range(0, 0x10000, 256):  # Sample every 256th value
+>             candidate_key4 = (seed4 * 1234567) & 0xFFFFFFFF
+>
+>             # For each round3 state, compute what round2 would be
+>             consistency = 0
+>             for l3, r3 in round3_states:
+>                 # Round 3: left3, right3 came from
+>                 # left3 = right2
+>                 # right3 = left2 ^ f(right2 ^ key[4])
+>
+>                 right2 = l3
+>                 left2 = r3 ^ f_function(right2 ^ candidate_key4)
+>
+>                 # Check if left2 and right2 look "reasonable"
+>                 # This is still heuristic, but let's count something
+>                 # For now, just count non-zero values
+>                 if left2 != 0 or right2 != 0:
+>                     consistency += 1
+>
+>             if consistency > max_consistency:
+>                 max_consistency = consistency
+>
+>         if max_consistency > best_consistency:
+>             best_consistency = max_consistency
+>             best_seed = seed5
+>
+>     return (best_seed * 1234567) & 0xFFFFFFFF
+> EOF
+root@e46f4ec08a64:/app#

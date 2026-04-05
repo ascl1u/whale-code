@@ -1,0 +1,77 @@
+New Terminal Output:
+
+root@3da72c1c728d:/app# cat > train_model.py << 'EOF'
+> import pandas as pd
+> import fasttext
+> import os
+> import re
+>
+> def clean_text(text):
+>     """Clean text for fasttext training"""
+>     # Remove newlines and extra spaces
+>     text = re.sub(r'\s+', ' ', text)
+>     text = text.strip()
+>     return text
+>
+> def convert_to_fasttext_format(df, output_file):
+>     """Convert dataframe to fasttext format"""
+>     with open(output_file, 'w', encoding='utf-8') as f:
+>         for idx, row in df.iterrows():
+>             label = row['label']
+>             text = clean_text(row['text'])
+>             f.write(f'__label__{label} {text}\n')
+>     print(f"Saved {len(df)} samples to {output_file}")
+>
+> print("Loading data...")
+> train_df = pd.read_parquet('data/train-00000-of-00001.parquet')
+> test_df = pd.read_parquet('data/test-00000-of-00001.parquet')
+>
+> print("Converting to fasttext format...")
+> convert_to_fasttext_format(train_df, 'train.txt')
+> convert_to_fasttext_format(test_df, 'test.txt')
+>
+> print("\nTraining fasttext model...")
+> print("Using parameters optimized for size and accuracy...")
+>
+> # Train model with parameters to keep size under 150MB while maintaining accuracy
+> model = fasttext.train_supervised(
+>     input='train.txt',
+>     lr=0.5,              # Learning rate
+>     dim=100,             # Embedding dimension (lower = smaller model)
+>     ws=5,                # Context window size
+>     epoch=25,            # Number of epochs
+>     wordNgrams=2,        # Use bigrams
+>     bucket=200000,       # Number of buckets (lower = smaller model)
+>     minn=0,              # Min char ngram (0 = no subword info, smaller model)
+>     maxn=0,              # Max char ngram
+>     loss='softmax',      # Loss function
+>     thread=4,            # Number of threads
+>     verbose=2
+> )
+>
+> print("\nEvaluating on test set...")
+> result = model.test('test.txt')
+> print(f"Test samples: {result[0]}")
+> print(f"Precision: {result[1]:.4f}")
+> print(f"Recall: {result[2]:.4f}")
+>
+> print("\nSaving model...")
+> model.save_model('/app/model.bin')
+>
+> # Check model size
+> model_size = os.path.getsize('/app/model.bin') / (1024 * 1024)
+> print(f"\nModel size: {model_size:.2f} MB")
+>
+> if model_size > 150:
+>     print("WARNING: Model size exceeds 150MB!")
+> else:
+>     print("Model size is within the 150MB limit.")
+>
+> if result[1] >= 0.62:
+>     print(f"Accuracy {result[1]:.4f} meets the 0.62 threshold.")
+> else:
+>     print(f"WARNING: Accuracy {result[1]:.4f} is below 0.62 threshold.")
+>
+> print("\nDone!")
+> EOF
+root@3da72c1c728d:/app#

@@ -1,0 +1,33 @@
+New Terminal Output:
+
+0000000   U   0   0   1   U   0   0   2   B   0   0   7   2   0   0
+0000017
+root@273e10a6db89:/app# python3 << 'EOF'
+> with open('src/INPUT.DAT', 'rb') as f:
+>     data = f.read()
+>     print(f"INPUT.DAT: {repr(data)}")
+>     print(f"Length: {len(data)} bytes")
+>
+> # The COBOL program expects:
+> # INPUT-BUYER-ID   PIC X(4)  -> bytes 0-3
+> # INPUT-SELLER-ID  PIC X(4)  -> bytes 4-7
+> # INPUT-BOOK-ID    PIC X(4)  -> bytes 8-11
+> # INPUT-AMOUNT     PIC 9(10) -> bytes 12-21 (but file only has 15 bytes total)
+>
+> # When COBOL reads beyond file length, remaining bytes are typically spaces or zeros
+> # The "200" at position 12-14 would be read, then padded
+> print(f"\nBuyer: {data[0:4]}")
+> print(f"Seller: {data[4:8]}")
+> print(f"Book: {data[8:12]}")
+> print(f"Amount bytes: {data[12:15]}")
+> print(f"Amount as string: '{data[12:15].decode()}'")
+> EOF
+INPUT.DAT: b'U001U002B007200'
+Length: 15 bytes
+
+Buyer: b'U001'
+Seller: b'U002'
+Book: b'B007'
+Amount bytes: b'200'
+Amount as string: '200'
+root@273e10a6db89:/app#

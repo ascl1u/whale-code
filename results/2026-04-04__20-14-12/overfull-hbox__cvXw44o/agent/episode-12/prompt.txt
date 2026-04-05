@@ -1,0 +1,50 @@
+New Terminal Output:
+
+root@dc8c6ba9a243:/app# cat > check_all_line5.py << 'EOF'
+> import re
+>
+> # Read synonyms
+> synonyms = {}
+> with open('synonyms.txt', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line:
+>             words = [w.strip() for w in line.split(',')]
+>             for word in words:
+>                 synonyms[word] = words
+>
+> # Read input.tex and get line 5
+> with open('input.tex', 'r') as f:
+>     lines = f.readlines()
+>
+> line5 = lines[4]
+> words_in_line = re.findall(r'\b[a-zA-Z]+\b', line5)
+>
+> print("All words in line 5 that can be shortened:")
+> for word in sorted(set(words_in_line)):
+>     if word.lower() in synonyms:
+>         syns = synonyms[word.lower()]
+>         shortest = min(syns, key=len)
+>         if len(shortest) < len(word):
+>             print(f"{word} ({len(word)}) -> {shortest} ({len(shortest)}) saves {len(word) - len(shortest)}")
+>
+> EOF
+root@dc8c6ba9a243:/app# python3 check_all_line5.py
+All words in line 5 that can be shortened:
+abnormal (8) -> unusual (7) saves 1
+college (7) -> school (6) saves 1
+decencies (9) -> manners (7) saves 2
+infinite (8) -> endless (7) saves 1
+judgments (9) -> opinions (8) saves 1
+levity (6) -> jest (4) saves 2
+obvious (7) -> clear (5) saves 2
+quality (7) -> trait (5) saves 2
+quick (5) -> fast (4) saves 1
+revelation (10) -> exposure (8) saves 2
+revelations (11) -> exposures (9) saves 2
+sleep (5) -> rest (4) saves 1
+suppressions (12) -> censorings (10) saves 2
+veteran (7) -> dated (5) saves 2
+victim (6) -> prey (4) saves 2
+young (5) -> new (3) saves 2
+root@dc8c6ba9a243:/app#

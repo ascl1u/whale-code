@@ -1,0 +1,47 @@
+New Terminal Output:
+
+root@bc17e3cbd220:/app# cat > apply_more.py << 'EOF'
+> import re
+> import subprocess
+>
+> # Read current input.tex
+> with open('input.tex', 'r') as f:
+>     content = f.read()
+>
+> # Apply additional replacements
+> additional_replacements = [
+>     (r'\bcommunicative\b', 'open'),
+>     (r'\breserved\b', 'quiet'),
+>     (r'\bjudgments\b', 'opinions'),
+>     (r'\bvictim\b', 'prey'),
+>     (r'\bquality\b', 'trait'),
+>     (r'\blevity\b', 'jest'),
+>     (r'\brevelation\b', 'exposure'),
+>     (r'\brevelations\b', 'exposures'),
+>     (r'\bobvious\b', 'clear'),
+>     (r'\bsuppressions\b', 'censorings'),
+> ]
+>
+> for pattern, replacement in additional_replacements:
+>     content = re.sub(pattern, replacement, content)
+>
+> # Write the modified content
+> with open('input.tex', 'w') as f:
+>     f.write(content)
+>
+> print("Additional replacements applied. Compiling...")
+>
+> # Compile and check
+> result = subprocess.run(['pdflatex', '-interaction=nonstopmode', 'main.tex'],
+>                        capture_output=True, text=True)
+>
+> if 'Overfull' in result.stdout:
+>     print("\nStill have overfull hbox warnings:")
+>     for line in result.stdout.split('\n'):
+>         if 'Overfull' in line:
+>             print(line)
+> else:
+>     print("\nNo overfull hbox warnings! Success!")
+>
+> EOF
+root@bc17e3cbd220:/app#

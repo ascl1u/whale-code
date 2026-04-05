@@ -1,0 +1,160 @@
+New Terminal Output:
+
+root@1771cd956e8f:/app# cat > merge_users.py << 'EOF'
+> import pandas as pd
+> import json
+/m> from datetime import datetime
+>
+> # Read source_a (JSON)
+> with open('/data/source_a/users.json', 'r') as f:
+>     source_a_data = json.load(f)
+>
+t> # Convert to DataFrame and map fields
+> df_a = pd.DataFrame(source_a_data)
+> df_a = df_a.rename(columns={
+>     'id': 'user_id',
+t>     'full_name': 'name',
+>     'email': 'email',
+>     'registration_date': 'created_date'
+> })
+"\n> df_a['source'] = 'source_a'
+>
+n> # Read source_b (CSV)
+> df_b = pd.read_csv('/data/source_b/users.csv')
+> df_b = df_b.rename(columns={
+>     'user_id': 'user_id',
+>     'name': 'name',
+>     'email_address': 'email',
+>     'created_at': 'created_date'
+> })
+> # Map is_active to status
+> if 'is_active' in df_b.columns:
+>     df_b['status'] = df_b['is_active'].map({True: 'active', False: 'inactive'})
+>     df_b = df_b.drop(columns=['is_active'])
+> df_b['source'] = 'source_b'
+>
+> # Read source_c (Parquet)
+> df_c = pd.read_parquet('/data/source_c/users.parquet')
+> df_c = df_c.rename(columns={
+>     'userId': 'user_id',
+>     'userName': 'name',
+>     'email': 'email',
+>     'joined': 'created_date'
+> })
+> # Map active to status
+> if 'active' in df_c.columns:
+>     df_c['status'] = df_c['active'].map({True: 'active', False: 'inactive'})
+>     df_c = df_c.drop(columns=['active'])
+> df_c['source'] = 'source_c'
+>
+> print("Source A:")
+> print(df_a)
+> print("\nSource B:")
+> print(df_b)
+> print("\nSource C:")
+> print(df_c)
+>
+> # Combine all sources
+> all_data = pd.concat([df_a, df_b, df_c], ignore_index=True)
+>
+> # Ensure user_id is integer
+> all_data['user_id'] = all_data['user_id'].astype(int)
+>
+> # Get all unique user_ids
+> unique_users = all_data['user_id'].unique()
+>
+> # Track conflicts
+> conflicts = []
+>
+> # Merge logic with priority
+> merged_records = []
+>
+> for user_id in unique_users:
+>     user_records = all_data[all_data['user_id'] == user_id]
+>
+>     # Get records from each source
+>     record_a = user_records[user_records['source'] == 'source_a']
+>     record_b = user_records[user_records['source'] == 'source_b']
+>     record_c = user_records[user_records['source'] == 'source_c']
+>
+>     # Start with empty merged record
+>     merged = {'user_id': user_id}
+>
+>     # Fields to merge
+>     fields = ['name', 'email', 'created_date', 'status']
+>
+>     for field in fields:
+>         values = {}
+>
+>         # Collect values from each source
+>         if not record_a.empty and field in record_a.columns and pd.notna(record_a[field].iloc[0]):
+>             values['source_a'] = record_a[field].iloc[0]
+>         if not record_b.empty and field in record_b.columns and pd.notna(record_b[field].iloc[0]):
+>             values['source_b'] = record_b[field].iloc[0]
+>         if not record_c.empty and field in record_c.columns and pd.notna(record_c[field].iloc[0]):
+>             values['source_c'] = record_c[field].iloc[0]
+>
+>         # Select value by priority
+>         selected = None
+>         if 'source_a' in values:
+>             selected = values['source_a']
+>         elif 'source_b' in values:
+>             selected = values['source_b']
+>         elif 'source_c' in values:
+>             selected = values['source_c']
+>
+>         merged[field] = selected
+>
+>         # Check for conflicts (multiple sources with different values)
+>         unique_values = set(str(v) for v in values.values())
+>         if len(values) > 1 and len(unique_values) > 1:
+>             conflict = {
+>                 'user_id': int(user_id),
+>                 'field': field,
+>                 'values': values,
+>                 'selected': selected
+>             }
+>             conflicts.append(conflict)
+>
+>     merged_records.append(merged)
+>
+> # Create merged DataFrame
+> merged_df = pd.DataFrame(merged_records)
+>
+> # Ensure proper column order
+> column_order = ['user_id', 'name', 'email', 'created_date', 'status']
+> for col in column_order:
+>     if col not in merged_df.columns:
+>         merged_df[col] = None
+>
+> merged_df = merged_df[column_order]
+>
+> # Ensure user_id is integer
+> merged_df['user_id'] = merged_df['user_id'].astype(int)
+>
+> # Sort by user_id
+> merged_df = merged_df.sort_values('user_id').reset_index(drop=True)
+>
+> print("\n\nMerged DataFrame:")
+> print(merged_df)
+> print("\nData types:")
+> print(merged_df.dtypes)
+>
+> # Save to Parquet
+> merged_df.to_parquet('/app/merged_users.parquet', index=False)
+> print("\nSaved merged_users.parquet")
+>
+> # Create conflict report
+> conflict_report = {
+>     'total_conflicts': len(conflicts),
+>     'conflicts': conflicts
+> }
+>
+> with open('/app/conflicts.json', 'w') as f:
+>     json.dump(conflict_report, f, indent=2)
+>
+> print(f"\nSaved conflicts.json with {len(conflicts)} conflicts")
+> print("\nConflict report:")
+> print(json.dumps(conflict_report, indent=2))
+> EOF
+root@1771cd956e8f:/app#

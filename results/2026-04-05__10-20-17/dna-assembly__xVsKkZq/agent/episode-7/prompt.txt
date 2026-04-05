@@ -1,0 +1,86 @@
+New Terminal Output:
+
+root@11eec39dc770:/app# cat > design_primers.py << 'EOF'
+> import subprocess
+> import re
+>
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> def reverse_complement(seq):
+>     complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
+>     return ''.join(complement[base] for base in reversed(seq))
+>
+> def calc_tm(seq):
+>     """Calculate Tm using oligotm with specified parameters"""
+>     cmd = ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq]
+>     result = subprocess.run(cmd, capture_output=True, text=True)
+>     return float(result.stdout.strip())
+>
+> # Analyze junctions
+> print("Analyzing sequences...\n")
+>
+> # Find where the insert goes in the output
+> egfp_seq = seqs['egfp']
+> flag_seq = seqs['flag']
+> snap_seq = seqs['snap']
+>
+> # Find positions in output
+> egfp_start = seqs['output'].find(egfp_seq)
+> flag_start = seqs['output'].find(flag_seq)
+> snap_start = seqs['output'].find(snap_seq)
+>
+> print(f"In output plasmid:")
+> print(f"  egfp: {egfp_start} to {egfp_start + len(egfp_seq)}")
+> print(f"  flag: {flag_start} to {flag_start + len(flag_seq)}")
+> print(f"  snap: {snap_start} to {snap_start + len(snap_seq)}")
+>
+> # Get junction sequences
+> print(f"\nJunction sequences:")
+> print(f"  Before egfp (output): ...{seqs['output'][egfp_start-10:egfp_start]}|{seqs['output'][egfp_start:egfp_start+10]}...")
+> print(f"  egfp to flag: ...{seqs['output'][egfp_start+len(egfp_seq)-10:egfp_start+len(egfp_seq)]}|{seqs['output'][flag_start:flag_start+10]}...")
+> print(f"  flag to snap: ...{seqs['output'][flag_start+len(flag_seq)-10:flag_start+len(flag_seq)]}|{seqs['output'][snap_start:snap_start+10]}...")
+> print(f"  After snap: ...{seqs['output'][snap_start+len(snap_seq)-10:snap_start+len(snap_seq)]}|{seqs['output'][snap_start+len(snap_seq):snap_start+len(snap_s
+eq)+10]}...")
+>
+> # Find what gets removed from input
+> input_seq = seqs['input']
+> output_seq = seqs['output']
+>
+> # The output before egfp
+> before_insert = output_seq[:egfp_start]
+> # The output after snap
+> after_insert = output_seq[snap_start + len(snap_seq):]
+>
+> print(f"\nVector backbone junctions:")
+> print(f"  End of upstream: {before_insert[-20:]}")
+> print(f"  Start of downstream: {after_insert[:20]}")
+>
+> EOF
+root@11eec39dc770:/app# python3 design_primers.py
+Analyzing sequences...
+
+In output plasmid:
+  egfp: -1 to 716
+  flag: -1 to 89
+  snap: -1 to 548
+
+Junction sequences:
+  Before egfp (output): ...tgaatactca|...
+  egfp to flag: ...agatccgcca|...
+  flag to snap: ...aaaaataaac|...
+  After snap: ...ccgaggtgaa|gttcgagggc...
+
+Vector backbone junctions:
+  End of upstream: acggaaatgttgaatactca
+  Start of downstream: gttcgagggcgacaccctgg
+root@11eec39dc770:/app#

@@ -1,0 +1,83 @@
+New Terminal Output:
+
+root@5727c976f434:/app# cat > design_primers.py << 'EOF'
+> import subprocess
+> import sys
+>
+> # Read sequences
+> seqs = {}
+> current_name = None
+> with open('sequences.fasta', 'r') as f:
+>     for line in f:
+>         line = line.strip()
+>         if line.startswith('>'):
+>             current_name = line[1:]
+>             seqs[current_name] = ''
+>         else:
+>             seqs[current_name] += line
+>
+> def reverse_complement(seq):
+>     complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
+>     return ''.join(complement[base] for base in reversed(seq))
+>
+> def calculate_tm(seq):
+>     """Calculate Tm using oligotm with specified parameters"""
+>     try:
+>         result = subprocess.run(
+>             ['oligotm', '-tp', '1', '-sc', '1', '-mv', '50', '-dv', '2', '-n', '0.8', '-d', '500', seq],
+>             capture_output=True, text=True, check=True
+>         )
+>         return float(result.stdout.strip())
+>     except:
+>         return None
+>
+> print("=== GOLDEN GATE ASSEMBLY DESIGN ===\n")
+>
+> # Define the junctions
+> # Junction 1: input -> egfp (at position 210)
+> junc1_input = seqs['input'][210-4:210]  # 4 bases before cut
+> junc1_egfp = seqs['egfp'][:4]  # First 4 bases of egfp
+> print(f"Junction 1 (input -> egfp):")
+> print(f"  Input ends: ...{seqs['input'][206:210]}")
+> print(f"  egfp starts: {seqs['egfp'][:4]}...")
+> print(f"  Overhang needed: {junc1_egfp}")
+>
+> # Junction 2: egfp -> flag (egfp without stop, flag without start)
+> egfp_no_stop = seqs['egfp'][:-3]
+> junc2_egfp = egfp_no_stop[-4:]  # Last 4 bases of egfp (no stop)
+> flag_no_start_stop = seqs['flag'][3:-3]
+> junc2_flag = flag_no_start_stop[:4]  # First 4 bases of flag (no start/stop)
+> print(f"\nJunction 2 (egfp -> flag):")
+> print(f"  egfp ends (no stop): ...{egfp_no_stop[-4:]}")
+> print(f"  flag starts (no start): {flag_no_start_stop[:4]}...")
+> print(f"  Overhang needed: {junc2_flag}")
+>
+> # Junction 3: flag -> snap (flag without start/stop, snap without start)
+> junc3_flag = flag_no_start_stop[-4:]  # Last 4 bases of flag (no start/stop)
+> snap_no_start = seqs['snap'][3:]
+> junc3_snap = snap_no_start[:4]  # First 4 bases of snap (no start)
+> print(f"\nJunction 3 (flag -> snap):")
+> print(f"  flag ends (no start/stop): ...{flag_no_start_stop[-4:]}")
+> print(f"  snap starts (no start): {snap_no_start[:4]}...")
+> print(f"  Overhang needed: {junc3_snap}")
+>
+> # Junction 4: snap -> input (snap without start, back to input at position 690)
+> snap_no_start = seqs['snap'][3:]
+> junc4_snap = snap_no_start[-4:]  # Last 4 bases of snap (no start)
+> junc4_input = seqs['input'][690:694]  # First 4 bases after cut
+> print(f"\nJunction 4 (snap -> input):")
+> print(f"  snap ends (no start): ...{snap_no_start[-4:]}")
+> print(f"  input resumes: {seqs['input'][690:694]}...")
+> print(f"  Overhang needed: {junc4_input}")
+>
+> print("\n" + "="*50)
+> print("Golden Gate Assembly Strategy:")
+> print("="*50)
+> print("\nWe need primers for:")
+> print("1. input backbone (position 690 -> 210, circular)")
+> print("2. egfp (without stop codon)")
+> print("3. flag (without start and stop codons)")
+> print("4. snap (without start codon)")
+>
+> EOF
+root@5727c976f434:/app#
