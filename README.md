@@ -4,6 +4,14 @@ Whale is a small [Harbor](https://harborframework.com/) agent built by subclassi
 
 Development was driven by a frozen 18-task subset in [`eval/subset.txt`](eval/subset.txt). I also used Terminus-KIRA as design inspiration, but Whale is not a KIRA port and does not reproduce KIRA's full orchestration stack.
 
+## Benchmark Snapshot
+
+| Agent | Subset Accuracy | Full-Benchmark Accuracy |
+|-------|-----------------|-------------------------|
+| Claude Code | 51.1% | 40.1% |
+| Terminus 2 | 48.9% | 42.8% |
+| Whale | 52.2% | - |
+
 ## Design Scope
 
 - Whale keeps Harbor's Docker-backed task environments, tmux session model, trajectory format, and built-in summarization machinery.
